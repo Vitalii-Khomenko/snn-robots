@@ -20,6 +20,13 @@ whole training pipeline (PC, PyTorch) for every network.
 | [docs/DEVELOPMENT.md](stackchan-neuromorphic/docs/DEVELOPMENT.md) | simulator, tests, training pipeline, recording real data |
 | [README.ru.md](README.ru.md) | краткое описание по-русски |
 
+## Status
+
+A personal research project, developed and tested on one robot. The simulator test (`simulator/test.sh`) passes on a fresh clone
+with only a C++ toolchain. The person detector is the least mature part; see "What is not done yet" in the project README and
+the known limitations in [HARDWARE.md](stackchan-neuromorphic/docs/HARDWARE.md). The StackChan body and CoreS3 are M5Stack products;
+this repository is not affiliated with M5Stack.
+
 ## Repository layout
 
 - `stackchan-neuromorphic/` - the project: firmware (`main/`, `components/`), simulator, training tools, docs

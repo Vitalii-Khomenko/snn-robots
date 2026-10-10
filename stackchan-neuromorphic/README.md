@@ -216,7 +216,7 @@ follows a person, only when one was seen; the delivered / used numbers must matc
 
 ## Rollback
 
-- (Owner's machine only; backups are not in the repository, use git tags and history instead.) One backup of the current state (2026-10-04, late: after the behaviour audit fixes) is kept: `../backups/stackchan-neuromorphic-v3-2026-10-04.tgz` (sources, docs, scripts,
+- On the owner's machine (not in the repository; here use git tags and history) one backup of the current state (2026-10-04, late: after the behaviour audit fixes) is kept: `../backups/stackchan-neuromorphic-v3-2026-10-04.tgz` (sources, docs, scripts,
   trained weights, all real recordings of this robot's microphone and camera; generated training data, the Python venv and build
   output are left out - they are rebuilt by the tools) and `../backups/stackchan_neuromorphic-v3-2026-10-04.bin`
   (flash it with `esptool` at 0x10000 to go back). Earlier generations (v0 Hermes, v1 pipeline, v2 NeuroBrain) were deleted on

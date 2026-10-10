@@ -1,6 +1,6 @@
 # ftservo/py32_io_expander/si12t/bmi270 are the vendor driver components
-# ported in from our-stackchan-firmware v1 (components/) - motion/,
-# sensors/ and led/ call into them directly, same as v1's own
+# in components/ - motion/,
+# sensors/ and led/ call into them directly, same as
 # main/CMakeLists.txt. esp32-camera is a transitive dependency of the
 # m5stack_core_s3 BSP already (main/idf_component.yml) - listed explicitly
 # here too since camera_engine.cpp includes esp_camera.h directly.

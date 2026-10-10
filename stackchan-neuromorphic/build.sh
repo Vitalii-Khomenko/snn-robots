@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Build stackchan_neuromorphic against the cached ESP-IDF toolchain, same
-# Docker image our-stackchan-firmware's build.sh uses.
+# Build stackchan_neuromorphic against the cached ESP-IDF toolchain in the
+# stackchan-firmware-builder:local Docker image (see ../firmware-builder).
 set -Eeuo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
