@@ -63,7 +63,7 @@ the camera):
   (the policy's `led_activity`), in a colour the policy picks too (`led_r/g/b`). It gets tired (stamina ~3 h of activity) and **sleeps** at
   night: head down, lids closed, still; a touch or a loud sound wakes it.
 
-## Current state (2026-10-03)
+## Current state (2026-10-04)
 
 | | |
 |---|---|
@@ -81,10 +81,33 @@ the camera):
 What is **not done yet**: a person detector that works in rooms and light it has not seen (retrained on 5 empty-room sessions, one of them with the head sweeping the whole range, and 8 person sessions: 0-2 % false persons on the empty recordings; the live check with the owner in view is still open; `VISION_PLAN.txt`), claps while the head moves, fine-tuning the spiking core on real data, reward-based refinement of the policy
 and the voice, ESP-NN int8 convolutions for the vision net.
 
+## Getting started
+
+Needs Linux with Docker, an M5Stack CoreS3 StackChan on USB (`/dev/ttyACM0`), and about 10 GB of disk for the toolchain cache.
+Training the networks additionally needs a PC with Python 3 and, preferably, a CUDA GPU.
+
+```bash
+git clone https://github.com/Vitalii-Khomenko/snn-robots.git && cd snn-robots
+docker build -t stackchan-firmware-builder:local firmware-builder     # ESP-IDF v5.5.4 image (the toolchain is cached in ./.tooling on first build)
+cd stackchan-neuromorphic
+cp secrets/wifi_credentials.example.h secrets/wifi_credentials.h      # edit: your Wi-Fi
+cp secrets/known_devices.example.h    secrets/known_devices.h         # edit: IPs of your phone (or an empty list)
+./build.sh build && ./flash.sh
+```
+
+The trained weights are generated headers in `main/hybrid/*_model_data.h` and `main/voice/babble_model_data.h`, which are in the repository,
+so the firmware builds and runs without retraining. The simulator needs only a C++ compiler (`simulator/test.sh`).
+
+**Retraining** (optional, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)): create the Python environment
+(`python3 -m venv tools/vocal_decoder/.venv && tools/vocal_decoder/.venv/bin/pip install torch -r tools/requirements.txt`), download the public
+datasets into `../datasets` (COCO val2017 + annotations, ESC-50, LibriSpeech dev-clean), then regenerate `tools/hybrid/data` with
+`prepare_clips.py`, `make_coco_vision.py` and `gen_data.py`. The owner's real recordings of this robot's microphone and camera
+(`tools/hybrid/data/audio`, `.../vision`) are private and not published; record your own robot as described in DEVELOPMENT.md.
+
 ## Build, flash, monitor
 
 The ESP-IDF toolchain (v5.5.4) runs in the `stackchan-firmware-builder:local` Docker image with its cache in
-`../.tooling`.
+`../.tooling` (created on the first build).
 
 ```bash
 ./build.sh build                          # build
@@ -106,7 +129,7 @@ python3 tools/capture_serial.py --seconds 30   # bounded log capture, max 60 s, 
 **Secrets** (`secrets/`, real values for this robot, never copy them into archives, screenshots or a public
 repository):
 
-- `secrets/wifi_credentials.h`: `kWifiSsid`, `kWifiPassword`, read at compile time by `main/net/wifi_engine.cpp`.
+- `secrets/wifi_credentials.h` (copy from `secrets/*.example.h`, see Getting started): `kWifiSsid`, `kWifiPassword`, read at compile time by `main/net/wifi_engine.cpp`.
 - `secrets/known_devices.h`: IP addresses of the owner's devices, pinged every 20 min (IPs, not MACs: phones
   randomize their MAC; give the phone a DHCP reservation). Found: "the owner is home".
 
@@ -143,16 +166,17 @@ main/
   motion/                      MotionEngine: speed profiles, springs, limits, stamina, servo packets
   ui/                          face_style (faces as numbers) + face_engine (LVGL animation)
   power/, net/, led/, core/    power rails, Wi-Fi/NTP/ping, LEDs, helpers
-components/                    vendored drivers: ftservo (SCSCL), bmi270, py32_io_expander, si12t, board notes
+components/                    vendored drivers: ftservo (SCSCL), bmi270, py32_io_expander, si12t
 simulator/                     digital twin: the real firmware code in a virtual room (see DEVELOPMENT)
 tools/hybrid/                  training and evaluation of every network, DAgger, parity tests, dataset tools
 tools/voice/                   droid teacher and trainer, prosody bank, WAV renderers (preview of the synthesizer)
 tools/                         hybrid_map.py (the brain map), face_preview, capture_serial.py, serial_guard.sh,
                                vocal_decoder/.venv (the shared Python environment; the name is historical)
 docs/                          ARCHITECTURE, HARDWARE, DEVELOPMENT, BRAIN_MAP.svg, NETWORKS.svg (the five networks with their sizes), faces.png
-RECORDING_PLAN.txt             what to record with the real microphone and camera (sound sessions done, video sessions open)
-VISION_PLAN.txt                plan for training the person recognition on this robot's camera
-secrets/                       Wi-Fi credentials and known devices (not for sharing)
+RECORDING_PLAN.txt             (owner's notes, in Russian) what to record with the real microphone and camera (sound sessions done, video sessions open)
+VISION_PLAN.txt                (owner's notes, in Russian) plan for training the person recognition on this robot's camera
+secrets/                       templates for Wi-Fi credentials and known devices (the real files are git-ignored)
+TODO_LATER.txt, Ideas-Tmp/     owner's working notes (Russian): backlog and the original concept
 ```
 
 ## Log reference
@@ -192,7 +216,7 @@ follows a person, only when one was seen; the delivered / used numbers must matc
 
 ## Rollback
 
-- One backup of the current state (2026-10-04, late: after the behaviour audit fixes) is kept: `../backups/stackchan-neuromorphic-v3-2026-10-04.tgz` (sources, docs, scripts,
+- (Owner's machine only; backups are not in the repository, use git tags and history instead.) One backup of the current state (2026-10-04, late: after the behaviour audit fixes) is kept: `../backups/stackchan-neuromorphic-v3-2026-10-04.tgz` (sources, docs, scripts,
   trained weights, all real recordings of this robot's microphone and camera; generated training data, the Python venv and build
   output are left out - they are rebuilt by the tools) and `../backups/stackchan_neuromorphic-v3-2026-10-04.bin`
   (flash it with `esptool` at 0x10000 to go back). Earlier generations (v0 Hermes, v1 pipeline, v2 NeuroBrain) were deleted on
