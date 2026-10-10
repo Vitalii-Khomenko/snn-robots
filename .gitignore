@@ -1,0 +1,15 @@
+.env
+.tooling/
+backups/
+datasets/
+__pycache__/
+*.py[cod]
+.venv*/
+stackchan-neuromorphic/build/
+stackchan-neuromorphic/managed_components/
+stackchan-neuromorphic/simulator/build/
+stackchan-neuromorphic/simulator/out/
+stackchan-neuromorphic/tools/hybrid/data/
+stackchan-neuromorphic/tools/vocal_decoder/.venv/
+stackchan-neuromorphic/secrets/
+.claude/

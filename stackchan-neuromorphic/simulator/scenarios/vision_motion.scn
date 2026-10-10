@@ -1,0 +1,20 @@
+# New vision (2026-09-27): ON/OFF, direction cells, looming, coarse
+# motion, room-change memory. A person walks slowly across the view (the
+# head should follow and lead), then walks straight at the robot (looming:
+# startle), a lamp in another part of the room is switched while the robot
+# looks elsewhere (room change when it looks back).
+duration 6:00
+clock 14:00
+seed 11
+room_light on
+lamp desk -70 10 on
+owner away
+at 0:30 person alex enter 40 2.5
+at 0:40 person alex walk -40 12
+at 1:10 person alex walk 40 12
+at 1:40 person alex walk 0 3
+at 2:00 person alex approach 0.35 1.5
+at 2:30 person alex step_back 2.5
+at 2:40 person alex leave
+at 3:30 lamp desk off
+at 4:30 lamp desk on

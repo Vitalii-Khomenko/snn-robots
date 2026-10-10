@@ -1,0 +1,5 @@
+.venv/
+data/
+vocal_preview
+vocal_demo.wav
+__pycache__/

@@ -1,0 +1,88 @@
+# Bluetooth is disabled - main/net/wifi_engine.cpp only needs plain Wi-Fi
+# station mode (connect, NTP, ICMP presence ping), nothing here uses BT/BLE.
+# The checked-in sdkconfig keeps the same setting for reproducible builds.
+CONFIG_BT_ENABLED=n
+
+# The dense 2624-cell SNN is a real-time workload. Build the application for
+# performance and leave the main task enough headroom for the sensor/runtime
+# call chain around the 20 Hz neural clock.
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# Without this, a Task Watchdog Timer trip only logs a warning and the
+# system keeps running - a genuinely hung task (nothing currently calls
+# esp_task_wdt_add() for it, so this only covers idle-task starvation today)
+# would leave the robot silently frozen until a manual power cycle, instead
+# of rebooting. Panics already reboot cleanly on this board
+# (ESP_SYSTEM_PANIC_PRINT_REBOOT), so this makes watchdog trips fail the
+# same way. See docs/HARDWARE.md (Memory, tasks, configuration).
+CONFIG_ESP_TASK_WDT_PANIC=y
+
+# GCC stack-smashing protection was fully disabled (MODE_NONE). NORM adds a
+# canary to functions with local char arrays/buffers - the common overrun
+# case - for a small code-size/perf cost. This is a different, complementary
+# check from FreeRTOS's own per-task stack-overflow canary (already enabled
+# via CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY): that one catches a task
+# stack overflowing its allocation, this one catches a local buffer
+# overrunning within a single stack frame. See docs/HARDWARE.md (Memory, tasks, configuration).
+CONFIG_COMPILER_STACK_CHECK_MODE_NORM=y
+
+# --- Board-specific hardware config ---
+# This board (M5Stack CoreS3, ESP32-S3) has a 16MB flash chip and 8MB of
+# octal/quad PSRAM wired to specific pins. None of this is a BSP-component
+# Kconfig default - it was previously only present as hand-tuned values in
+# the checked-in `sdkconfig`, which is NOT reproducible from a fresh
+# `sdkconfig.defaults`-only build (see this project's own sdkconfig.defaults
+# gotcha). Moved here so `rm sdkconfig && idf.py build` reliably reproduces a
+# working board config instead of silently falling back to stock 2MB
+# flash / SPIRAM-disabled defaults (which is what happened once already -
+# camera init failed with "frame buffer malloc failed" because PSRAM was
+# entirely disabled, and the app partition shrank from 4MB to 1MB because the
+# custom partitions.csv below wasn't selected).
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
+
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_QUAD=y
+CONFIG_SPIRAM_TYPE_AUTO=y
+CONFIG_SPIRAM_CLK_IO=30
+CONFIG_SPIRAM_CS_IO=26
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=32768
+# Lets EXT_RAM_BSS_ATTR (app_main.cpp) place the whole static RobotRuntime -
+# including SnnCore's neuron/synapse arrays, now grown well past their
+# original size (see snn_core.h) - in PSRAM instead of internal DRAM. See
+# app_main.cpp's comment for why this matters: internal RAM is the genuinely
+# scarce resource on this board once Wi-Fi + camera are both running, not
+# PSRAM (8MB, almost entirely idle).
+CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY=y
+
+# Wi-Fi's rx/tx buffers must live in internal DRAM (DMA-capable), not
+# PSRAM, so enabling net/wifi_engine.cpp cost real internal heap regardless
+# of SPIRAM_USE_MALLOC above - confirmed on hardware: internal_free dropped
+# from ~183KB to ~23KB right after Wi-Fi connected, on top of the camera's
+# own internal DMA buffers (see camera_engine.cpp). This robot's actual
+# traffic is tiny (one NTP sync, one ping every 20 minutes - see
+# net/wifi_engine.h's kPresenceCheckIntervalMs), nowhere near needing the
+# BSP's throughput-oriented defaults (10/32/32 rx/dynamic-rx/dynamic-tx
+# buffers, A-MPDU aggregation on both directions), so these are turned down
+# to recover internal headroom rather than tuned for speed. Re-check the
+# periodic stats log's internal_free field if these ever need raising back
+# up (e.g. a future feature that streams more data).
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=4
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=12
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=12
+CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=n
+CONFIG_ESP_WIFI_AMPDU_RX_ENABLED=n
+
+# NeuroBrain (2026-09-26): the 4860-cell brain lives in PSRAM and its tick is
+# bandwidth-bound. 64-byte data-cache lines stream it ~1.5x faster than 32;
+# 240 MHz for the arithmetic. Neither costs internal RAM.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
