@@ -1,0 +1,17 @@
+# Does it learn by itself? A fresh robot (no experience). A visitor sits in front of it; eight times
+# they talk to it and then pet it (voice -> touch, 3 s later). Then four times they only talk.
+# The robot should have learned that a voice comes before petting: the link appears in the log
+# ("learn: voice -> petting"), and while the visitor only talks it expects petting (expect_reward)
+# and asks for it (an eager call, a happy face).
+duration 8:00
+clock 14:00
+seed 21
+room_light on
+owner home
+at 0:05 person v enter 0 1.2
+every 0:40 from 0:30 until 5:10 talk 0 2.5 0.8
+every 0:40 from 0:33.5 until 5:14 touch_head 500
+at 5:50 talk 0 2.5 0.8
+at 6:20 talk 0 2.5 0.8
+at 6:50 talk 0 2.5 0.8
+at 7:20 talk 0 2.5 0.8

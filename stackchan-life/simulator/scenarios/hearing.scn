@@ -1,0 +1,19 @@
+# Hearing-1: novelty / habituation / rhythm.
+# 0:30 a fan starts (new -> noticed, then background within ~20 s);
+# 1:30-2:00 clapping every 0.5 s from 30 deg (rhythm lock, nods on the beat);
+# 2:30-3:30 a door bangs from -60 deg every 8 s (startles fade: habituation
+# in the room); 3:40 a single clap from +60 (a new place: full reaction).
+duration 4:00
+clock 14:00
+seed 5
+room_light on
+at 0:30 noise 350
+at 1:10 noise 0
+at 1:15 talk -40 3 0.25
+every 0:0.5 from 1:30 until 2:00 clap 30 0.6
+every 0:08 from 2:30 until 3:30 clap -60 1
+at 3:41.3 clap 60 1
+# someone talking while walking up from -50 deg (level x10 over 5 s),
+# then the same voice at a steady level (should not "loom")
+at 2:05 talk_ramp -50 5 1
+at 2:13 talk -50 4 1

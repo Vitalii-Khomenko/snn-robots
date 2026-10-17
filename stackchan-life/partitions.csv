@@ -1,0 +1,15 @@
+# Name,    Type, SubType, Offset,   Size,     Flags
+# Platform B layout (2026-10-11). nvs keeps its v3 offset and size, so what
+# the robot learned (AssocMemory, NVS namespace "assoc") survives the change.
+# Two app slots for over-the-air updates with rollback (a new firmware that
+# does not reach "healthy" reboots into the previous one), and two slots for
+# the networks' weights (main/hybrid/weight_store.h): the nightly training
+# writes the idle one and switches over only after a healthy boot.
+nvs,       data, nvs,     0x9000,   0x6000,
+otadata,   data, ota,     0xf000,   0x2000,
+phy_init,  data, phy,     0x11000,  0x1000,
+ota_0,     app,  ota_0,   0x20000,  0x400000,
+ota_1,     app,  ota_1,   0x420000, 0x400000,
+weights_a, data, 0x41,    0x820000, 0x180000,
+weights_b, data, 0x41,    0x9A0000, 0x180000,
+coredump,  data, coredump,0xB20000, 0x10000,

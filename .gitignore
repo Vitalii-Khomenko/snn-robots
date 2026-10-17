@@ -20,3 +20,13 @@ stackchan-neuromorphic/secrets/*
 !stackchan-neuromorphic/secrets/*.example.h
 !stackchan-neuromorphic/secrets/README.md
 .claude/
+stackchan-life/build/
+stackchan-life/managed_components/
+stackchan-life/simulator/build/
+stackchan-life/simulator/out/
+stackchan-life/data/
+stackchan-life/tools/hybrid/data/*
+!stackchan-life/tools/hybrid/data/*.pt
+stackchan-life/secrets/*
+!stackchan-life/secrets/*.example.h
+!stackchan-life/secrets/README.md

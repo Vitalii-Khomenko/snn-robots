@@ -1,0 +1,12 @@
+# Quiet room, then sharp sounds from each side and a voice: does the head
+# turn to the correct side, and does it calm down afterwards?
+duration 4:00
+clock 14:00
+seed 4
+room_light on
+window 170 20 40 30
+at 0:40 clap 80
+at 1:10 clap -80
+at 1:40 talk 60 3
+at 2:10 talk -60 3
+at 2:40 clap 0 1.5

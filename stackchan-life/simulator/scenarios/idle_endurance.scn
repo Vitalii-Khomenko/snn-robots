@@ -1,0 +1,9 @@
+# Continuous exploration must leave enough rest to recover stamina and
+# keep calling for play after the first half hour.
+duration 60:00
+clock 14:00
+seed 1
+charging on
+battery 100
+owner away
+room_light on

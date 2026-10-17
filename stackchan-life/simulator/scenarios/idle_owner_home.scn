@@ -1,0 +1,11 @@
+# Phone on the LAN is not an interaction. Explore and invite play before
+# DAY_MODE begins, even in a dim room and while charging.
+duration 5:00
+clock 07:25
+seed 1
+charging on
+battery 100
+owner home
+room_light off
+window 170 20 40 30
+lamp desk 100 12 on brightness 6 radius 3

@@ -1,0 +1,8 @@
+# The robot's night sleep on the PC (tools/life/sleep.py); started by life-sleep.timer.
+[Unit]
+Description=StackChan night sleep: learn from the diary, send the weights that pass the gate
+
+[Service]
+Type=oneshot
+Environment=PYTHONWARNINGS=ignore
+ExecStart=%h/Codex/StackChan/stackchan-life/tools/hybrid/py ../life/sleep.py

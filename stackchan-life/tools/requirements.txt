@@ -1,0 +1,12 @@
+# Python environment for training, simulator tools and recording (tools/hybrid/py expects it in tools/vocal_decoder/.venv).
+# Install torch separately for your hardware (CUDA build recommended): https://pytorch.org
+numpy
+scipy
+soundfile
+Pillow
+faster-whisper
+# platform B, the teachers of perception (tools/life/teachers.py); install torchvision from the same index as torch
+ultralytics
+opencv-python-headless
+silero-vad
+torchlibrosa

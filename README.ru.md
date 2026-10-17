@@ -5,14 +5,22 @@ ESP32-S3: маленькие сети зрения и слуха, **импуль
 сон), рекуррентная политика, которая выбирает действия и одно из 21 лиц, и аналоговый «дроид-голос», который
 составляет сеть. Ни деревьев поведения, ни готовых анимаций и звуков.
 
+**Платформа Б** (`stackchan-life/`, на ней робот работает сейчас): робот, который **учится на своей жизни**.
+- Модель мира предсказывает следующий миг; её удивление — это любопытство.
+- Пять потребностей дают награду.
+- Сеть-актёр решает, когда и куда смотреть и когда звать. Днём её поправляет пластичный слой.
+- Ночью домашний ПК переучивает модель мира и актёра по дневнику каждого тика, а зрение и слух — по собственным кадрам
+  и звукам робота. Метки к ним ставят большие сети-учителя. Новые веса уходят на робота по Wi-Fi без перезагрузки.
+
 В проекте есть симулятор («цифровой двойник»: настоящий код прошивки в виртуальной комнате) и весь конвейер обучения
 каждой сети на ПК.
 
-С чего начать: [stackchan-neuromorphic/README.md](stackchan-neuromorphic/README.md) (раздел «Getting started»),
+Платформа Б: [stackchan-life/README.md](stackchan-life/README.md), методы и технологии — в
+[stackchan-life/docs/ARCHITECTURE.md](stackchan-life/docs/ARCHITECTURE.md). Основа v3: [stackchan-neuromorphic/README.md](stackchan-neuromorphic/README.md) (раздел «Getting started»),
 затем [ARCHITECTURE](stackchan-neuromorphic/docs/ARCHITECTURE.md), [HARDWARE](stackchan-neuromorphic/docs/HARDWARE.md),
 [DEVELOPMENT](stackchan-neuromorphic/docs/DEVELOPMENT.md). Документация на английском.
 
-Файлы `TODO_LATER.txt`, `RECORDING_PLAN.txt`, `VISION_PLAN.txt` и `Ideas-Tmp/` - личные рабочие заметки владельца
+Журнал платформы Б — `stackchan-life/JOURNAL.txt`. Файлы `TODO_LATER.txt`, `RECORDING_PLAN.txt`, `VISION_PLAN.txt` и `Ideas-Tmp/` - личные рабочие заметки владельца
 (по-русски), они нужны только как история и план.
 
 Лицензия: MIT. Пароль Wi-Fi и IP устройств владельца в репозиторий не входят: шаблоны лежат в `secrets/*.example.h`.

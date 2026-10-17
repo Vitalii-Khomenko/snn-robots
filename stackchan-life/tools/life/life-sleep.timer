@@ -1,0 +1,11 @@
+# Every night at 03:30 (the router blinks at 03:00; or at the next start of the PC if it was off):
+#   cp tools/life/life-sleep.* ~/.config/systemd/user/ && systemctl --user enable --now life-sleep.timer
+[Unit]
+Description=StackChan night sleep at 03:30
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
