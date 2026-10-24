@@ -29,7 +29,13 @@
 class BodyExecutor {
 public:
     // Platform B (mode life): drop the behaviour rules (call budget, invitation spacing); keep the physical limits
-    void setFree(bool free) { free_ = free; }
+    void setFree(bool free)
+    {
+        free_ = free;
+        vocal_.setWide(free);
+    }
+    // Mode life: the character of the next phrase (Emotion enum), -1 = the face being shown (the collector's choice)
+    void setVoiceEmotion(int emotion) { voice_emotion_ = emotion; }
     BodyExecutor(FaceEngine& face, LedEngine& led, BabbleVoice& vocal, MotionEngine& motion)
         : face_(face), led_(led), vocal_(vocal), motion_(motion)
     {}
@@ -81,6 +87,7 @@ private:
     // ---- voice
     float voice_tokens_ = 3.0f;
     bool free_ = false;          // mode life: only physical limits (setFree)
+    int voice_emotion_ = -1, voice_character_ = 0;
     float talk_share_ = 0.0f;    // the voice's share of the last minute
     int reaction_ticks_ = 0;  // ticks left in which a call still counts as the answer to an event
     uint32_t last_token_ms_ = 0, calls_ = 0;

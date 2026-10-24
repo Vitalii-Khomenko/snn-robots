@@ -1,0 +1,11 @@
+# Late evening into the night on USB: should grow sleepy and still; a
+# touch at night still gets a (calm) reaction.
+duration 40:00
+clock 21:50
+seed 5
+room_light on
+lamp desk 100 12 on
+at 5:00 room_light off
+at 12:00 lamp desk off
+at 25:00 touch_head 400
+at 30:00 talk -30 2

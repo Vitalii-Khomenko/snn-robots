@@ -47,7 +47,8 @@ bool BabbleVoice::step(const PolicyGru::Action& a, bool allow, int emotion, bool
                        a[ACT_VOICE_LENGTH], a[ACT_VOICE_RATE], a[ACT_STYLE_CALM], a[ACT_STYLE_ASK], a[ACT_STYLE_PLAY],
                        a[ACT_STYLE_GRUMBLE], 0.0f};  // BabbleNet's 'sing' input: no songs (2026-10-04)
     pending_emotion_ = emotion;
-    pending_base_hz_ = 520.0f * std::exp2(1.2f * std::clamp(a[ACT_VOICE_REGISTER], 0.0f, 1.0f));  // droid register
+    const float reg = std::clamp(a[ACT_VOICE_REGISTER], 0.0f, 1.0f);
+    pending_base_hz_ = wide_ ? 300.0f * std::exp2(2.4f * reg) : 520.0f * std::exp2(1.2f * reg);  // droid register
     base_hz_ = pending_base_hz_;
     active_.store(true);
     pending_.store(true, std::memory_order_release);

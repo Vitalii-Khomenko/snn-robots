@@ -2,11 +2,11 @@
 """Takes what the robot sees and hears now and then, for the perception networks' training on the PC (platform B;
 the owner allowed frames and sound to the home PC, 2026-10-17). Nothing leaves the home network.
 
-Every few minutes (and at random in between) it fetches GET /snapshot and GET /audio (main/net/ota_server.h) and keeps
+Every ~30 s (at random in between) it fetches GET /snapshot, and with every third frame GET /audio (main/net/ota_server.h) and keeps
 them: data/media/YYYY-MM-DD/HHMMSS.snp (raw RGB565 frame + the front end's frame + the Vision NN's outputs) and
 .aud (2 s of sound + the Auditory NN's inputs). tools/life/media.py reads them.
 
-  python3 tools/life/mediad.py [--every 180]        (systemd user service tools/life/mediad.service)
+  python3 tools/life/mediad.py [--every 30] [--audio-every 3]   (frames every 30 s since 2026-10-18; was 180 s)        (systemd user service tools/life/mediad.service)
 """
 import argparse
 import os
@@ -30,15 +30,20 @@ def fetch(path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--every", type=float, default=180.0, help="mean seconds between takes")
+    ap.add_argument("--every", type=float, default=30.0, help="mean seconds between frames")
+    ap.add_argument("--audio-every", type=int, default=3, help="sound with every n-th frame")
     ap.add_argument("--once", action="store_true")
     a = ap.parse_args()
-    print(f"mediad: a take every ~{a.every:.0f} s -> {os.path.join(ROOT, 'data', 'media')}", flush=True)
+    print(f"mediad: a frame every ~{a.every:.0f} s, sound with every {a.audio_every}. -> "
+          f"{os.path.join(ROOT, 'data', 'media')}", flush=True)
+    n = 0
     while True:
         stamp = time.strftime("%Y-%m-%d/%H%M%S")
         folder = os.path.join(ROOT, "data", "media", stamp.split("/")[0])
         os.makedirs(folder, exist_ok=True)
-        for path, ext in (("/snapshot", "snp"), ("/audio", "aud")):
+        takes = (("/snapshot", "snp"), ("/audio", "aud")) if n % a.audio_every == 0 else (("/snapshot", "snp"),)
+        n += 1
+        for path, ext in takes:
             try:
                 data = fetch(path)
                 with open(os.path.join(folder, f"{stamp.split('/')[1]}.{ext}"), "wb") as f:

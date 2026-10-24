@@ -15,6 +15,11 @@
 //   people    a face or a person in view: looks at it half the time; a touch is always answered at once, with a
 //             random one of: call + happy face, only a call, only a happy face, a loving face - so the diary shows
 //             which answer keeps people coming (the actor learns that from the reward). No nods (phantom touches).
+//   bang      a clap or a knock (not its own servos) is answered at once (the owner's wish, 2026-10-18): a quick glance
+//             aside and up, a surprised face, a short squeal; at night only the face
+//   handling  a shake: a dizzy face and a warbling sound; shaken again within a minute: annoyed, then angry with a growl;
+//             tilted or lifted: a scared face and a squeal (the owner shook it and saw nothing, 2026-10-18); at night
+//             only the faces
 //   night     21:30-06:30 (the owner sleeps next to it): silent, a small move every few minutes, sleepy face, dim LEDs
 //
 // It writes the same action vector as the policy, so everything after it - the executor's physical limits, the voice,
@@ -38,6 +43,9 @@ public:
         float yaw = 0.0f, pitch = 0.0f;
     };
     const Decision& lastDecision() const { return decision_; }
+    // The character of the voice for the next phrase (Emotion enum, face_style.h), -1 = the face being shown: half of
+    // the calls sound like another mood (giggle, squeal, warble ...), so the voice is not only the face's.
+    int voiceEmotion() const { return voice_emo_; }
 
 private:
     uint32_t rnd();
@@ -48,6 +56,9 @@ private:
     bool night(const hybrid::Bus& bus) const;
     void newMove(const hybrid::Bus& bus, uint32_t now, bool small);
     void newVoice(uint32_t now, float lengthS, bool happy);
+    int voice_emo_ = -1;
+    bool banged_ = false, shaken_ = false, tilted_ = false;
+    uint32_t bang_ms_ = 0, rough_ms_[3] = {};  // the last three shakes
 
     uint32_t rng_;
     bool started_ = false;

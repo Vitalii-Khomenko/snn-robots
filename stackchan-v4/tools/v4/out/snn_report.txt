@@ -1,0 +1,89 @@
+epoch 1/20 train 0.713 val 0.148 corr mean 0.902 min 0.470 (att_x) rates [0.105, 0.017, 0.093, 0.233] 195s
+epoch 2/20 train 0.241 val 0.113 corr mean 0.923 min 0.664 (att_x) rates [0.104, 0.017, 0.079, 0.171] 193s
+epoch 3/20 train 0.205 val 0.110 corr mean 0.926 min 0.672 (att_x) rates [0.105, 0.018, 0.056, 0.134] 196s
+epoch 4/20 train 0.184 val 0.091 corr mean 0.938 min 0.776 (att_y) rates [0.105, 0.018, 0.052, 0.123] 199s
+epoch 5/20 train 0.168 val 0.092 corr mean 0.942 min 0.782 (att_y) rates [0.105, 0.018, 0.045, 0.114] 198s
+epoch 6/20 train 0.158 val 0.083 corr mean 0.944 min 0.790 (att_y) rates [0.104, 0.017, 0.042, 0.109] 203s
+epoch 7/20 train 0.148 val 0.080 corr mean 0.945 min 0.781 (att_y) rates [0.105, 0.018, 0.043, 0.111] 219s
+epoch 8/20 train 0.140 val 0.082 corr mean 0.946 min 0.784 (att_y) rates [0.105, 0.018, 0.039, 0.107] 200s
+epoch 9/20 train 0.134 val 0.077 corr mean 0.947 min 0.811 (att_y) rates [0.104, 0.017, 0.04, 0.108] 193s
+epoch 10/20 train 0.128 val 0.074 corr mean 0.949 min 0.819 (att_y) rates [0.105, 0.018, 0.04, 0.104] 193s
+epoch 11/20 train 0.124 val 0.076 corr mean 0.950 min 0.813 (att_y) rates [0.105, 0.018, 0.037, 0.105] 195s
+epoch 12/20 train 0.119 val 0.071 corr mean 0.951 min 0.811 (att_y) rates [0.104, 0.018, 0.039, 0.106] 194s
+epoch 13/20 train 0.112 val 0.071 corr mean 0.950 min 0.815 (att_y) rates [0.105, 0.018, 0.042, 0.107] 244s
+epoch 14/20 train 0.112 val 0.072 corr mean 0.949 min 0.734 (att_x) rates [0.105, 0.017, 0.043, 0.114] 200s
+epoch 15/20 q train 0.114 val 0.074 corr mean 0.948 min 0.729 (att_x) rates [0.104, 0.018, 0.042, 0.11] 296s
+epoch 16/20 q train 0.112 val 0.074 corr mean 0.949 min 0.742 (att_x) rates [0.104, 0.017, 0.042, 0.113] 236s
+epoch 17/20 q train 0.109 val 0.074 corr mean 0.949 min 0.736 (att_x) rates [0.104, 0.017, 0.043, 0.118] 248s
+epoch 18/20 q train 0.107 val 0.073 corr mean 0.950 min 0.737 (att_x) rates [0.105, 0.018, 0.043, 0.118] 279s
+epoch 19/20 q train 0.106 val 0.073 corr mean 0.950 min 0.729 (att_x) rates [0.104, 0.018, 0.042, 0.115] 231s
+epoch 20/20 q train 0.105 val 0.074 corr mean 0.950 min 0.737 (att_x) rates [0.104, 0.018, 0.045, 0.119] 228s
+
+brain v4 spiking analyzer: epoch 19, held-out loss 0.073
+
+synthetic (96 lives): corr / MAE per output
+  valence          corr +0.987  mae 0.009  teacher sd 0.091
+  arousal          corr +0.980  mae 0.019  teacher sd 0.153
+  under            corr +0.995  mae 0.010  teacher sd 0.163
+  over             corr +0.991  mae 0.019  teacher sd 0.200
+  threat           corr +0.990  mae 0.010  teacher sd 0.155
+  surprise         corr +0.958  mae 0.008  teacher sd 0.075
+  sal_loud         corr +0.873  mae 0.011  teacher sd 0.042
+  sal_sharp        corr +0.943  mae 0.029  teacher sd 0.124
+  sal_voice        corr +0.925  mae 0.004  teacher sd 0.021
+  sal_touch_head   corr +0.930  mae 0.007  teacher sd 0.041
+  sal_touch_screen corr +0.933  mae 0.003  teacher sd 0.023
+  sal_shake        corr +0.919  mae 0.005  teacher sd 0.033
+  sal_tilt         corr +0.910  mae 0.005  teacher sd 0.031
+  sal_near         corr +0.962  mae 0.011  teacher sd 0.092
+  sal_light        corr +0.968  mae 0.006  teacher sd 0.053
+  sal_motion       corr +0.919  mae 0.004  teacher sd 0.036
+  hed_loud         corr +0.988  mae 0.015  teacher sd 0.112
+  hed_sharp        corr +0.992  mae 0.010  teacher sd 0.125
+  hed_voice        corr +0.986  mae 0.016  teacher sd 0.161
+  hed_touch_head   corr +0.980  mae 0.010  teacher sd 0.094
+  hed_touch_screen corr +0.926  mae 0.004  teacher sd 0.025
+  hed_shake        corr +0.963  mae 0.003  teacher sd 0.029
+  hed_tilt         corr +0.993  mae 0.004  teacher sd 0.060
+  hed_near         corr +0.994  mae 0.005  teacher sd 0.089
+  hed_light        corr +0.996  mae 0.007  teacher sd 0.118
+  hed_motion       corr +0.942  mae 0.010  teacher sd 0.055
+  hunger_n         corr +0.990  mae 0.016  teacher sd 0.193
+  sleepiness       corr +0.991  mae 0.035  teacher sd 0.396
+  loneliness       corr +0.997  mae 0.009  teacher sd 0.139
+  att_x            corr +0.750  mae 0.031  teacher sd 0.065
+  att_y            corr +0.830  mae 0.031  teacher sd 0.144
+  att_strength     corr +0.959  mae 0.012  teacher sd 0.082
+real diary (24 lives): corr / MAE per output
+  valence          corr +0.976  mae 0.009  teacher sd 0.058
+  arousal          corr +0.987  mae 0.011  teacher sd 0.105
+  under            corr +0.934  mae 0.015  teacher sd 0.060
+  over             corr +0.991  mae 0.010  teacher sd 0.086
+  threat           corr +0.988  mae 0.005  teacher sd 0.062
+  surprise         corr +0.945  mae 0.007  teacher sd 0.051
+  sal_loud         corr +0.767  mae 0.016  teacher sd 0.035
+  sal_sharp        corr +0.958  mae 0.015  teacher sd 0.080
+  sal_voice        corr +0.875  mae 0.009  teacher sd 0.031
+  sal_touch_head   corr +0.801  mae 0.006  teacher sd 0.019
+  sal_touch_screen corr +0.949  mae 0.003  teacher sd 0.034
+  sal_shake        corr +0.000  mae 0.002  teacher sd 0.000
+  sal_tilt         corr +0.206  mae 0.005  teacher sd 0.007
+  sal_near         corr +0.000  mae 0.004  teacher sd 0.000
+  sal_light        corr +0.173  mae 0.005  teacher sd 0.007
+  sal_motion       corr +0.881  mae 0.002  teacher sd 0.017
+  hed_loud         corr +0.995  mae 0.014  teacher sd 0.175
+  hed_sharp        corr +0.989  mae 0.007  teacher sd 0.068
+  hed_voice        corr +0.942  mae 0.039  teacher sd 0.182
+  hed_touch_head   corr +0.918  mae 0.011  teacher sd 0.067
+  hed_touch_screen corr +0.960  mae 0.006  teacher sd 0.032
+  hed_shake        corr +0.000  mae 0.004  teacher sd 0.000
+  hed_tilt         corr +0.035  mae 0.005  teacher sd 0.000
+  hed_near         corr +0.000  mae 0.003  teacher sd 0.000
+  hed_light        corr +0.934  mae 0.004  teacher sd 0.010
+  hed_motion       corr +0.934  mae 0.007  teacher sd 0.029
+  hunger_n         corr +0.000  mae 0.004  teacher sd 0.000
+  sleepiness       corr +0.996  mae 0.028  teacher sd 0.341
+  loneliness       corr +0.985  mae 0.011  teacher sd 0.092
+  att_x            corr +0.000  mae 0.022  teacher sd 0.000
+  att_y            corr +0.743  mae 0.024  teacher sd 0.103
+  att_strength     corr +0.920  mae 0.008  teacher sd 0.038

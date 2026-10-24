@@ -301,7 +301,7 @@ to the PC, and the PC can replace the firmware and the weights over Wi-Fi with a
 - **Perception learns from the robot's life (2026-10-17).** With the owner's consent the robot's frames and sound go to
   the home PC (never further): `GET /snapshot` (the next camera frame, RGB565 160x120 big-endian, + the Vision NN's
   input and outputs) and `GET /audio` (the last 2 s at 24 kHz + the Auditory NN's last 40 inputs); `tools/life/mediad.py`
-  (user service `mediad`) takes one of each every ~3 min into `data/media/<day>/`. `label_media.py` labels them with the
+  (user service `mediad`) takes a frame every ~30 s and sound with every third (since 2026-10-18; every ~3 min before) into `data/media/<day>/`. `label_media.py` labels them with the
   big nets in `tools/life/teachers.py` (YOLOv8n, YuNet, Silero VAD, PANNs CNN14; files in `data/teachers/`, not in
   git), `train_perception.py` fine-tunes the Vision and Auditory nets on them (replay of the old training sets, auxiliary
   heads for 80 objects and 15 sound groups on the hidden layers, gates: no drop > 0.03 on the old real recordings, no

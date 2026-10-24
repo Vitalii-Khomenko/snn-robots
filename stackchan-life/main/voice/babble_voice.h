@@ -41,10 +41,18 @@ public:
     // Chunks that came later than 1.5 chunk durations while sounding (audible gaps), since boot.
     uint32_t gaps() const { return gaps_.load(); }
     void seed(uint32_t s) { net_.seed(s); }
+    // Mode life: a wider voice - phrase register 300-1580 Hz (v3: 520-1190) and 1.5x the jumps between notes. Measured
+    // 2026-10-18 from the robot's own takes: 60 % of the voice's energy sat between 400 and 1500 Hz.
+    void setWide(bool wide)
+    {
+        wide_ = wide;
+        net_.setPitchRange(wide ? 1.5f : 1.0f);
+    }
 
     static constexpr float kSampleRate = static_cast<float>(AudioOutput::kSampleRate);
 
 private:
+    bool wide_ = false;
     static void taskEntry(void* arg);
     void taskLoop();
     void startPhrase();

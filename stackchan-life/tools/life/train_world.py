@@ -37,7 +37,8 @@ SEQ = 200  # ticks per training window (10 s)
 
 
 def episodes(days):
-    """Runs of consecutive ticks (same boot, no gap) of at least SEQ + 1 ticks: (inputs [T, I], targets [T, O])."""
+    """Runs of consecutive ticks (same boot, no gap) of at least SEQ + 1 ticks: (inputs [T, I], targets [T, O],
+    clean [T]: False where the servos hung, lifedata.hung)."""
     out = []
     for day in days:
         ticks, _ = L.load(day)
@@ -53,7 +54,7 @@ def episodes(days):
                     v = np.nan_to_num(ticks["values"][part])
                     x = v[:, INPUT].copy()
                     x[:, ZERO] = 0.0
-                    out.append((x, v[:, TARGET]))
+                    out.append((x, v[:, TARGET], ~L.hung(v, ticks["ms"][part])))
     return out
 
 
@@ -74,21 +75,24 @@ def export(model, path):
 
 def windows(eps, split):
     """Cuts every episode at `split` of its length: training windows from the first part, validation from the rest
-    (held-out time, not shuffled ticks)."""
+    (held-out time, not shuffled ticks). A window is (inputs, target changes, weights): weight 0 where the servos hung
+    at t or t + 1 - the window stays whole (the GRU keeps its context), only those ticks teach and judge nothing
+    (since 2026-10-22; ~19 % of the ticks)."""
     tr, va = [], []
-    for x, y in eps:
+    for x, y, ok in eps:
         cut = int(len(x) * split)
-        for part, dest in (((x[:cut], y[:cut]), tr), ((x[cut:], y[cut:]), va)):
-            px, py = part
+        for part, dest in (((x[:cut], y[:cut], ok[:cut]), tr), ((x[cut:], y[cut:], ok[cut:]), va)):
+            px, py, pk = part
             for s in range(0, len(px) - SEQ - 1, SEQ):
                 # input at t, target = change from t to t + 1
-                dest.append((px[s:s + SEQ], py[s + 1:s + SEQ + 1] - py[s:s + SEQ]))
+                w = (pk[s:s + SEQ] & pk[s + 1:s + SEQ + 1]).astype(np.float32)
+                dest.append((px[s:s + SEQ], py[s + 1:s + SEQ + 1] - py[s:s + SEQ], w))
     return tr, va
 
 
 def skill(model, data, dev, batch=256):
-    """Per group: 1 - MSE(model) / MSE(persistence), over all held-out windows (in batches: a week does not fit the GPU
-    at once)."""
+    """Per group: 1 - MSE(model) / MSE(persistence), over the clean ticks of all held-out windows (in batches: a week
+    does not fit the GPU at once)."""
     if not data:
         return {}
     err_p = np.zeros(len(GROUPS))
@@ -97,14 +101,15 @@ def skill(model, data, dev, batch=256):
     for i in range(0, len(data), batch):
         x = torch.tensor(np.stack([d[0] for d in data[i:i + batch]]), device=dev)
         dy = torch.tensor(np.stack([d[1] for d in data[i:i + batch]]), device=dev)
+        w = torch.tensor(np.stack([d[2] for d in data[i:i + batch]]), device=dev)[..., None]
         with torch.no_grad():
             pred, _ = model(x)
         k = 0
         for j, names in enumerate(GROUPS.values()):
             sl = slice(k, k + len(names))
             k += len(names)
-            err_p[j] += (dy[..., sl] ** 2).sum().item()
-            err_m[j] += ((pred[..., sl] - dy[..., sl]) ** 2).sum().item()
+            err_p[j] += (dy[..., sl] ** 2 * w).sum().item()
+            err_m[j] += ((pred[..., sl] - dy[..., sl]) ** 2 * w).sum().item()
     return {g: 1 - err_m[j] / max(err_p[j], 1e-12) for j, g in enumerate(GROUPS)}
 
 
@@ -113,6 +118,7 @@ def fit(model, tr, va, epochs, quant_epochs, dev, lr=2e-3, log=print):
     opt = torch.optim.Adam(model.parameters(), lr=lr)
     X = torch.tensor(np.stack([d[0] for d in tr]))
     Y = torch.tensor(np.stack([d[1] for d in tr]))
+    Wt = torch.tensor(np.stack([d[2] for d in tr]))[..., None]
     for ep in range(epochs):
         model.quant = ep >= epochs - quant_epochs
         model.train()
@@ -121,7 +127,8 @@ def fit(model, tr, va, epochs, quant_epochs, dev, lr=2e-3, log=print):
         for i in range(0, len(X), 64):
             b = perm[i:i + 64]
             pred, _ = model(X[b].to(dev))
-            loss = ((pred - Y[b].to(dev)) ** 2).mean()
+            wb = Wt[b].to(dev)
+            loss = (((pred - Y[b].to(dev)) ** 2) * wb).sum() / (wb.sum() * Y.shape[-1]).clamp(min=1.0)
             opt.zero_grad()
             loss.backward()
             opt.step()

@@ -77,7 +77,8 @@ public:
     static constexpr float kPitchMaxDeg = 60.0f;
 
 private:
-    void writeServos(bool yaw, bool pitch);
+    void writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_deg, uint16_t time_ms);
+    void writeSparse(uint32_t now);
 
     SCSCL bus_;
     Spring yaw_spring_;
@@ -90,6 +91,20 @@ private:
     bool force_write_ = false;
     bool limits_written_[2] = {false, false};  // position-mode limits sent since power-on
     static constexpr uint32_t kTorqueRefreshMs = 3000;
+    // Sparse writes (2026-10-20): one packet per move with the destination and the time to get there (the servo
+    // glides there by itself), one more when the move has settled, a new one only when the destination moves by
+    // >= kRetargetRaw and not sooner than kMinPacketGapMs. The stalls grow with the packets a servo gets while it
+    // moves (docs/HARDWARE.md); the old stream of 10 packets/s made ~1000 power cycles a day, and the camera showed
+    // the head standing still in half of the commanded turns. false = the old 10 Hz stream of points.
+    static constexpr bool kSparseWrites = true;
+    static constexpr uint32_t kMinPacketGapMs = 300;
+    // Positions as one broadcast SYNC_WRITE (servos never answer a broadcast) instead of addressed packets (each
+    // answered on the same wire). false = addressed, as until 2026-10-22.
+    static constexpr bool kSyncWrite = false;  // 2026-10-22: no fewer stalls; 3 full freezes the same evening
+    static constexpr int kRetargetRaw = 3;  // ~1 degree
+    int last_sent_raw_[2] = {-1, -1};       // yaw, pitch: the last destination sent
+    bool unlatched_[2] = {false, false};    // a move went out; resend its end once it has settled
+    uint32_t last_packet_ms_ = 0;
 
     // A gesture can request a large jump in one call. Keep that command as a
     // destination and slew the spring's target in small increments in update().
@@ -98,6 +113,7 @@ private:
     float commanded_yaw_target_   = 0.0f;
     float commanded_pitch_target_ = 0.0f;
     float max_speed_ = 60.0f;   // deg/s of the current move
+    static constexpr float kSpeedScale = 0.5f;  // moveTo() speeds are halved (2026-10-23); 1.0 = as asked
     float profile_speed_ = 0.0f;  // deg/s the moving target has right now
     static constexpr float kRampS = 0.25f;  // time to full speed (and to stop)
     static constexpr float kTargetEpsilonDeg      = 0.1f;

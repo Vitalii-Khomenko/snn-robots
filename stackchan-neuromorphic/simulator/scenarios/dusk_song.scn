@@ -1,0 +1,11 @@
+# Dusk: 21:25-21:52 the robot sings a lullaby about every 5 min (6 songs),
+# then falls asleep at 22:00. Owner at home, room light on.
+duration 45:00
+clock 21:15
+sunrise 07:30
+sunset 20:30
+seed 5
+owner home
+room_light on
+window 170 20 40 30
+lamp desk 100 12 off

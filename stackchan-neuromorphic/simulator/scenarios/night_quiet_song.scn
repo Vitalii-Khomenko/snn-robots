@@ -1,0 +1,5 @@
+# Late evening / night outside both song windows: it must never sing, whatever the music drive says.
+duration 40:00
+clock 23:10
+seed 3
+room_light off

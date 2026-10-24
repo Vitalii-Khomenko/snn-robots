@@ -81,12 +81,19 @@ void Collector::newVoice(uint32_t now, float lengthS, bool happy)
     call_until_ms_ = now + static_cast<uint32_t>(lengthS * 1000.0f);
     v_arousal_ = happy ? uni(0.5f, 0.9f) : uni(0.1f, 0.9f);
     v_valence_ = happy ? uni(0.4f, 1.0f) : uni(-0.6f, 0.8f);
-    v_register_ = uni(0.1f, 0.9f);
+    v_register_ = uni(0.0f, 1.0f);
     v_slope_ = uni(-0.8f, 0.8f);
     v_expr_ = uni(0.1f, 0.9f);
     v_length_ = uni(0.1f, 0.9f);
     v_rate_ = uni(0.2f, 0.9f);
     v_style_ = happy ? 2 : actor_ ? sampleLogits(actor_out_ + 20, 4) : static_cast<int>(rnd() % 4);
+    // the voice's character: the face's (a touch answer always), or half the time another mood's - the droid sounds of
+    // the 21 faces differ (giggles, squeals, growls, warbles, coos), and the day's 12 faces leave many out
+    static constexpr int kVoiceMoods[] = {ACT_EMO_LAUGHING, ACT_EMO_SURPRISED, ACT_EMO_SAD, ACT_EMO_DIZZY, ACT_EMO_THINKING,
+                                          ACT_EMO_CURIOUS, ACT_EMO_VERY_HAPPY, ACT_EMO_LOVE, ACT_EMO_ANNOYED, ACT_EMO_CONFUSED,
+                                          ACT_EMO_SCARED, ACT_EMO_SHY, ACT_EMO_ANGRY, ACT_EMO_WINK};
+    constexpr int kMoods = static_cast<int>(sizeof(kVoiceMoods) / sizeof(kVoiceMoods[0]));
+    voice_emo_ = !happy && uni(0.0f, 1.0f) < 0.5f ? kVoiceMoods[rnd() % kMoods] - ACT_EMO_NORMAL : -1;
 }
 
 void Collector::step(const Bus& bus, uint32_t now, PolicyGru::Action& a)
@@ -117,6 +124,61 @@ void Collector::step(const Bus& bus, uint32_t now, PolicyGru::Action& a)
         answer_ = how;
     }
     touched_ = touch;
+    // ---- a bang (clap, knock) is answered at once, like a touch: the collector's rule, masked in the actor's training.
+    // Not the robot's own noise: its servos (own motion) and its voice were heard as claps before (2026-10-03).
+    const bool bang = std::max(bus.audio[AUD_CLAP], bus.audio[AUD_SHARP]) > 0.7f && bus.audio[AUD_OWN_MOTION] < 0.5f &&
+                      bus.audio[AUD_SELF_VOICE] < 0.3f;
+    if (bang && !banged_ && static_cast<int32_t>(now - bang_ms_) >= 3000) {
+        bang_ms_ = now;
+        happy_face_ = ACT_EMO_SURPRISED;
+        happy_until_ms_ = now + 2500;
+        if (!sleep) {
+            const float side = uni(0.0f, 1.0f) < 0.5f ? -1.0f : 1.0f;
+            yaw_ = std::clamp((bus.body[BODY_YAW] * 100.0f + side * uni(15.0f, 30.0f)) / kYawLimitDeg, -0.9f, 0.9f);
+            pitch_ = pitchAction(bus.body[BODY_PITCH] * 35.0f + uni(5.0f, 12.0f));
+            speed_ = 0.9f;
+            vigor_ = 0.9f;
+            move_until_ms_ = now + 1500;
+            last_actor_move_ms_ = now;  // the actor's next move waits
+            newVoice(now, uni(0.3f, 0.6f), false);
+            v_arousal_ = uni(0.7f, 1.0f);
+            voice_emo_ = ACT_EMO_SURPRISED - ACT_EMO_NORMAL;
+        }
+    }
+    banged_ = bang;
+    // ---- handled roughly: shaken, tilted, lifted (BodySense holds a shake 2 s, a tilt while it lasts). The collector's
+    // rule like a touch: the face at once, a sound by day; masked in the actor's training. The more it is shaken within
+    // a minute, the crosser: dizzy, then annoyed, then angry with a growl.
+    const bool shake = bus.body[BODY_SHAKE] > 0.5f, tilt = bus.body[BODY_TILT] > 0.5f;
+    if (shake && !shaken_) {
+        rough_ms_[0] = rough_ms_[1];
+        rough_ms_[1] = rough_ms_[2];
+        rough_ms_[2] = now | 1u;
+        int recent = 0;
+        for (uint32_t t : rough_ms_) recent += t && now - t < 60000 ? 1 : 0;
+        const int face = recent >= 3 ? ACT_EMO_ANGRY : recent == 2 ? ACT_EMO_ANNOYED : ACT_EMO_DIZZY;
+        happy_face_ = face;
+        happy_until_ms_ = now + 4000;
+        if (!sleep) {
+            newVoice(now, uni(0.5f, 1.0f), false);
+            v_arousal_ = uni(0.6f, 1.0f);
+            v_valence_ = face == ACT_EMO_DIZZY ? uni(-0.3f, 0.3f) : uni(-1.0f, -0.5f);
+            v_style_ = face == ACT_EMO_DIZZY ? 0 : 3;  // grumble when cross
+            voice_emo_ = face - ACT_EMO_NORMAL;
+        }
+    } else if (tilt && !tilted_) {
+        happy_face_ = ACT_EMO_SCARED;
+        happy_until_ms_ = now + 3000;
+        if (!sleep) {
+            newVoice(now, uni(0.3f, 0.6f), false);
+            v_arousal_ = uni(0.7f, 1.0f);
+            voice_emo_ = ACT_EMO_SCARED - ACT_EMO_NORMAL;
+        }
+    }
+    if (tilt && static_cast<int32_t>(happy_until_ms_ - now) < 500 && happy_face_ == ACT_EMO_SCARED)
+        happy_until_ms_ = now + 500;  // scared while it lasts
+    shaken_ = shake;
+    tilted_ = tilt;
     const bool face = bus.vision[VIS_FACE] > 0.5f ||
                       (bus.vision[VIS_PERSON] > 0.6f && bus.vision[VIS_TARGET_CONF] > 0.5f);
     // (with an actor, looking at people is the actor's: it learned that from the reward)
@@ -212,8 +274,9 @@ void Collector::step(const Bus& bus, uint32_t now, PolicyGru::Action& a)
     if (static_cast<int32_t>(happy_until_ms_ - now) > 0) shown = happy_face_;
     else if (sleep) shown = ACT_EMO_SLEEPY;
     for (int i = ACT_EMO_NORMAL; i <= ACT_EMO_SICK; ++i) a[i] = i == shown ? 1.0f : 0.0f;
-    a[ACT_FACE_VALENCE] = shown == ACT_EMO_HAPPY ? 0.6f : 0.0f;
-    a[ACT_FACE_AROUSAL] = sleep ? 0.1f : 0.4f;
+    const bool cross = shown == ACT_EMO_ANGRY || shown == ACT_EMO_ANNOYED || shown == ACT_EMO_SCARED;
+    a[ACT_FACE_VALENCE] = shown == ACT_EMO_HAPPY ? 0.6f : cross ? -0.6f : 0.0f;
+    a[ACT_FACE_AROUSAL] = cross || shown == ACT_EMO_DIZZY ? 0.8f : sleep ? 0.1f : 0.4f;
     a[ACT_LIDS] = sleep ? 0.7f : 0.0f;
     a[ACT_BLINK] = 0.0f;
     if (static_cast<int32_t>(now - next_blink_ms_) >= 0) {

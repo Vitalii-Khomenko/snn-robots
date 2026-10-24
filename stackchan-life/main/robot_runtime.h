@@ -97,6 +97,7 @@ private:
     uint32_t repower_times_[3] = {0, 0, 0};
     int series_level_ = 0;
     bool blocked_logged_ = false;
+    uint32_t sag_repower_ms_ = 0, sag_pause_until_ms_ = 0;
     uint32_t next_diagnostics_ms_ = 0;
     uint64_t diagnostics_window_start_us_ = 0;
     uint64_t diagnostics_busy_us_ = 0;

@@ -55,8 +55,15 @@ def labels(v):
     # on the touch's big reward, so the actor took the credit and learned to call 10 times a minute (2026-10-15).
     # Those ticks do not teach the call at all (label -1 = masked).
     touch = np.maximum(v[:, L.col("touch_head")], v[:, L.col("touch_screen")]) > 0.5
-    after = np.convolve(touch.astype(float), np.ones(40))[:len(v)] > 0
+    # the same for a bang (clap, knock; since 2026-10-18 the collector answers it with a glance, a surprised face and a
+    # squeal): its call, its move and its face are the rule's, masked
+    bang = (np.maximum(v[:, L.col("clap")], v[:, L.col("sharp")]) > 0.7) & (v[:, L.col("own_motion")] < 0.5)
+    # ... and being shaken or tilted (dizzy / annoyed / angry / scared and a sound, since 2026-10-18)
+    bang = bang | (v[:, L.col("shake")] > 0.5) | (v[:, L.col("tilt")] > 0.5)
+    after = np.convolve((touch | bang).astype(float), np.ones(40))[:len(v)] > 0
     call[after] = -1.0
+    move[np.convolve(bang.astype(float), np.ones(40))[:len(v)] > 0] = -1.0
+    touch = touch | bang
     # the face chosen when it changed (not the touch answer: happy/love for 4 s after a touch), -1 = no choice here
     emo = np.stack([v[:, L.col("act_emo_" + f)] for f in FACES], 1)
     face_now = np.where(emo.max(1) > 0.5, emo.argmax(1), -1)
@@ -81,6 +88,10 @@ def windows(eps, advs, split, scale):
         lab = labels(v)
         y = np.concatenate([lab[:, :5], g[:, None], lab[:, 5:]], 1).astype(np.float32)  # ..., call, value, face, style
         m = ((flags & 3) != 0).astype(np.float32)  # the collector's random decisions and the actor's sampled ones
+        # where the servos hung (lifedata.hung; 2026-10-22) a move had no effect the robot could feel: its outcome says
+        # nothing, so the advantage there is neutral (weight exp(0)). Not masked: the hung stretches are where the head
+        # was told to move, and leaving them out taught the imitation 1.25 moves / min instead of 5.08.
+        adv = np.where(L.hung(v, np.arange(len(v)) * 50), 0.0, adv).astype(adv.dtype)  # 20 ticks/s
         cut = int(len(x) * split)
         for (a, b), dest in (((0, cut), tr), ((cut, len(x)), va)):
             for s in range(a, b - SEQ, SEQ):
@@ -90,9 +101,11 @@ def windows(eps, advs, split, scale):
 
 def loss_fn(out, y, w):
     move, call = y[..., 0], y[..., 4]
+    mm = (move >= 0).float() * w  # -1 = the collector's rule moved the head (a bang's glance): not a decision
+    move = move.clamp(min=0)
     ev = move * w  # the target and the speed only where a move started
-    wsum = w.sum().clamp(min=1.0)
-    l_move = (F.binary_cross_entropy_with_logits(out[..., 0], move, reduction="none") * w).sum() / wsum
+    wsum = mm.sum().clamp(min=1.0)
+    l_move = (F.binary_cross_entropy_with_logits(out[..., 0], move, reduction="none") * mm).sum() / wsum
     cm = (call >= 0).float() * w
     l_call = (F.binary_cross_entropy_with_logits(out[..., 6], call.clamp(min=0), reduction="none") * cm).sum() / \
         cm.sum().clamp(min=1.0)

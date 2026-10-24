@@ -58,6 +58,14 @@ servo glides between points and the speed profile shapes the motion. Do not
 raise the packet rate. The spring is integrated in ≤20 ms substeps (a 50 ms
 step made the stiff spring blow up and slammed the head to its limit).
 
+Since 2026-10-20 positions go out sparsely (`kSparseWrites`: one packet per move with its destination and time, one
+more when it settles): ~15 packets/min instead of 72, but the power cycles fell only 20 % (1036 -> 832 a day) and
+the camera still showed the head standing in ~58 % of 25-50° turns. Both servos hang together (336 windows vs 7 with
+one), the frozen head is stiff to the hand (torque on), VM EN stays on, pose and speed do not matter. Since
+2026-10-22 positions went as one broadcast SYNC_WRITE (`kSyncWrite`: no servo answers it, so no reply can collide):
+no fewer stalls, and the same evening the whole board froze 3 times, each 30-130 s after a servo power cycle -
+turned off again the same day.
+
 **Servo watchdog** (`RobotRuntime::superviseServos`): if two consecutive
 2 s windows had ≥10° commanded and <1.5° real rotation (gyro), it switches
 VM EN off for 500 ms and on again and resyncs the motion model; at most

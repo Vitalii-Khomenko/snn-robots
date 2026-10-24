@@ -334,6 +334,22 @@ void RobotRuntime::superviseServos(uint32_t now)
                      static_cast<unsigned>(gap / 60000));
         }
     }
+    // A hung servo pulls current for as long as it has power: the USB input sinks to the AXP's limit, the battery
+    // makes up the rest, VSYS falls and the 3.3 V DCDC trips - the black-screen power-offs (2026-10-22/23, the
+    // last one 4 min into a sag while the stall rule waited out a series pause). A sag of 3 s cuts the servo rail
+    // whatever the stall rule says. If the sag outlives the cycle the servos were not the cause: no more sag
+    // cycles for 10 minutes.
+    const int sag = power_status_.sagSeconds();
+    if (sag_repower_ms_ && now - sag_repower_ms_ > 5000 && now - sag_repower_ms_ < 8000 && sag >= 3) {
+        sag_repower_ms_ = 0;
+        sag_pause_until_ms_ = now + 600000;
+        ESP_LOGW(kTag, "power: VBUS still sags after the servo rail cycle - not the servos; no sag cycles for 10 min");
+    }
+    if (!repower && sag >= 3 && msReached(now, sag_pause_until_ms_) && now - last_repower_ms_ > 15000) {
+        repower = true;
+        why = "the servo rail drains the supply: VBUS sagging";
+        sag_repower_ms_ = now;
+    }
     if (!repower) return;
     int py32, vm_out, vm_pin;
     power::readServoPowerState(py32, vm_out, vm_pin);
@@ -507,6 +523,12 @@ void RobotRuntime::logStats(uint32_t now)
              static_cast<unsigned>(life_.dropped()), static_cast<unsigned>(life_.sdWritten()),
              static_cast<unsigned>(life_.sdErrors()), static_cast<unsigned>(world_us_), static_cast<unsigned>(imu_.gyroRestarts()),
              static_cast<double>(learner_.size()));
+    {
+        // the rails of the black-screen power-offs (2026-10-22/23): lowest VBUS / VSYS over the last stats window
+        const auto r = power_status_.takeRails();
+        ESP_LOGI(kTag, "power: vbus_min=%umV vsys_min=%umV vbat=%umV pmu_die=%.0fC pmu_status=0x%02x", r.vbus_min, r.vsys_min,
+                 r.vbat, static_cast<double>(r.die_c), r.status);
+    }
     last_travel_deg_ = motion_.travelledDeg();
     diagnostics_window_start_us_ = now_us;
     diagnostics_busy_us_ = 0;
@@ -549,6 +571,7 @@ void RobotRuntime::loadMode()
                 if (ok) learner_.apply(actor_.features(), out);
                 collector_.setActor(ok ? out : nullptr);
                 collector_.step(bus, nowMs(), a);
+                loop_.executor().setVoiceEmotion(collector_.voiceEmotion());
                 if (ok) {
                     const auto& d = collector_.lastDecision();
                     learner_.learn(loop_.brain().motivation().reward(), actor_.features(), out,

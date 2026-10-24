@@ -51,7 +51,9 @@ void MotionEngine::moveTo(float yaw_deg, float pitch_deg, float speed_deg_s)
 {
     yaw_deg   = std::clamp(yaw_deg, kYawMinDeg, kYawMaxDeg);
     pitch_deg = std::clamp(pitch_deg, kPitchMinDeg, kPitchMaxDeg);
-    max_speed_ = std::clamp(speed_deg_s, 5.0f, 300.0f);
+    // every move at half the asked speed (2026-10-23, the owner's call): the AXP2101 switched the board off for a
+    // DCDC under-voltage (black screen, 5 times on 22-23.10), the evening ones in the middle of fast turns
+    max_speed_ = std::clamp(speed_deg_s * kSpeedScale, 5.0f, 300.0f);
     // The spring only smooths the profiled target (stiff, critically
     // damped, ~50 ms): the profile decides how fast the head moves.
     applySpeedToSpring(yaw_spring_, 1000);
@@ -82,7 +84,7 @@ void MotionEngine::getCurrentDeg(float& yaw_deg, float& pitch_deg) const
 // hear it (the RX line is dead, docs/HARDWARE.md), and a packet sent right
 // behind another ran into that reply: the prime suspect for the servos
 // wedging (holding torque, ignoring positions until their power is cycled).
-void MotionEngine::writeServos(bool yaw, bool pitch)
+void MotionEngine::writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_deg, uint16_t time_ms)
 {
     constexpr uint8_t kBroadcast = 0xFE;
     if ((yaw && !yaw_torque_enabled_) || (pitch && !pitch_torque_enabled_)) {
@@ -107,18 +109,25 @@ void MotionEngine::writeServos(bool yaw, bool pitch)
     auto add = [&](uint8_t id, int zero_pos, float deg) {
         ids[n] = id;
         pos[n] = static_cast<uint16_t>(std::clamp(zero_pos + static_cast<int>(deg * kRawPerDeg), 0, 1000));
-        time[n] = kServoGoalTimeMs;
+        time[n] = time_ms;
         speed[n] = 0;
         ++n;
     };
-    if (yaw) add(kYawId, kYawZeroPos, yaw_spring_.value);
-    if (pitch) add(kPitchId, kPitchZeroPos, pitch_spring_.value);
+    if (yaw) add(kYawId, kYawZeroPos, yaw_deg);
+    if (pitch) add(kPitchId, kPitchZeroPos, pitch_deg);
     packets_sent_ += static_cast<uint32_t>(n);
     // Addressed packets, like the official firmware - which waits for each
     // reply (up to 10 ms); we cannot hear it (the RX line is dead), so leave
     // the bus quiet for 1 ms instead so the reply never collides with the
     // next packet. (A broadcast SYNC_WRITE was A/B-tested 2026-09-27: what
     // matters is the packet rate; addressed stalled a little less.)
+    // Since 2026-10-22 one broadcast SYNC_WRITE instead (kSyncWrite): with the sparse writes the packet rate no longer
+    // explains the stalls (still ~1 per minute of motion, both servos at once, the head stiff), so the replies to
+    // addressed packets - which nobody hears on this board - are the next suspect.
+    if (kSyncWrite) {
+        bus_.SyncWritePos(ids, static_cast<uint8_t>(n), pos, time, speed);
+        return;
+    }
     for (int i = 0; i < n; ++i) {
         bus_.WritePos(ids[i], pos[i], time[i], 0);
         esp_rom_delay_us(1000);
@@ -201,8 +210,53 @@ void MotionEngine::update()
     // Keep sending packets while moving, plus exactly one more once a spring
     // settles (yaw_was_done/pitch_was_done catches that last "just finished"
     // frame) so the final position is actually latched.
+    if (kSparseWrites) {
+        writeSparse(now);
+        return;
+    }
     const bool yaw = force_write_ || !yaw_spring_.done() || !yaw_was_done;
     const bool pitch = force_write_ || !pitch_spring_.done() || !pitch_was_done;
     force_write_ = false;
-    if (yaw || pitch) writeServos(yaw, pitch);
+    if (yaw || pitch) writeServos(yaw, pitch, yaw_spring_.value, pitch_spring_.value, kServoGoalTimeMs);
+}
+
+// The destination of the move goes out once, with the time the profile needs to get there, and the servo glides
+// there by itself; the spring model keeps the same profile for the brain (efference copy, the gyro check). A
+// destination that keeps moving (following a person, the slow drift) goes out again when it has moved by
+// kRetargetRaw, at most every kMinPacketGapMs; when the move has settled its end is sent once more, in case a
+// packet was lost (nothing on this bus says whether a servo took one).
+void MotionEngine::writeSparse(uint32_t now)
+{
+    const float dest[2] = {commanded_yaw_target_, commanded_pitch_target_};
+    const int zero[2] = {kYawZeroPos, kPitchZeroPos};
+    int raw[2];
+    for (int i = 0; i < 2; ++i) raw[i] = std::clamp(zero[i] + static_cast<int>(dest[i] * kRawPerDeg), 0, 1000);
+    const bool settled = !isMoving();
+    bool send[2] = {false, false};
+    bool latch = false;
+    for (int i = 0; i < 2; ++i) {
+        if (force_write_) {
+            send[i] = true;
+        } else if (std::abs(raw[i] - last_sent_raw_[i]) >= kRetargetRaw || (settled && raw[i] != last_sent_raw_[i])) {
+            send[i] = settled || now - last_packet_ms_ >= kMinPacketGapMs;
+        } else if (settled && unlatched_[i]) {
+            send[i] = latch = true;
+        }
+    }
+    if (!send[0] && !send[1]) return;
+    force_write_ = false;
+    uint16_t time_ms = kServoGoalTimeMs;
+    if (!latch) {
+        // the trapezoid profile: the distance left at full speed, plus a ramp when it is not yet at full speed
+        const float dist = std::hypot(dest[0] - yaw_spring_.value, dest[1] - pitch_spring_.value);
+        float t = dist / max_speed_ + (profile_speed_ < 0.5f * max_speed_ ? kRampS : 0.0f);
+        time_ms = static_cast<uint16_t>(std::clamp(t * 1000.0f, static_cast<float>(kServoGoalTimeMs), 4000.0f));
+    }
+    writeServos(send[0], send[1], dest[0], dest[1], time_ms);
+    for (int i = 0; i < 2; ++i) {
+        if (!send[i]) continue;
+        last_sent_raw_[i] = raw[i];
+        unlatched_[i] = !latch && !settled;
+    }
+    last_packet_ms_ = now;
 }

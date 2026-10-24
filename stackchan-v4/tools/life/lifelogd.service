@@ -1,0 +1,14 @@
+# The robot's diary receiver as a systemd user service:
+#   cp tools/life/lifelogd.service ~/.config/systemd/user/ && systemctl --user enable --now lifelogd
+#   journalctl --user -u lifelogd -f        (one line a minute: what arrived, what was lost)
+[Unit]
+Description=StackChan diary receiver (tools/life/lifelogd.py)
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 %h/Codex/StackChan/stackchan-life/tools/life/lifelogd.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

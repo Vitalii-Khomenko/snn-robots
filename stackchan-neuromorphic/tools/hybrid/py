@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Runs python inside the shared training venv (torch + CUDA), from tools/hybrid.
+# STACKCHAN_PY overrides the interpreter (e.g. a venv outside the project).
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$here"
-exec "$here/../vocal_decoder/.venv/bin/python" "$@"
+exec "${STACKCHAN_PY:-$here/../vocal_decoder/.venv/bin/python}" "$@"

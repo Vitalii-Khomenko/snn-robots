@@ -32,8 +32,11 @@ public:
     bool next(droid::Note& out);
     bool trained() const;
     uint32_t nanCount() const { return nan_count_; }
+    // Mode life (2026-10-18): the owner heard a narrow voice - the notes' pitch spread x range (1 = as trained).
+    void setPitchRange(float range) { range_ = range; }
 
 private:
+    float range_ = 1.0f;
     float uniform();
     std::array<float, kIntent> intent_{};
     int emotion_ = 0;

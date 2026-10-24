@@ -72,7 +72,11 @@ bool BabbleNet::next(droid::Note& out)
         return n - 1;
     };
     constexpr int kShapeAt = 1 + kKinds, kEndingAt = kShapeAt + kKinds * kShapes, kContAt = kEndingAt + kKinds * kEndings;
-    const int kind = draw(o + 1, kKinds);
+    // mode life (range_ > 1): the kind is drawn at temperature 1.8 - the net kept to its favourite pips and whistles
+    // (2026-10-17: 6.9 effective kinds of 10, growls 0.5 %); flattened: ~8.6 effective, the rarest ~2 % (2026-10-18)
+    float kl[kKinds];
+    for (int i = 0; i < kKinds; ++i) kl[i] = o[1 + i] / (range_ > 1.0f ? 1.8f : 1.0f);
+    const int kind = draw(kl, kKinds);
     const int shape = draw(o + kShapeAt + kind * kShapes, kShapes);
     const int ending = draw(o + kEndingAt + kind * kEndings, kEndings);
     const float* c = o + kContAt + kind * kCont;
@@ -82,7 +86,8 @@ bool BabbleNet::next(droid::Note& out)
     out.shape = static_cast<droid::Shape>(shape);
     out.ending = static_cast<droid::Ending>(ending);
     out.durMs = std::clamp(noisy(0) * 150.0f + 250.0f, 45.0f, 800.0f);
-    out.f0St = std::clamp(noisy(1) * 5.0f, -9.0f, 12.0f);
+    out.f0St = std::clamp(noisy(1) * 5.0f * range_, -12.0f, 16.0f);
+    if (range_ == 1.0f) out.f0St = std::clamp(out.f0St, -9.0f, 12.0f);
     out.slopeSt = std::clamp(noisy(2) * 8.0f, -18.0f, 18.0f);
     out.loud = std::clamp(noisy(3), 0.3f, 1.0f);
     out.fm = std::clamp(noisy(4), 0.0f, 1.0f);
@@ -94,7 +99,7 @@ bool BabbleNet::next(droid::Note& out)
     prev_kind_ = kind;
     prev_shape_ = shape;
     prev_ending_ = ending;
-    prev_f0_ = out.f0St;
+    prev_f0_ = out.f0St / range_;  // the net sees its own scale
     prev_slope_ = out.slopeSt;
     prev_dur_ = out.durMs;
     prev_loud_ = out.loud;

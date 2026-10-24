@@ -1,0 +1,16 @@
+STAGE 0 CALIBRATION  days 2026-10-17 .. 2026-10-23  (143.6 h of ticks)
+
+channel        p50   p90   p99   max   | zone share, day 07-21 (night 22-06)
+loud          0.13  0.29  0.45  0.92  | boredom 52.5% (62.5%), comfort 46.0% (37.1%), interest  1.4% ( 0.4%), anxiety  0.1% ( 0.0%), anger  0.0% ( 0.0%)
+sharp         0.00  0.02  0.45  1.00  | interest  5.7% ( 0.9%), anxiety  1.2% ( 0.2%), anger  0.6% ( 0.1%)
+voice         0.02  0.30  0.56  0.88  | boredom 51.5% (79.8%), comfort 47.5% (19.7%), interest  1.0% ( 0.5%), anxiety  0.0% ( 0.0%)
+touch_head    0.00  0.00  0.16  0.55  | boredom 97.1% (99.4%), comfort  2.8% ( 0.6%), interest  0.1% ( 0.0%), anxiety  0.0% ( 0.0%), anger  0.0% ( 0.0%)
+touch_screen  0.00  0.00  0.08  0.79  | comfort  0.2% ( 0.0%), interest  1.8% ( 0.0%), anxiety  0.1% ( 0.0%), anger  0.0% ( 0.0%)
+shake         0.00  0.00  0.00  0.46  | interest  0.1% ( 0.0%), anxiety  0.1% ( 0.0%), anger  0.1% ( 0.0%)   [old shake event (2 s pulse) as 0.4 g]
+tilt          0.00  0.01  0.12  0.98  | comfort 99.5% (97.8%), interest  0.5% ( 2.2%), anxiety  0.0% ( 0.0%)
+near          0.00  0.00  0.00  0.00  | boredom 100.0% (100.0%), comfort  0.0% ( 0.0%), interest  0.0% ( 0.0%), anxiety  0.0% ( 0.0%)   [not in the diary]
+light         0.00  0.00  0.00  0.00  | comfort  0.0% ( 0.0%), interest  0.0% ( 0.0%), anger  0.0% ( 0.0%)   [not in the diary]
+motion        0.00  0.00  0.01  0.22  | boredom 98.9% (100.0%), interest  1.1% ( 0.0%), anxiety  0.0% ( 0.0%), anger  0.0% ( 0.0%)   [Vision NN activity x 0.3]
+hunger        0.00  0.00  0.00  0.01  | comfort 100.0% (100.0%), anxiety  0.0% ( 0.0%)
+tired         0.00  0.75  0.75  0.75  | comfort 100.0% ( 0.0%)
+lonely        0.01  0.12  0.36  0.65  | boredom  0.2% ( 8.4%), comfort 99.8% (91.6%)

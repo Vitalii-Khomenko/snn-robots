@@ -1,0 +1,12 @@
+# Does it learn to be wary? A fresh robot. Six times someone claps and then shakes it (2 s later).
+# It should learn that a bang comes before rough handling ("learn: bang -> rough handling") and,
+# when it only hears a clap afterwards, expect it (expect_threat): freeze, duck, look scared.
+duration 7:00
+clock 14:00
+seed 22
+room_light on
+every 0:45 from 0:30 until 4:20 clap 0 0.9
+every 0:45 from 0:32 until 4:22 shake 1.5
+at 5:10 clap 0 0.9
+at 5:50 clap 0 0.9
+at 6:30 clap 0 0.9

@@ -1,0 +1,10 @@
+# Dusk window 21:25-21:52. It sings; at 21:33 a touch must silence it for 10 minutes (the owner could
+# not stop a long song on 2026-10-01); it may sing again after that, but only in short songs.
+duration 35:00
+clock 21:22
+sunrise 07:30
+sunset 20:30
+seed 9
+room_light off
+lamp desk 100 12 on
+at 11:00 touch_head 400

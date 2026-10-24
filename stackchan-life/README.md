@@ -82,7 +82,7 @@ done and observed, newest first; `RECORDING_PLAN.txt` for recording and `VISION_
 | Mode | `life` (NVS; `tools/life/ota.py mode life\|brain\|collector`); spiking core and v3 policy off, CPU 36 %, tick 7.4 ms |
 | Learning on the robot | world model (surprise -> curiosity), 5 needs + reward, actor + online learner (dW 8 x 48), associative memory (3 outcomes) |
 | Learning on the PC | night sleep 03:30: world model, critic, actor from the whole diary; Vision and Auditory nets from the robot's own takes |
-| Data | diary of every tick (265 values) since 2026-10-11, missing < 0.4 %; a frame and 2 s of sound every ~3 min since 2026-10-17 |
+| Data | diary of every tick (265 values) since 2026-10-11, missing < 0.4 %; frames and sound since 2026-10-17 (a frame every ~30 s, 2 s of sound every ~90 s since 2026-10-18) |
 | Behaviour (day 4 of curiosity) | 4.3 move decisions a minute, ~164 deg a minute, 3.5 calls a minute, every touch answered |
 | Open | servo stalls (~10 % of moves, the rail is power-cycled), phantom head touches (sensitivity lowered to level 5), faces and voice styles chosen almost uniformly, bus v4 (the world model and the actor reading the perception's hidden layers) |
 

@@ -172,15 +172,17 @@ void BodyExecutor::applyVoice(HybridBrain& brain, BodySense& sense, const Policy
     // (the speaker and the battery); how often to call is the actor's.
     talk_share_ += (static_cast<float>(vocal_.active() ? 1 : 0) - talk_share_) * (0.05f / 60.0f);
     const bool allowed = free_ ? talk_share_ < 0.5f : voice_tokens_ >= (reaction ? 1.0f : 2.5f);
-    if (vocal_.step(a, allowed, static_cast<int>(shown_), reaction)) {
+    const int character = free_ && voice_emotion_ >= 0 ? voice_emotion_ : static_cast<int>(shown_);
+    if (vocal_.step(a, allowed, character, reaction)) {
+        voice_character_ = character;
         voice_tokens_ -= 1.0f;
         ++calls_;
         ESP_LOGI(kTag, "call: start (sound_act=%.2f)", a[ACT_SOUND_ACT]);
     }
     if (vocal_.phraseEnded()) {
         const auto& s = brain.bus().snn;
-        ESP_LOGI(kTag, "voice: %s (%.0f Hz) face=%s val=%+.2f aro=%.2f cur=%.2f style=%s", vocal_.phraseText(),
-                 static_cast<double>(vocal_.baseHz()), emotionName(shown_), a[ACT_SOUND_VALENCE], a[ACT_SOUND_AROUSAL], s[SNN_CURIOSITY],
+        ESP_LOGI(kTag, "voice: %s (%.0f Hz) face=%s as=%s val=%+.2f aro=%.2f cur=%.2f style=%s", vocal_.phraseText(),
+                 static_cast<double>(vocal_.baseHz()), emotionName(shown_), emotionName(static_cast<Emotion>(voice_character_)), a[ACT_SOUND_VALENCE], a[ACT_SOUND_AROUSAL], s[SNN_CURIOSITY],
                  a[ACT_STYLE_ASK] > 0.6f ? "ask" : a[ACT_STYLE_PLAY] > 0.6f ? "play"
                  : a[ACT_STYLE_GRUMBLE] > 0.6f ? "grumble" : a[ACT_STYLE_CALM] > 0.6f ? "calm" : "mixed");
     }

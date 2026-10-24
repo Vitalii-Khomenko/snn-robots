@@ -124,7 +124,7 @@ def main():
     r = subprocess.run([py, os.path.join(W.L.HERE, "train_perception.py"), "--out-dir", out_dir], capture_output=True,
                        text=True, env=env)
     for ln in r.stdout.splitlines():
-        if " gate: " in ln or "not enough" in ln:
+        if " gate: " in ln or "not enough" in ln or "hidden layer moved" in ln:
             say(ln.strip()[:160])
     pp = next((json.loads(ln[6:]) for ln in r.stdout.splitlines() if ln.startswith("PROBE ")), None)
     if pp is None:

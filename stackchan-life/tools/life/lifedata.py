@@ -32,12 +32,18 @@ ONLINE = ["online_delta", "online_value"]
 # ... then (bus v4, 2026-10-17) the perception networks' hidden layers, stored x 1/4
 EMB = [f"vemb{i}" for i in range(64)] + [f"aemb{i}" for i in range(32)]
 # ... then (2026-10-17) the third learned expectation (AssocMemory: being talked to)
+# ... then (2026-10-24, brain v4 - ../stackchan-v4/tools/v4/spec_v4.py): the 13 sense channels + 2 "where", the spiking
+# analyzer's 32 numbers, the main network's 61 outputs
+V4_CHANNELS = ["loud", "sharp", "voice", "touch_head", "touch_screen", "shake", "tilt", "near", "light", "motion",
+               "hunger", "tired", "lonely", "motion_x", "motion_y"]
+V4 = ["ch_" + c for c in V4_CHANNELS] + [f"v4snn{i}" for i in range(32)] + [f"v4nn{i}" for i in range(61)]
 COLUMNS = list(POLICY_INPUT) + ["act_" + a for a in ACTION] + list(EFF) + MOTIVATION + WORLD + ONLINE + EMB + \
-    ["expect_talk"]
+    ["expect_talk"] + V4
 _n = len(COLUMNS)
-KNOWN_LAYOUTS = (_n - 1 - len(EMB) - len(ONLINE) - len(WORLD) - len(MOTIVATION),
-                 _n - 1 - len(EMB) - len(ONLINE) - len(WORLD), _n - 1 - len(EMB) - len(ONLINE), _n - 1 - len(EMB),
-                 _n - 1, _n)
+_m = _n - len(V4)
+KNOWN_LAYOUTS = (_m - 1 - len(EMB) - len(ONLINE) - len(WORLD) - len(MOTIVATION),
+                 _m - 1 - len(EMB) - len(ONLINE) - len(WORLD), _m - 1 - len(EMB) - len(ONLINE), _m - 1 - len(EMB),
+                 _m - 1, _m, _n)
 
 
 def col(name):
@@ -99,6 +105,32 @@ def load(day, hours=None, root=None):
     ticks = {k: v[order] for k, v in ticks.items()}
     lines.sort()
     return ticks, lines
+
+
+def hung(v, ms):
+    """Ticks where the servos hung (one run of consecutive ticks, values [T, C], ms [T]): inside a 2 s window with
+    >= 10 deg commanded and < 1.5 deg seen by the gyro (the firmware's servo watchdog rule), widened by 2 s on both
+    sides. The camera confirmed it (2026-10-22): in such stretches the frames stay the same while the diary's head
+    pose turns, so the world model and the actor would learn from motion that never happened."""
+    deg_s = 180.0
+    cmd = np.hypot(v[:, col("yaw_vel")], v[:, col("pitch_vel")]) * deg_s
+    real = np.hypot(v[:, col("real_yaw_vel")], v[:, col("real_pitch_vel")]) * deg_s
+    real = np.where(real > 3.0, real, 0.0)  # the gyro's noise floor
+    ms = ms.astype(np.int64)
+    dt = np.diff(ms, prepend=ms[0]).clip(0, 200) / 1000.0
+    c, r = np.cumsum(cmd * dt), np.cumsum(real * dt)
+    j = np.searchsorted(ms, ms + 2000) - 1
+    bad = ((c[j] - c) >= 10.0) & ((r[j] - r) < 1.5)
+    out = np.zeros(len(ms), bool)
+    if not bad.any():
+        return out
+    # widen every bad window [k, j[k]] by 2 s on both sides (a difference array instead of a loop over windows)
+    lo = np.searchsorted(ms, ms[bad] - 2000)
+    hi = np.searchsorted(ms, ms[j[bad]] + 2000, side="right")
+    d = np.zeros(len(ms) + 1, np.int64)
+    np.add.at(d, lo, 1)
+    np.add.at(d, hi, -1)
+    return np.cumsum(d)[:-1] > 0
 
 
 def summary(day):

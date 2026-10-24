@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Runs python inside the shared training venv (torch + CUDA), from tools/v4.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$here"
+exec "${STACKCHAN_PY:-$here/../../../stackchan-neuromorphic/tools/vocal_decoder/.venv/bin/python}" "$@"

@@ -104,6 +104,11 @@ actor (71 -> 64 -> GRU 64 -> 48 -> 24) imitates the decisions that were actually
 out: the touch answer is a rule, and crediting it to the actor taught the robot to call ten times a minute. An
 exploration floor keeps the spread of the targets from collapsing to the mean.
 
+**The voice in mode life.** The phrase register spans 300-1580 Hz (v3: 520-1190 Hz) and the jumps between notes are
+1.5x wider. In half of the calls the droid character comes from another mood than the face shown, so the 10 kinds of
+sounds (giggles, squeals, growls, warbles, coos...) all occur. The kind of each note is drawn at temperature 1.8 (effective kinds 6.9 -> ~8.6 of 10). Measured on 2026-10-18 from the robot's own takes:
+before this, 60 % of the voice's energy sat between 400 and 1500 Hz.
+
 **Learning by day: an online actor-critic with eligibility traces.** On top of the actor's output layer the robot
 keeps a plastic correction `dW` (8 x 48) from its hidden layer: the value and the four decision outputs. TD error
 `delta = r / 0.027 + 0.995 V(t) - V(t-1)` (clamped to +-2) is the "dopamine". The value learns from traces
@@ -117,7 +122,7 @@ populations for petting, rough handling and being talked to. Plastic synapses gr
 fade when not confirmed. The expectations are inputs of the actor. Kept in NVS (format ASM2, with migration).
 
 **Perception that learns from life: teacher-student distillation.** With the owner's consent a frame and 2 s of sound
-reach the home PC every ~3 minutes (`GET /snapshot`, `GET /audio`; never further than the home network). Large
+reach the home PC every ~30 s (sound every ~90 s) (`GET /snapshot`, `GET /audio`; never further than the home network). Large
 networks label them on the PC:
 - YOLOv8n: persons and 80 COCO objects.
 - YuNet: faces.
@@ -155,7 +160,7 @@ minute, the robot restarts. Two failed trials bring the old slot back.
 
 **Safety and robustness, deterministic C++.** The executor keeps the physical limits (joint windows, 30 deg steps,
 speed, 10 servo packets/s, stamina). The voice may take at most half of the last minute. The night is quiet
-(21:30-06:30). Every touch is answered, by a rule. Other safeguards:
+(21:30-06:30). Every touch is answered, by a rule. So is every bang (clap, knock; not the robot's own servos or voice): a quick glance aside and up, a surprised face, a squeal, only the face at night. So is rough handling: a shake makes it dizzy (a warbling sound), shaken again within a minute annoyed, then angry with a growl; tilted or lifted it is scared and squeals. The actor's training masks the calls, moves and faces of both answers. Other safeguards:
 - **Firmware updates:** over HTTP with a token, A/B app partitions with bootloader rollback, confirmed after a healthy
   minute.
 - **Crashes:** a core dump in flash; its summary is logged at the next boot.

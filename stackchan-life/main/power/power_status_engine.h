@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <driver/i2c_master.h>
 
@@ -34,6 +35,18 @@ public:
     // upstream CoreS3 board support.  1.0 is the neutral/fresh-boot value
     // until the first successful poll.
     float batteryLevel01() const { return battery_level01_; }
+    // Diagnostics of the black-screen power-offs (2026-10-22/23): the AXP2101's ADC (enabled by power_rails, reg 0x30)
+    // and its status. Lowest VBUS / VSYS since the last call (mV, 0 = never read) and the latest status byte.
+    struct Rails {
+        uint16_t vbus_min, vsys_min, vbat;
+        float die_c;
+        uint8_t status;  // reg 0x00: bit5 VBUS good, bit3 battery present
+    };
+    Rails takeRails();
+    // Seconds in a row the USB input has been pulled down to the AXP's input limit (VBUS < 4.6 V while VBUS is good).
+    // A hung servo does this until its power goes (2026-10-23: both power-offs of the day came after minutes of
+    // VBUS at 4.41 V and VSYS down to 3.4 V; a servo rail power cycle ended every such stretch at once).
+    int sagSeconds() const { return sag_s_; }
 
 private:
     static constexpr uint16_t kAxp2101Addr = 0x34;
@@ -47,5 +60,11 @@ private:
     bool charging_               = false;
     bool externally_powered_     = false;
     float battery_level01_       = 1.0f;
+    uint16_t vbus_min_ = 0xFFFF, vsys_min_ = 0xFFFF, vbat_ = 0;
+    float die_c_ = 0.0f;
+    uint8_t status_ = 0;
+    bool status_read_ = false;
+    int sag_s_ = 0;
+    bool readReg(uint8_t reg, uint8_t* out, size_t n);
     uint32_t next_poll_ms_       = 0;
 };

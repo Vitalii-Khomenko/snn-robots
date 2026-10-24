@@ -189,7 +189,7 @@ py0 = vy + 170
 add(f'<rect x="40" y="{py0}" width="{W - 80}" height="{H - py0 - 30}" rx="10" fill="{C["panel"]}" stroke="{C["old"]}" stroke-width="2"/>')
 text(60, py0 + 32, "The home PC: the slow loop (nothing leaves the home network)", 20, weight="bold")
 steps = [("Diary", ["UDP, every 50 ms tick:", "265 values + log lines", "lifelogd -> hourly files", "~1.7 M ticks a day"]),
-         ("Media takes", ["every ~3 min: a frame", "+ 2 s of sound (mediad)", "GET /snapshot, /audio", "~480 takes a day"]),
+         ("Media takes", ["every ~30 s: a frame", "+ 2 s of sound every 3rd", "GET /snapshot, /audio", "~2900 frames a day"]),
          ("Teachers", ["YOLOv8n (persons, objects)", "YuNet (faces)", "Silero VAD (speech)", "PANNs CNN14 (527 sounds)"]),
          ("Night sleep 03:30", ["world model, critic, actor", "from the whole diary;", "perception fine-tuned on", "takes + 75 % replay"]),
          ("Gates", ["world: no group worse", "actor: sane rates", "perception: no forgetting,", "closer to the teachers"]),
