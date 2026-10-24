@@ -114,7 +114,7 @@ def brain_map():
     s.legend(1560, 26, [(C["snn"], "spiking network (int8)"), (C["nn"], "trained network (float)"),
                         (C["det"], "deterministic C++"), (C["bus"], "numbers passed on"), (C["out"], "body / actuators"),
                         (C["pc"], "home PC")])
-    s.text(1560, 100, "dashed = feedback or future work", 13, C["dim"])
+    s.text(1560, 100, "dashed = feedback", 13, C["dim"])
 
     # ---------------------------------------------------------------- sensors
     sens = [("Microphones (2x ES7210)", ["24 kHz, loudness, onsets,", "speech detector"], ["loud", "sharp", "voice"]),
@@ -257,7 +257,7 @@ def brain_map():
     # ---------------------------------------------------------------- the home PC
     py0 = 1060
     s.rect(30, py0, 2340, 410, "#140f1c", C["pc"], rx=14, sw=2)
-    s.text(50, py0 + 34, "Home PC (192.168.8.110): records every tick, analyses, trains, sends new firmware", 22, "#e2c4f2", "bold")
+    s.text(50, py0 + 34, "Home PC (192.168.8.110): records every tick, learns at night, sends firmware and what the robot learned", 22, "#e2c4f2", "bold")
     s.box(50, py0 + 60, 330, 170, C["pc"], "Diary (UDP, 20 Hz)",
           [f"{len(S.RAW)} raw readings, 13 + 2 channels", f"{len(S.SNN_OUT)} SNN numbers, {len(S.NN_OUT)} outputs",
            f"body + {len(S.PREV)} own-state inputs", "float16, + every log line", "-> lifelogd -> data/life/<day>",
@@ -276,16 +276,16 @@ def brain_map():
         x += 320
     s.arrow([(380, py0 + 125), (418, py0 + 125)], C["pc"])
     s.rect(420, py0 + 220, 1900, 100, "#1d1428", C["pc"], rx=10, sw=1.5)
-    s.add(f'<rect x="420" y="{py0 + 220}" width="1900" height="100" rx="10" fill="none" stroke="{C["pc"]}" '
-          f'stroke-width="2" stroke-dasharray="7 5"/>')
-    s.text(440, py0 + 250, "6  Next: learning from its own life", 17, "#e2c4f2", "bold")
-    s.text(440, py0 + 276, "reward from the owner's reactions; nightly fine-tune of the action heads; "
-                           f"zones shift with experience (±{S.SHIFT_MAX}, kept in NVS)", 14)
-    s.text(440, py0 + 300, "the SNN stays the innate nervous system; the main network learns the habits", 13, C["dim"])
+    s.text(440, py0 + 250, "6  Night sleep 03:30: learning from its own life (sleep_v4.py)", 17, "#e2c4f2", "bold")
+    s.text(440, py0 + 276, "replay every decision from the diary -> reward by people's answers (petting, talk, coming close / "
+                           "shaking, rough pokes, leaving) -> AWR on the action heads -> zones shift (habituation, "
+                           f"±{S.SHIFT_MAX})", 14)
+    s.text(440, py0 + 300, "-> gates (behaviour tests in the simulator) -> learned blob to the robot, switched in without a "
+                           "reboot; the SNN and the emotions stay innate", 13, C["dim"])
     s.text(50, py0 + 280, "teacher-free on the robot:", 14, weight="bold")
     s.text(50, py0 + 300, "the teachers exist only on the PC", 13, C["dim"])
-    s.text(50, py0 + 360, "The firmware holds only brain v4; the PC only records, analyses and trains. Nothing else leaves "
-                          "the robot: no camera frames, no sound.", 15, C["dim"])
+    s.text(50, py0 + 360, "The firmware holds only brain v4 and what it learned (zone shifts, action heads); the PC records, "
+                          "analyses and trains. No camera frames or sound leave the robot.", 15, C["dim"])
     s.text(50, py0 + 388, "The simulator runs the real firmware code (channels, SNN, NN, executor) in a virtual room "
                           "with scripted people, sounds, touches and light.", 15, C["dim"])
     s.arrow([(ex + 60, ey + eh), (ex + 60, 1035), (185, 1035), (185, py0 + 58)], C["pc"],
@@ -421,7 +421,7 @@ def networks():
 
     # training
     ty = y1 + 450
-    s.rect(60, ty, 2280, 250, "#121a2c", C["line"], rx=10)
+    s.rect(60, ty, 2280, 270, "#121a2c", C["line"], rx=10)
     s.text(80, ty + 32, "How it was taught", 18, weight="bold")
     lines = [
         "SNN: an innate appraisal (teacher_snn.py) turns channel histories into the 32 numbers; the SNN learns to reproduce "
@@ -435,6 +435,8 @@ def networks():
         "Checks: C++ on the robot gives the same numbers as PyTorch (parity tests); simulator behaviour tests: every touch "
         "answered, petting is not annoying,",
         "      pokes are, nights are silent, play shows many faces, a lonely robot talks, shakes and claps frighten.",
+        "Life (stage 6): every night the action heads are fine-tuned on the robot's real days with AWR, rewarded by how people "
+        "answered; the zones of the environment channels shift by experience.",
     ]
     for k, ln in enumerate(lines):
         s.text(80, ty + 64 + k * 26, ln, 14)

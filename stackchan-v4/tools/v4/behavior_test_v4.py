@@ -1,6 +1,7 @@
 """Behaviour regression of brain v4 on the digital twin (the real firmware, mode v4, the trained networks compiled
 in): every touch answered, petting never angers, silent at night, a variety of faces, frightened by shaking,
-babbles and looks around by day.   ./py behavior_test_v4.py   (builds nothing: run simulator/build.sh first)"""
+babbles and looks around by day.   ./py behavior_test_v4.py [--learned FILE]   (builds nothing: run simulator/build.sh
+first; --learned: with what the robot learned, the gate of the night sleep)"""
 import collections
 import os
 import re
@@ -15,10 +16,13 @@ SCN = os.path.join(ROOT, "simulator", "scenarios")
 LINE = re.compile(r"^[IWE] \((\d+)\) (\w+): (.*)$")
 
 
+LEARNED = None  # --learned FILE: run every scenario with this learned blob (the night sleep's gate)
+
+
 def run(name, minutes):
-    out = os.path.join(ROOT, "simulator", "out", "v4_" + name)
-    subprocess.run([SIM, os.path.join(SCN, name + ".scn"), "--out", out, "--minutes", str(minutes)],
-                   check=True, stdout=subprocess.DEVNULL)
+    out = os.path.join(ROOT, "simulator", "out", "v4_" + name + ("_learned" if LEARNED else ""))
+    cmd = [SIM, os.path.join(SCN, name + ".scn"), "--out", out, "--minutes", str(minutes)]
+    subprocess.run(cmd + (["--learned", LEARNED] if LEARNED else []), check=True, stdout=subprocess.DEVNULL)
     ev = []
     for line in open(os.path.join(out, "log.txt"), errors="ignore"):
         m = LINE.match(line.strip())
@@ -75,6 +79,8 @@ def check(case):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 2 and sys.argv[1] == "--learned":
+        LEARNED = os.path.abspath(sys.argv[2])
     failed = []
     with ThreadPoolExecutor(os.cpu_count() or 4) as ex:
         for name, m, checks in ex.map(check, CASES):

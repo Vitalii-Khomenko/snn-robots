@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1500" width="2400" height="1500">
 <defs>
-<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
-<marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
-<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
-<marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
 <marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
-<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
-<marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
+<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
+<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
 <marker id="a26a6a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#26a6a6"/></marker>
 <marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
-<marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
-<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
-<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
 <marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
+<marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
+<marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
+<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
+<marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
+<marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
+<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
+<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
 </defs>
 <rect width="2400" height="1500" fill="#0f1420"/>
 <text x="40" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="32" fill="#e6ebf5" font-weight="bold" text-anchor="start">Brain v4: inside the two networks</text>
@@ -352,7 +352,7 @@
 <text x="1410" y="1048" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">-15° / +22° pitch</text>
 <text x="1800" y="1048" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">doze</text>
 <text x="1930" y="1048" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">head sinks -18°, slow</text>
-<rect x="60" y="1180" width="2280" height="250" rx="10" fill="#121a2c" stroke="#3a4660" stroke-width="1.5"/>
+<rect x="60" y="1180" width="2280" height="270" rx="10" fill="#121a2c" stroke="#3a4660" stroke-width="1.5"/>
 <text x="80" y="1212" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" fill="#e6ebf5" font-weight="bold" text-anchor="start">How it was taught</text>
 <text x="80" y="1244" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">SNN: an innate appraisal (teacher_snn.py) turns channel histories into the 32 numbers; the SNN learns to reproduce them from its own spikes</text>
 <text x="80" y="1270" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      (surrogate gradients, TBPTT; the last 30 % of the epochs with int8 fake quantisation, as on the robot).</text>
@@ -361,4 +361,5 @@
 <text x="80" y="1348" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      feed back into its inputs and the teacher labels the states it really visits. Emotion agreement acting alone: 0.90 (real lives 0.92).</text>
 <text x="80" y="1374" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Checks: C++ on the robot gives the same numbers as PyTorch (parity tests); simulator behaviour tests: every touch answered, petting is not annoying,</text>
 <text x="80" y="1400" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      pokes are, nights are silent, play shows many faces, a lonely robot talks, shakes and claps frighten.</text>
+<text x="80" y="1426" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Life (stage 6): every night the action heads are fine-tuned on the robot's real days with AWR, rewarded by how people answered; the zones of the environment channels shift by experience.</text>
 </svg>

@@ -144,6 +144,24 @@ Learning happens on the PC at night; the robot only receives the result, without
   blob (`PUT /learned`, `tools/robot/ota.py learned FILE`) goes into the idle slot, the main loop switches to it between
   two ticks, watches it for a minute and confirms it; if the main network fails on it, the robot goes back to the
   previous blob, also without a reboot. No blob: the innate (compiled-in) networks.
+- **The night sleep** (`tools/v4/sleep_v4.py`, timer `sleep-v4` at 03:30, the owner sleeps and nothing reboots):
+  1. *replay* - every decision of the last 3 days is run again through the GRU and the emotion head from the diary
+     (the analyzer's numbers + the network's own-state inputs); the replayed emotions must match the logged ones;
+  2. *reward* (`tools/v4/reward_v4.py`) - how people answered: a stroke on the head +1, a gentle tap on the face +0.5,
+     being talked to +0.5 (speech of >= 1 s that is not the tail of the robot's own voice), someone coming close
+     +0.3; shaken -1, tilted -0.5, poked hard -0.5, calling or gesturing at someone who then leaves it alone for a
+     minute -0.3; night ticks count nothing; returns discounted over ~5 s (gamma 0.98 per decision);
+  3. *AWR* - the action heads move towards the choices that got more reward than expected (advantage over a ridge
+     value baseline, weights exp(A), at most 20), anchored by a KL to the heads the robot has;
+  4. *zones* - for loudness, sharp sounds, voice, proximity, light and motion only (touch, shake and tilt keep the
+     owner's innate rules): in the alarm zone > 5 % of the day with nothing bad after -> +0.01 (habituation);
+     alarm followed by rough handling in > 30 % of >= 5 cases -> -0.01 (sensitization); alarm < 1 % -> back towards 0
+     by 0.005;
+  5. *gates* - at least 1 h of daytime life and 5 reward events; replay error <= 0.05; KL <= 0.05 and <= 15 % of the
+     choices changed; all behaviour tests pass in the simulator with the new blob. Otherwise the robot keeps what it
+     has;
+  6. *send* - `ota.py learned`, a minute on trial on the robot. History: `data/learned/v<version>.bin` (the version
+     is yymmddhh), `live.bin`, reports in `tools/v4/out/sleep/`, one line a night in `data/life/sleep_v4.log`.
 - **Clean start** (2026-10-24): at boot the firmware erases what the earlier brains left in flash (NVS namespaces
   `life`, `assoc`, `weights` and platform B's weights blobs); brain v4's own settings live in NVS `v4` (head pad
   sensitivity) and `learned`.

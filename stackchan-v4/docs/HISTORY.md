@@ -98,6 +98,16 @@ image 2.57 -> 1.96 MB, the diary 0.75 -> ~0.3 KB a tick (float16, raw readings i
 platform B's and v3's tools, docs and notes. The old diary days were gzipped (9.95 GB -> 2.23 GB). Platform B's PC
 services (`mediad`, `life-sleep`, `life-morning`) were disabled.
 
+### Stage 6 (2026-10-24, afternoon)
+
+The proximity sensor was confirmed working with the owner's hand (up to ~1100 counts). A clean start erased what the
+earlier brains left in flash. The diary got the main network's own-state inputs, so every decision can be replayed on
+the PC exactly (replayed emotions equal the logged ones). The robot keeps a learned blob (action heads + zone shifts)
+that is switched in between two ticks without a reboot. The night sleep (03:30) rewards the decisions by people's
+answers, fine-tunes the action heads with AWR, shifts the environment channels' zones by experience and sends the
+result only through its gates (all behaviour tests in the simulator). A first lesson: a third of the raw "speech" onsets
+were the tail of the robot's own voice - the talk reward ignores the 5 s after its own calls.
+
 ## Where the old things are
 
 | What | Where |

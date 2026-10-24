@@ -1,0 +1,12 @@
+# Brain v4's night sleep (tools/v4/sleep_v4.py): learns from the last days of the diary and sends the robot what it
+# learned, without a reboot. Run by sleep-v4.timer at 03:30:
+#   cp tools/robot/sleep-v4.* ~/.config/systemd/user/ && systemctl --user enable --now sleep-v4.timer
+#   journalctl --user -u sleep-v4        (the night's lines; also data/life/sleep_v4.log)
+[Unit]
+Description=StackChan brain v4 night sleep (tools/v4/sleep_v4.py)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/Codex/StackChan/stackchan-v4/tools/v4/py sleep_v4.py
+TimeoutStartSec=3h

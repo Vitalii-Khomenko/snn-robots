@@ -11,7 +11,7 @@ Everything below runs from `stackchan-v4/` unless a path says otherwise. Python 
 3. `./build.sh build` (no new warnings), then `python3 tools/robot/ota.py firmware` (the robot boots it on trial and
    confirms it after a healthy minute, else it goes back by itself).
 4. Look at the robot's lines for a few minutes (section 5): no `E (`, sane `stats:`, `v4:` and `power:` lines.
-5. Write what was done, seen and measured into `JOURNAL.txt` (Russian, newest first).
+5. Write what was done, seen and measured into `JOURNAL.txt` (Russian, newest first); update the docs.
 6. Diagram changed -> `tools/publish_maps.sh` (SVG -> high-quality PNG in `docs/png/` -> GitHub).
 
 Never flash at night (the owner sleeps next to the robot, 21:45-06:00): a reboot makes sounds.
@@ -118,7 +118,22 @@ behavior_test_v4.py          then build, flash, watch
 - A full retrain takes ~1 h on an RTX-class GPU (the SNN data pass is the slowest). Checkpoints: `tools/v4/data/*.pt`
   (in git); reports and logs: `tools/v4/out/*.txt|*.log` (in git); the large `.npz` are not.
 
-## 5. The diary and the robot's lines
+## 5. Learning from life (stage 6)
+
+```bash
+tools/v4/py reward_v4.py 2026-10-25            # a day's reward events (pet, tap, talk, near, shake, tilt, poke, left_alone)
+tools/v4/py sleep_v4.py --dry-run              # the night without sending: replay, reward, AWR, zones, gates
+tools/v4/py sleep_v4.py --dry-run --min-hours 0.05   # the whole chain on a few minutes of life (a test)
+journalctl --user -u sleep-v4                  # last night; one line per night in data/life/sleep_v4.log
+python3 tools/robot/ota.py status              # learned_version / learned_slot / learned_trial on the robot
+```
+
+To undo what the robot learned: send an older blob from `data/learned/` with `ota.py learned`, or the innate one
+(`tools/v4/py learned.py innate out/learned_innate.bin`). Retraining the networks themselves (section 4) keeps working:
+the learned heads are a fine-tuning of the main network, so after a new `nn_v4.pt` remove `data/learned/live.bin` and
+send the innate blob, the next nights start from the new network.
+
+## 6. The diary and the robot's lines
 
 - `tools/robot/lifelogd.py` (systemd user service `lifelogd`) receives the UDP diary into
   `data/life/<day>/<hour>.scl` and `log.txt`; `compress-diary.timer` gzips finished days at 04:30 (~5x smaller).
@@ -139,14 +154,14 @@ behavior_test_v4.py          then build, flash, watch
 | `runtime: servo rail power cycle (...)` | the servo watchdog acted (HARDWARE.md) |
 | `runtime: boot reason: ...`, `crash of the last run: ...` | why it (re)started |
 
-## 6. Pictures
+## 7. Pictures
 
 `tools/v4_map.py` draws `docs/BRAIN_V4_MAP.svg` (the whole robot) and `docs/NETWORKS_V4.svg` (inside the networks)
 from `spec_v4.py`. `tools/publish_maps.sh` redraws them, renders `docs/png/*.png` at 2x (4800 px, for the website) with
 `rsvg-convert`, commits only `docs/*.svg` and `docs/png/`, and pushes. `tools/face_preview/run.sh` renders all 21 faces
 into `docs/faces.png`.
 
-## 7. Recipes
+## 8. Recipes
 
 - **Change a zone border:** `ZONE_TABLE` in `spec_v4.py` -> `./py spec_v4.py` -> retrain both networks (the SNN's zone
   layer is wired from the table) -> parity -> behaviour tests -> flash.
@@ -160,13 +175,16 @@ into `docs/faces.png`.
   `ota.py learned` must switch and confirm without a reboot.
 - **Look at a moment of the robot's life:** `diary.load(day, hours=[h])`, find the time in `lines`, plot `ticks["v"]`.
 
-## 8. The PC side
+## 9. The PC side
 
 | Service (systemd user) | What |
 |---|---|
 | `lifelogd` | the diary receiver (`tools/robot/lifelogd.service`) |
+| `sleep-v4.timer` | brain v4's night sleep at 03:30 (`tools/v4/sleep_v4.py`, stage 6) |
 | `compress-diary.timer` | gzips finished diary days daily at 04:30 |
-| `mediad`, `life-sleep.timer`, `life-morning.timer` | platform B (frames and sound, the night sleep, the morning report): **disabled** since brain v4 |
+
+Platform B's services (`mediad`, `life-sleep`, `life-morning`) were removed on 2026-10-24; their unit files stay in
+`../stackchan-life/tools/life/` for the way back.
 
 The project lives on the external drive `/run/media/warmond/KIOXIA/Arhiv/For Lenovo Laptop/Codex/StackChan`, linked as
 `~/Codex/StackChan` (the services use that path). Git: `core.fileMode=false` (the drive shows every file as

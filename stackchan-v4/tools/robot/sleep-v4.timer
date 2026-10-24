@@ -1,0 +1,9 @@
+[Unit]
+Description=StackChan brain v4 night sleep, daily at 03:30 (the owner sleeps; nothing on the robot reboots)
+
+[Timer]
+OnCalendar=*-*-* 03:30
+Persistent=false
+
+[Install]
+WantedBy=timers.target

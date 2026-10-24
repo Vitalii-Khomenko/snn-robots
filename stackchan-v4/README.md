@@ -50,6 +50,8 @@ The trained networks are generated headers in the repository (`main/v4/*_data.h`
 
 ```bash
 cp tools/robot/lifelogd.service ~/.config/systemd/user/ && systemctl --user enable --now lifelogd   # the diary
+cp tools/robot/sleep-v4.* tools/robot/compress-diary.* ~/.config/systemd/user/
+systemctl --user enable --now sleep-v4.timer compress-diary.timer                                  # learning, compression
 python3 tools/robot/ota.py status                      # the robot answers over Wi-Fi
 ./build.sh build && python3 tools/robot/ota.py firmware   # every later update, over Wi-Fi, with rollback
 ```
@@ -67,8 +69,10 @@ main/                firmware (ESP-IDF component)
   net/               Wi-Fi + NTP, the diary over UDP (life_log), the update server (ota_server)
   robot_runtime.*    bring-up, the main loop, servo watchdog, stats lines
 simulator/           the digital twin: the real firmware in a simulated room (scenarios/*.scn)
-tools/v4/            spec, channels, synthetic lives, teachers, training, export, parity, behaviour tests, diary readers
-tools/robot/         ota.py (update and status over Wi-Fi), lifelogd.py (diary receiver), compress_diary.py
+tools/v4/            spec, channels, synthetic lives, teachers, training, export, parity, behaviour tests, diary readers,
+                     stage 6: reward_v4.py, sleep_v4.py, learned.py
+tools/robot/         ota.py (status, firmware, learned blob over Wi-Fi), lifelogd.py (diary receiver), compress_diary.py,
+                     the systemd units (lifelogd, sleep-v4 at 03:30, compress-diary at 04:30)
 tools/               v4_map.py + publish_maps.sh (the pictures), face_preview, capture_serial.py, serial_guard.sh
 components/          vendored drivers: ftservo (servos), bmi270 (IMU), py32_io_expander, si12t (head pad)
 secrets/             your Wi-Fi, device IPs, diary host and OTA token (templates *.example.h; real files never committed)
@@ -83,8 +87,12 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
 - Main network: emotion agreement with its teacher 0.90 when acting alone; ~210-260 calls an hour alone by day;
   every touch answered; petting never angers; pokes do; silent at night; frightened by shakes and bangs
   (`tools/v4/behavior_test_v4.py`, all pass).
-- Open: the proximity sensor reads almost nothing (see HARDWARE); stage 6, learning from its own life (reward from
-  the owner's reactions, nightly fine-tuning of the main network's action heads, zones shifted by experience).
+- Stage 6, learning from its own life, runs since 2026-10-24: every night at 03:30 the PC replays the robot's decisions,
+  rewards them by how people answered (petting, talk, coming close vs shaking, rough pokes, leaving), fine-tunes the
+  main network's action heads (AWR), shifts the zones of loudness, sounds, voice, proximity, light and motion by
+  experience, checks everything in the simulator and sends it to the robot without a reboot
+  ([ARCHITECTURE](docs/ARCHITECTURE.md#7-what-the-robot-learns-from-its-life-stage-6)).
+- The proximity sensor works (a hand at the face: up to ~1100 counts, 2026-10-24).
 
 ## Rollback
 
