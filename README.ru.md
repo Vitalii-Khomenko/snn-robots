@@ -1,11 +1,11 @@
 # StackChan: нейроморфный мозг
 
-![Мозг v4](stackchan-v4/docs/BRAIN_V4_MAP.svg)
+![Мозг v4](stackchan-v4/docs/png/BRAIN_V4_MAP.png)
 
 Прошивка для настольного робота **M5Stack CoreS3 StackChan**. Всё поведение рождается в нейросетях на самом
 ESP32-S3. Ни деревьев поведения, ни готовых анимаций и звуков.
 
-**Мозг v4** (`stackchan-v4/`, на нём робот работает сейчас, `mode v4`) устроен как нервная система животного:
+**Мозг v4** (`stackchan-v4/`, на нём робот работает сейчас) устроен как нервная система животного:
 - каждое чувство — одно число 0..1 (13 каналов: громкость, резкие звуки, голос, касание головы и экрана, тряска,
   наклон, близость, свет, движение, голод, усталость, одиночество); шкала каждого поделена на врождённые зоны скуки,
   комфорта, интереса, тревоги и гнева;
@@ -15,20 +15,21 @@ ESP32-S3. Ни деревьев поведения, ни готовых аним
   светодиодов, голову — взгляд, кивок «да», мотание «нет», вздрагивание, дрёму;
 - исполнитель на C++ держит правила безопасности: тихие ночи, бюджет реплик, пределы серв.
 
-Устройство обеих сетей: [stackchan-v4/docs/NETWORKS_V4.svg](stackchan-v4/docs/NETWORKS_V4.svg). План (по-русски):
+Устройство обеих сетей: [stackchan-v4/docs/png/NETWORKS_V4.png](stackchan-v4/docs/png/NETWORKS_V4.png). План (по-русски):
 [BRAIN_V4_PLAN.txt](stackchan-v4/BRAIN_V4_PLAN.txt), шкалы: [BRAIN_V4_INPUT_SCALES.txt](stackchan-v4/BRAIN_V4_INPUT_SCALES.txt),
 журнал: `stackchan-v4/JOURNAL.txt`.
 
-**Платформа Б** (`stackchan-life/`, `mode life`, та же прошивка): робот, который **учится на своей жизни**. Модель
-мира, пять потребностей, сеть-актёр и ночной «сон» на домашнем ПК, который переучивает их по дневнику каждого тика.
-Гибридный мозг v3 (`mode brain`) тоже остаётся в прошивке; его старая папка — в истории git (метка `v3-neuromorphic`).
+Робот работает только на мозге v4; домашний ПК хранит дневник каждого тика (статистика, анализ, отладка) и обучает
+сети. Прежние мозги — история: **платформа Б** (`stackchan-life/`, 11-24.10.2026), робот, который учился на своей
+жизни, и **гибридный мозг v3** (метка git `v3-neuromorphic`). Как всё развивалось:
+[stackchan-v4/docs/HISTORY.md](stackchan-v4/docs/HISTORY.md).
 
 В проекте есть симулятор («цифровой двойник»: настоящий код прошивки в виртуальной комнате) и весь конвейер обучения
 каждой сети на ПК. Документация на английском: [stackchan-v4/README.md](stackchan-v4/README.md),
-[stackchan-life/README.md](stackchan-life/README.md), [ARCHITECTURE](stackchan-life/docs/ARCHITECTURE.md),
-[HARDWARE](stackchan-life/docs/HARDWARE.md), [DEVELOPMENT](stackchan-life/docs/DEVELOPMENT.md).
+[ARCHITECTURE](stackchan-v4/docs/ARCHITECTURE.md), [DEVELOPMENT](stackchan-v4/docs/DEVELOPMENT.md),
+[HARDWARE](stackchan-v4/docs/HARDWARE.md), [HISTORY](stackchan-v4/docs/HISTORY.md).
 
-Файлы `TODO_LATER.txt`, `RECORDING_PLAN.txt`, `VISION_PLAN.txt` и `Ideas-Tmp/` — личные рабочие заметки владельца
-(по-русски), они нужны только как история и план.
+Журнал разработки — `stackchan-v4/JOURNAL.txt` (по-русски). Файлы `TODO_LATER.txt`, `RECORDING_PLAN.txt`,
+`VISION_PLAN.txt` и `Ideas-Tmp/` в `stackchan-life/` — личные заметки владельца времён платформы Б (история).
 
 Лицензия: MIT. Пароль Wi-Fi и IP устройств владельца в репозиторий не входят: шаблоны лежат в `secrets/*.example.h`.

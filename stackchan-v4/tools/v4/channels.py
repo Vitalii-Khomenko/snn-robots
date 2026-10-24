@@ -24,7 +24,7 @@ Raw inputs (dict of float32 arrays [T], missing ones default to 0):
 import numpy as np
 from numba import njit
 
-from spec_v4 import CHANNELS, SNN_IN
+from spec_v4 import CHANNELS, RAW, SNN_IN
 
 DT = 0.05
 # ---- constants (mirrored in main/v4/channel_encoder.h)
@@ -40,9 +40,6 @@ MOTION_GAIN, MOTION_TAU, MOTION_HOLD_DECAY = 1.5, 5.0, 2.0
 LONELY_TAU, LONELY_MOTION_CAP, LONELY_START = 2400.0, 300.0, 600.0
 CONTACT_SPEECH, CONTACT_NEAR, CONTACT_MOTION = 0.5, 0.3, 0.1
 
-RAW = ["energy", "speech", "sharp_ev", "head_ev", "head_hold", "screen_ev", "accel_sd", "imu_pitch", "imu_roll",
-       "imu_ok", "near_raw", "near_ok", "als", "als_ok", "motion_frac", "motion_x", "motion_y",
-       "frame_ok", "battery", "stamina", "hour", "clock_ok"]
 
 
 def night_ramp(h):

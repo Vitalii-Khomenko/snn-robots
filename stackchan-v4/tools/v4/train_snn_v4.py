@@ -12,7 +12,6 @@ import numpy as np
 import torch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "life"))
 from snn_v4 import SnnV4, detach_state  # noqa: E402
 from spec_v4 import CHANNELS, SNN_IN, SNN_OUT  # noqa: E402
 from synth_v4 import make_channels  # noqa: E402
@@ -27,25 +26,25 @@ N_SYN, N_REAL = 1400, 400
 
 
 def real_sequences(n, rng):
-    """Stretches of the robot's real life (diary days before brain v4), channels computed after the fact. Light,
-    proximity and motion were not logged then: a dark room (the robot's usual), nobody at the face, the Vision NN's
-    activity for motion (tools/v4/calibrate.py)."""
-    import lifedata as L
-    from calibrate import raw_from_diary
+    """Stretches of the robot's real life, channels computed after the fact from the diary (calibrate.raw_hour). On
+    platform B's days light, proximity and motion were not logged: a dark room (the robot's usual), nobody at the
+    face, the Vision NN's activity for motion."""
+    import diary as D
+    from calibrate import raw_hour
     from channels import encode, new_state
-    days = sorted(d for d in os.listdir(os.path.join(L.ROOT, "data", "life")) if d[:2] == "20")[-9:-1]
+    days = sorted(d for d in os.listdir(D.LIFE) if d[:2] == "20")[-9:-1]
     pool = []
     for day in days:
         st = new_state()
         X = []
         for h in range(24):
-            t, _ = L.load(day, hours=[h])
-            if t is None:
+            raw, _ = raw_hour(day, h)
+            if raw is None:
                 continue
-            raw, _ = raw_from_diary(t["values"], t["unix"])
             T = len(raw["energy"])
-            raw["als"] = np.full(T, rng.uniform(1, 40))
-            raw["als_ok"] = np.ones(T)
+            if "als" not in raw:  # platform B's days
+                raw["als"] = np.full(T, rng.uniform(1, 40))
+                raw["als_ok"] = np.ones(T)
             X.append(encode(raw, st))
         if X:
             pool.append(np.concatenate(X))

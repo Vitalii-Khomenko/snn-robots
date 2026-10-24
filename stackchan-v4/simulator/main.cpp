@@ -1,5 +1,5 @@
-// StackChan digital twin: runs the real firmware (SNN, retina, hearing,
-// behaviour decoder, motion, sensor engines) in a simulated room.
+// StackChan digital twin: runs the real firmware (the ear, the 13 channels, brain v4's spiking analyzer and main
+// network, the executor, motion, voice, sensor engines) in a simulated room.
 //
 //   simulator/run.sh scenarios/alone_dark_morning.scn [options]
 //
@@ -8,16 +8,10 @@
 //   --minutes N        override the scenario duration
 //   --seed N           override the scenario seed
 //   --echo             also print the log to the terminal
-//   --bus-dump F       write every brain tick's policy input, efference copy and action (float32 stream) for training
-//   --policy-pipe      the policy runs outside: every tick the policy input (98 float32) goes to
-//                      stdout and the action (ACT_COUNT float32, 51) is read from stdin (tools/hybrid rollouts)
 //   --voice-wav F      write everything the speaker plays (raw int16, 24 kHz) to F
 //   --brain-cost MS    modelled brain-tick CPU time on the ESP32-S3 (default 4)
-//   --v4               brain v4 drives the body (mode v4)
 //   --v4-dump F        every brain tick: brain v4's channels, analyzer and main-network outputs (float32 stream)
 
-#include "../main/behavior/collector.h"
-#include <esp_timer.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -36,7 +30,7 @@ int main(int argc, char** argv)
 {
     if (argc < 2) {
         std::fprintf(stderr, "usage: %s SCENARIO.scn [--out DIR] [--minutes N] [--seed N] [--echo] "
-                             "[--bus-dump F] [--policy-pipe] [--collector] [--brain-cost MS]\n", argv[0]);
+                             "[--voice-wav F] [--brain-cost MS] [--v4-dump F]\n", argv[0]);
         return 2;
     }
     sim::Scenario scenario;
@@ -48,7 +42,7 @@ int main(int argc, char** argv)
     }
     std::string out_dir;
     sim::RunOptions options;
-    bool echo = false, pipe_policy = false, collector = false;
+    bool echo = false;
     for (int i = 2; i < argc; ++i) {
         const std::string a = argv[i];
         auto value = [&]() -> std::string {
@@ -66,15 +60,8 @@ int main(int argc, char** argv)
             g_voice_dump = std::fopen(value().c_str(), "wb");
             if (!g_voice_dump) return 1;
         } else if (a == "--brain-cost") options.brain_cost_ms = std::stof(value());
-        else if (a == "--bus-dump") {
-            options.bus_dump = std::fopen(value().c_str(), "wb");
-            if (!options.bus_dump) return 1;
-        } else if (a == "--policy-pipe") {
-            pipe_policy = true;
-        } else if (a == "--collector") {
-            collector = true;
-        } else if (a == "--v4") {
-            options.v4 = true;
+        else if (a == "--v4") {
+            // brain v4 is the only brain now; accepted so older command lines still run
         } else if (a == "--v4-dump") {
             options.v4_dump = std::fopen(value().c_str(), "wb");
             if (!options.v4_dump) return 1;
@@ -90,7 +77,6 @@ int main(int argc, char** argv)
     FILE* log = std::fopen((out_dir + "/log.txt").c_str(), "w");
     options.trace = std::fopen((out_dir + "/trace.csv").c_str(), "w");
     options.summary = std::fopen((out_dir + "/summary.txt").c_str(), "w");
-    options.brain_cost_ms = options.brain_cost_ms;
     options.loop_cost_ms = scenario.loop_cost_ms;
     options.seed = scenario.seed;
     if (!log || !options.trace || !options.summary) {
@@ -102,26 +88,10 @@ int main(int argc, char** argv)
     sim::seedPlatformRandom(scenario.seed);
     sim::World::get().load(scenario);
 
-    if (pipe_policy) {
-        // stdout is the data channel in this mode: no human chatter on it.
-        options.policy = [](const PolicyGru::Input& in, PolicyGru::Action& out) {
-            std::fwrite(in.data(), sizeof(float), in.size(), stdout);
-            std::fflush(stdout);
-            if (std::fread(out.data(), sizeof(float), out.size(), stdin) != out.size()) std::_Exit(3);
-        };
-    } else {
-        std::printf("scenario %s: %.1f min, seed %u -> %s\n", scenario.name.c_str(), scenario.duration_us / 60e6,
-                    scenario.seed, out_dir.c_str());
-        std::fflush(stdout);
-    }
-    static sim::SimRuntime* rt = nullptr;
-    static Collector babbler;
-    if (collector && !pipe_policy)  // platform B's data collector instead of the policy (main/behavior/collector.h)
-        options.policy = [](const PolicyGru::Input&, PolicyGru::Action& out) {
-            babbler.step(rt->brain().bus(), static_cast<uint32_t>(esp_timer_get_time() / 1000), out);
-        };
+    std::printf("scenario %s: %.1f min, seed %u -> %s\n", scenario.name.c_str(), scenario.duration_us / 60e6,
+                scenario.seed, out_dir.c_str());
+    std::fflush(stdout);
     auto runtime = std::make_unique<sim::SimRuntime>(options);
-    rt = runtime.get();
     vrtos::start([&] {
         vrtos::sleepFor(sim::kBootUs);
         runtime->begin();
@@ -131,12 +101,10 @@ int main(int argc, char** argv)
     std::fclose(log);
     std::fclose(options.trace);
     std::fclose(options.summary);
-    if (options.bus_dump) std::fclose(options.bus_dump);
+    if (options.v4_dump) std::fclose(options.v4_dump);
     if (g_voice_dump) std::fclose(g_voice_dump);
-    if (!pipe_policy) {
-        std::printf("done: %s/summary.txt, trace.csv, log.txt\n", out_dir.c_str());
-        std::fflush(stdout);
-    }
+    std::printf("done: %s/summary.txt, trace.csv, log.txt\n", out_dir.c_str());
+    std::fflush(stdout);
     // Firmware tasks (mic, camera) never end; leave without joining them.
     std::_Exit(0);
 }

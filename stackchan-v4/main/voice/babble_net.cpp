@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "../hybrid/nn_ops.h"
+#include "../perception/nn_ops.h"
 #include "babble_model_data.h"
 
 

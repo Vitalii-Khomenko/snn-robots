@@ -31,13 +31,6 @@ struct Event {
     int line = 0;
 };
 
-// "learned CUE REWARD THREAT": the robot starts with this much experience (AssocMemory weights; CUE as in
-// AssocMemory::cueName with '_' for spaces, e.g. owner_home).
-struct LearnedLink {
-    int cue = 0;
-    float reward = 0.0f, threat = 0.0f;
-};
-
 struct Scenario {
     std::string name;
     std::string path;
@@ -55,7 +48,6 @@ struct Scenario {
     float loop_cost_ms = 1.5f;        // rest of one main-loop pass: I2C sensor polls etc.
     float fov_deg = 60.0f;            // camera horizontal field of view
     std::vector<LampSpec> lamps;
-    std::vector<LearnedLink> learned;
     WindowSpec window;
     std::vector<Event> events;        // sorted by time
 };

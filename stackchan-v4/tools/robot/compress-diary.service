@@ -1,0 +1,8 @@
+# Gzips the diary's finished days (tools/robot/compress_diary.py), run daily by compress-diary.timer:
+#   cp tools/robot/compress-diary.* ~/.config/systemd/user/ && systemctl --user enable --now compress-diary.timer
+[Unit]
+Description=StackChan diary compression (tools/robot/compress_diary.py)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/Codex/StackChan/stackchan-v4/tools/robot/compress_diary.py

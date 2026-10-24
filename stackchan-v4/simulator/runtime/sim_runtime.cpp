@@ -2,10 +2,9 @@
 #include "sim_runtime.h"
 
 #include <algorithm>
-#include <array>
 #include <chrono>
 #include <cmath>
-#include <vector>
+#include <string>
 
 #include <esp_log.h>
 #include <esp_timer.h>
@@ -22,11 +21,9 @@ namespace {
 constexpr const char* kTag = "runtime";
 // Same constants as robot_runtime.cpp.
 constexpr uint32_t kMainLoopIntervalMs = 20;
-// WifiEngine model: association and NTP after boot (seen on hardware:
-// wifi up ~9 s, time synced ~40 s), owner ping every 20 minutes.
+// WifiEngine model: association and NTP after boot (seen on hardware: wifi up ~9 s, time synced ~40 s).
 constexpr uint32_t kWifiUpMs = 9000;
 constexpr uint32_t kTimeSyncMs = 40000;
-constexpr uint32_t kPresenceCheckIntervalMs = 20 * 60 * 1000;
 }  // namespace
 
 SimRuntime::SimRuntime(const RunOptions& options)
@@ -34,12 +31,6 @@ SimRuntime::SimRuntime(const RunOptions& options)
       loop_(BrainLoop::Engines{motion_, face_, led_, audio_, vocal_, imu_, mic_, presence_, camera_, power_status_, touch_}),
       cost_rng_(options.seed * 97u + 5u)
 {
-    if (opt_.policy) loop_.brain().setExternalPolicy(opt_.policy);
-    if (opt_.v4) {  // as RobotRuntime::loadMode for mode v4
-        loop_.brain().setExternalPolicy([](const PolicyGru::Input&, PolicyGru::Action& a) { a = PolicyGru::neutral(); });
-        loop_.brain().setSpikingCore(false);
-        loop_.setV4Active(true);
-    }
 }
 
 uint32_t SimRuntime::nowMs() const { return static_cast<uint32_t>(esp_timer_get_time() / 1000); }
@@ -48,8 +39,8 @@ uint32_t SimRuntime::nowMs() const { return static_cast<uint32_t>(esp_timer_get_
 bool SimRuntime::begin()
 {
     ESP_LOGI(kTag, "nvs");
-    ESP_LOGI(kTag, "hybrid brain: SNN %d neurons / %d synapses, policy GRU, vision NN %s, auditory NN %s",
-             SpikingCore::kNeurons, loop_.brain().snn().synapseCount(), camera_.net().trained() ? "trained" : "MISSING",
+    ESP_LOGI(kTag, "brain v4: spiking analyzer %s, main network %s, auditory NN %s",
+             loop_.brain().analyzer().trained() ? "trained" : "UNTRAINED", loop_.brain().trained() ? "trained" : "UNTRAINED",
              loop_.auditory().trained() ? "trained" : "MISSING");
     ESP_LOGI(kTag, "screen");
     face_.begin();
@@ -67,16 +58,7 @@ bool SimRuntime::begin()
     if (touch_.begin()) touch_.onTouch([this]() { loop_.headTouch(nowMs()); });
 
     ESP_LOGI(kTag, "IMU");
-    if (imu_.begin()) {
-        imu_.onShake([this]() {
-            loop_.shake(nowMs());
-            ESP_LOGI(kTag, "shake detected");
-        });
-        imu_.onTilt([this]() {
-            loop_.tilt(nowMs());
-            ESP_LOGI(kTag, "tilt detected");
-        });
-    }
+    imu_.begin();
 
     ESP_LOGI(kTag, "microphone");
     if (mic_.begin()) {
@@ -89,7 +71,7 @@ bool SimRuntime::begin()
     }
 
     ESP_LOGI(kTag, "presence");
-    if (presence_.begin()) presence_.onPresence([this]() { ESP_LOGI(kTag, "presence detected"); });
+    presence_.begin();
 
     ESP_LOGI(kTag, "camera");
     if (camera_.begin()) {
@@ -103,94 +85,58 @@ bool SimRuntime::begin()
     const uint32_t now = nowMs();
     next_diagnostics_ms_ = now + 5000;
     next_trace_ms_ = now;
-    {  // the experience the scenario gives the robot (on the robot: NVS, RobotRuntime::loadLearned)
-        AssocMemory::Weights w{};
-        for (const auto& link : World::get().scenario().learned) w[link.cue] = {link.reward, link.threat};
-        if (!World::get().scenario().learned.empty()) loop_.brain().assoc().setWeights(w);
-    }
     ESP_LOGI(kTag, "RobotRuntime ready");
     return true;
 }
 
-// WifiEngine's observable behaviour: connect, NTP, periodic owner ping.
+// WifiEngine's observable behaviour: connect, NTP.
 void SimRuntime::updateWifi(uint32_t now)
 {
     if (!wifi_connected_ && now >= kWifiUpMs) {
         wifi_connected_ = true;
         ESP_LOGI("wifi", "got IP");
-        next_owner_check_ms_ = now + 1000;
     }
     if (!time_synced_ && now >= kTimeSyncMs) {
         time_synced_ = true;
         ESP_LOGI("wifi", "time synced");
     }
-    if (wifi_connected_ && now >= next_owner_check_ms_) {
-        const bool home = World::get().ownerHome();
-        if (home != owner_nearby_) ESP_LOGI("wifi", "known device %s", home ? "nearby" : "gone");
-        owner_nearby_ = home;
-        next_owner_check_ms_ = now + kPresenceCheckIntervalMs;
-    }
 }
 
-// Mirrors RobotRuntime::logStats() (behaviour fields only).
+// Mirrors RobotRuntime::logStats() (the brain line).
 void SimRuntime::logStats(uint32_t now)
 {
-    float head_yaw = 0.0f, head_pitch = 0.0f;
-    motion_.getCurrentDeg(head_yaw, head_pitch);
-    auto& brain = loop_.brain();
-    auto& ex = loop_.executor();
-    const auto& s = brain.bus().snn;
-    auto pct = [](float x) { return static_cast<unsigned>(std::clamp(x, 0.0f, 1.0f) * 100.0f + 0.5f); };
-    ESP_LOGI(kTag,
-             "stats: wifi=%s time=%s owner=%s snn_rate=%.3f snn_resets=%u policy_faults=%u missed_ticks=%u "
-             "cur=%.2f aro=%.2f bor=%.2f ann=%.2f soc=%.2f play=%.2f fat=%.2f slp=%.2f mus=%.2f "
-             "moves=%u calls=%u nods=%u startles=%u stamina=%u%% travel=%udeg head=%d,%d voice=%s heart=%.0f",
-             wifi_connected_ ? "up" : "down", time_synced_ ? "synced" : "unsynced", owner_nearby_ ? "near" : "away",
-             static_cast<double>(brain.snn().meanRate()), static_cast<unsigned>(brain.snnResets()),
-             static_cast<unsigned>(brain.policyFaults()), static_cast<unsigned>(loop_.missedTicks()),
-             s[hybrid::SNN_CURIOSITY], s[hybrid::SNN_BOREDOM], s[hybrid::SNN_AROUSAL], s[hybrid::SNN_ANNOYANCE],
-             s[hybrid::SNN_SOCIAL], s[hybrid::SNN_PLAYFUL], s[hybrid::SNN_FATIGUE], s[hybrid::SNN_SLEEP],
-             s[hybrid::SNN_MUSIC], static_cast<unsigned>(ex.moves()), static_cast<unsigned>(ex.calls()),
-             static_cast<unsigned>(ex.nods()), static_cast<unsigned>(ex.startles()),
-             pct(motion_.staminaLevel()), static_cast<unsigned>(motion_.travelledDeg()), static_cast<int>(head_yaw),
-             static_cast<int>(head_pitch), ex.voiceTrained() ? "babble" : "silent",
-             static_cast<double>(brain.physiology().heartBpm));
+    const auto& c = loop_.channels();
+    auto& b = loop_.brain();
+    const auto& so = b.snn();
+    const auto& ex = loop_.executor();
+    ESP_LOGI(kTag, "v4: ch=%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f snn=rate%.3f val=%.2f aro=%.2f "
+             "under=%.2f over=%.2f threat=%.2f nn=faults%u night=%d face=%s calls=%u nods=%u shakes=%u gestures=%u "
+             "missed_ticks=%u",
+             c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9], c[10], c[11], c[12],
+             static_cast<double>(b.analyzer().mixRate()), so[v4::SO_VALENCE], so[v4::SO_AROUSAL], so[v4::SO_UNDER],
+             so[v4::SO_OVER], so[v4::SO_THREAT], static_cast<unsigned>(b.nnFaults()), loop_.night() ? 1 : 0,
+             emotionName(static_cast<Emotion>(ex.shownEmotion())), static_cast<unsigned>(ex.calls()),
+             static_cast<unsigned>(ex.nods()), static_cast<unsigned>(ex.shakes()), static_cast<unsigned>(ex.gestures()),
+             static_cast<unsigned>(loop_.missedTicks()));
     next_diagnostics_ms_ = now + 5000;
 }
 
 void SimRuntime::writeTrace(uint32_t now)
 {
-    World& w = World::get();
-    float lx = 0, ly = 0;
-    bool lamp_seen = false;
-    for (size_t i = 0; i < w.scenario().lamps.size(); ++i)
-        if (w.lampInView(i, lx, ly)) {
-            lamp_seen = true;
-            break;
-        }
-    ++minute_ticks_;
-    if (lamp_seen) {
-        ++minute_lamp_view_;
-        if (std::fabs(lx) < 0.25f && std::fabs(ly) < 0.4f) ++minute_lamp_centred_;
-    }
     if (!opt_.trace) return;
-    using namespace hybrid;
-    const auto& b = loop_.brain().bus();
-    const auto& a = loop_.brain().action();
+    World& w = World::get();
+    const auto& so = loop_.brain().snn();
+    const auto& c = loop_.channels();
     float cmd_yaw = 0, cmd_pitch = 0;
     motion_.getCurrentDeg(cmd_yaw, cmd_pitch);
-    float person_x = 9.0f;  // 9 = nobody in view
-    w.personImageX(vrtos::nowUs(), person_x);
-    std::fprintf(opt_.trace,
-                 "%.1f,%.3f,%.1f,%.1f,%.1f,%.1f,%s,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,"
-                 "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
-                 now / 1000.0, w.hourOfDay(vrtos::nowUs()), w.headYawDeg(), w.headPitchDeg(), cmd_yaw, cmd_pitch,
-                 emotionName(face_.emotion()), vocal_.active() ? 1 : 0, motion_.staminaLevel(),
-                 a[ACT_FACE_VALENCE], a[ACT_FACE_AROUSAL], a[ACT_LIDS], b.snn[SNN_CURIOSITY], b.snn[SNN_BOREDOM],
-                 b.snn[SNN_AROUSAL], b.snn[SNN_ANNOYANCE], b.snn[SNN_SOCIAL], b.snn[SNN_SLEEP], b.snn[SNN_MUSIC],
-                 b.snn[SNN_ATT_STRENGTH], b.snn[SNN_ATT_X], b.snn[SNN_ATT_Y], a[ACT_HOLD], a[ACT_EXPLORE],
-                 a[ACT_SOUND_ACT], a[ACT_INVITE], lamp_seen ? 1.0f : 0.0f, person_x,
-                 b.learn[LEARN_EXPECT_REWARD], b.learn[LEARN_EXPECT_THREAT], a[ACT_LED_ACTIVITY]);
+    std::fprintf(opt_.trace, "%.1f,%.3f,%.1f,%.1f,%.1f,%.1f,%s,%d", now / 1000.0, w.hourOfDay(vrtos::nowUs()),
+                 w.headYawDeg(), w.headPitchDeg(), cmd_yaw, cmd_pitch, emotionName(face_.emotion()),
+                 vocal_.active() ? 1 : 0);
+    for (int i = 0; i < v4::CH_COUNT; ++i) std::fprintf(opt_.trace, ",%.3f", c[i]);
+    for (int i : {v4::SO_VALENCE, v4::SO_AROUSAL, v4::SO_UNDER, v4::SO_OVER, v4::SO_THREAT, v4::SO_SURPRISE,
+                  v4::SO_ATT_X, v4::SO_ATT_Y, v4::SO_ATT_STRENGTH})
+        std::fprintf(opt_.trace, ",%.3f", so[i]);
+    std::fprintf(opt_.trace, "\n");
 }
 
 void SimRuntime::writeMinute(uint32_t now)
@@ -204,22 +150,17 @@ void SimRuntime::writeMinute(uint32_t now)
         return n;
     };
     if (opt_.summary) {
-        std::fprintf(opt_.summary,
-                     "%3u | %5.2f | %5.0f | %4d | %4d | %4d | %4d | %4d | %4d | %4d | %3.0f%% | %3.0f%% | %4.0f%% | %4.0f | %4.0f\n",
+        std::fprintf(opt_.summary, "%3u | %5.2f | %5.0f | %4d | %4d | %4d | %4d | %4d | %4d | %4.0f%% | %4.0f | %4.0f\n",
                      minute_index_ + 1, w.hourOfDay(vrtos::nowUs()), w.travelDeg() - minute_travel_start_,
-                     w.movementsStarted() - minute_moves_start_, count("executor: emotion="),
-                     count("executor: voice:"), count("executor: sing: start"), count("runtime: loud sound"),
-                     count("runtime: head touch:") + count("runtime: screen touch"),
-                     count("runtime: tilt") + count("runtime: shake"),
-                     minute_ticks_ ? 100.0f * minute_lamp_view_ / minute_ticks_ : 0.0f,
-                     minute_ticks_ ? 100.0f * minute_lamp_centred_ / minute_ticks_ : 0.0f,
-                     motion_.staminaLevel() * 100.0f, w.headYawDeg(), w.headPitchDeg());
+                     w.movementsStarted() - minute_moves_start_, count("v4: face:"), count("v4: call"),
+                     count("v4: gesture:"), count("runtime: loud sound"),
+                     count("runtime: head touch (") + count("runtime: screen touch"), motion_.staminaLevel() * 100.0f,
+                     w.headYawDeg(), w.headPitchDeg());
         std::fflush(opt_.summary);
     }
     resetLogCounts();
     minute_travel_start_ = w.travelDeg();
     minute_moves_start_ = w.movementsStarted();
-    minute_ticks_ = minute_lamp_view_ = minute_lamp_centred_ = 0;
     ++minute_index_;
     next_minute_ms_ = now + 60000;
 }
@@ -227,19 +168,14 @@ void SimRuntime::writeMinute(uint32_t now)
 // Mirrors RobotRuntime::loop(), one iteration per pass until `until_us`.
 void SimRuntime::run(uint64_t until_us)
 {
-    if (opt_.summary) {
-        std::fprintf(opt_.summary,
-                     "min |  hour | travel | moves | faces | calls | songs | loud | touches | tilt/shake | lamp_in_view | "
-                     "lamp_centred | stamina | yaw | pitch\n");
-    }
+    if (opt_.summary)
+        std::fprintf(opt_.summary, "min |  hour | travel | moves | faces | calls | gestures | loud | touches | stamina | yaw | pitch\n");
     if (opt_.trace) {
-        std::fprintf(opt_.trace,
-                     "t_s,hour,head_yaw,head_pitch,cmd_yaw,cmd_pitch,emotion,sound,stamina,face_valence,face_arousal,lids,"
-                     "curiosity,boredom,arousal,annoyance,social,sleep,music,att_strength,att_x,att_y,hold,explore,"
-                     "sound_act,invite,lamp_in_view,person_x,expect_reward,expect_threat,led_activity\n");
+        std::fprintf(opt_.trace, "t_s,hour,head_yaw,head_pitch,cmd_yaw,cmd_pitch,face,sound");
+        for (const char* n : v4::kChannelNames) std::fprintf(opt_.trace, ",%s", n);
+        std::fprintf(opt_.trace, ",valence,arousal,under,over,threat,surprise,att_x,att_y,att_strength\n");
     }
     next_minute_ms_ = nowMs() + 60000;
-    uint64_t dumped = 0;
     while (vrtos::nowUs() < until_us) {
         const uint32_t now = nowMs();
         motion_.update();
@@ -251,19 +187,6 @@ void SimRuntime::run(uint64_t until_us)
         }
         touch_.update();
         loop_.coupleMotion(now);
-        if (World::get().shaking() && now - last_sim_shake_ms_ > 300) {
-            last_sim_shake_ms_ = now;
-            loop_.shake(now);
-            ESP_LOGI(kTag, "shake detected");
-        }
-        if (World::get().bodyLifted() && now - last_sim_tilt_ms_ > 300) {
-            last_sim_tilt_ms_ = now;
-            loop_.tilt(now);
-            if (!sim_tilted_) ESP_LOGI(kTag, "tilt detected");
-            sim_tilted_ = true;
-        } else if (!World::get().bodyLifted()) {
-            sim_tilted_ = false;
-        }
         mic_.update();
         presence_.update();
         camera_.update();
@@ -274,41 +197,24 @@ void SimRuntime::run(uint64_t until_us)
         BrainLoop::Env env;
         env.timeSynced = time_synced_;
         env.hour = time_synced_ ? World::get().hourOfDay(vrtos::nowUs()) : 12.0f;
-        env.ownerNear = owner_nearby_;
-        const uint32_t ticks_before = loop_.brain().tickCount();
+        const uint32_t ticks_before = loop_.tickCount();
         const auto host_start = std::chrono::steady_clock::now();
         loop_.step(now, env);
-        if (loop_.brain().tickCount() != ticks_before) {
+        if (loop_.tickCount() != ticks_before) {
             host_tick_s_ += std::chrono::duration<double>(std::chrono::steady_clock::now() - host_start).count();
             ++host_ticks_;
-            // The tick costs ESP32-S3 CPU time: the main task stays busy for
-            // it while the camera/mic tasks keep running.
+            // The tick costs ESP32-S3 CPU time: the main task stays busy for it while the camera/mic tasks keep running.
             std::uniform_real_distribution<float> jitter(0.7f, 1.3f);
             vrtos::busyFor(static_cast<uint64_t>(opt_.brain_cost_ms * jitter(cost_rng_) * 1000.0f));
             if (opt_.v4_dump) {
-                const auto& v4b = loop_.brainV4();
+                const auto& b = loop_.brain();
                 std::fwrite(loop_.channels().data(), sizeof(float), loop_.channels().size(), opt_.v4_dump);
-                std::fwrite(v4b.snn().data(), sizeof(float), v4b.snn().size(), opt_.v4_dump);
-                std::fwrite(v4b.nn().data(), sizeof(float), v4b.nn().size(), opt_.v4_dump);
-            }
-            if (opt_.bus_dump) {
-                // what the policy saw this tick (the bus has moved on: its previous-action features now hold this tick's action)
-                const PolicyGru::Input& in = loop_.brain().lastPolicyInput();
-                std::fwrite(in.data(), sizeof(float), in.size(), opt_.bus_dump);
-                // the efference copy is an input of the spiking core only (SNN fine-tuning from rollouts)
-                std::fwrite(loop_.brain().bus().eff.data(), sizeof(float), hybrid::EFF_COUNT, opt_.bus_dump);
-                std::fwrite(loop_.brain().action().data(), sizeof(float), hybrid::ACT_COUNT, opt_.bus_dump);
-                ++dumped;
+                std::fwrite(b.snn().data(), sizeof(float), b.snn().size(), opt_.v4_dump);
+                std::fwrite(b.nn().data(), sizeof(float), b.nn().size(), opt_.v4_dump);
             }
         }
         loop_.afterVoice(now);
 
-        if (msReached(now, next_telemetry_ms_)) {
-            static char line[768];
-            loop_.formatTelemetry(line, sizeof(line));
-            ESP_LOGI("brain", "%s", line);
-            next_telemetry_ms_ = now + 1000;
-        }
         if (msReached(now, next_diagnostics_ms_)) logStats(now);
         if (now >= next_trace_ms_) {
             writeTrace(now);
@@ -317,13 +223,12 @@ void SimRuntime::run(uint64_t until_us)
         if (now >= next_minute_ms_) writeMinute(now);
         vTaskDelay(pdMS_TO_TICKS(kMainLoopIntervalMs));
     }
-    (void)dumped;
 }
 
 void SimRuntime::finish()
 {
     // Wall-clock, so only on stdout: the log must stay bit-reproducible.
-    std::printf("host brain tick (front ends' main-thread part + SNN + policy + executor) mean %.1f us over %llu ticks\n",
+    std::printf("host brain tick (ear + channels + SNN + NN + executor) mean %.1f us over %llu ticks\n",
                 host_ticks_ ? host_tick_s_ / host_ticks_ * 1e6 : 0.0, static_cast<unsigned long long>(host_ticks_));
 }
 

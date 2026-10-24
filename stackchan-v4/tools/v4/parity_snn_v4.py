@@ -1,4 +1,5 @@
-"""C++ SnnV4 (main/v4/snn_v4.cpp, exported weights) against the PyTorch network (quantized) on held-out lives."""
+"""C++ SnnV4 (main/v4/snn_v4.cpp, exported weights) against the PyTorch network (quantized) on held-out lives: three
+lives of the training data (out/snn_data.npz, synthetic and real) or, without it, three fresh synthetic lives."""
 import os
 import subprocess
 import sys
@@ -18,10 +19,17 @@ def main():
     exe = os.path.join(OUT, "parity_snn_v4")
     subprocess.run(["g++", "-std=c++17", "-O2", "-I", MAIN, os.path.join(HERE, "parity_snn_v4.cpp"),
                     os.path.join(MAIN, "snn_v4.cpp"), "-o", exe], check=True)
-    d = np.load(os.path.join(OUT, "snn_data.npz"))
+    data = os.path.join(OUT, "snn_data.npz")
+    if os.path.exists(data):
+        d = np.load(data)
+        lives = {k: d["X"][k][:3000] for k in (5, 1500, 1700)}  # synthetic and real lives
+    else:
+        from synth_v4 import make_channels
+        rng = np.random.default_rng(7)
+        lives = {f"synthetic {i}": make_channels(rng, 3000) for i in range(3)}
     worst = 0.0
-    for k in (5, 1500, 1700):  # synthetic and real lives
-        X = d["X"][k][:3000].astype(np.float32)
+    for k, X in lives.items():
+        X = X.astype(np.float32)
         X.tofile(os.path.join(OUT, "snn_in.bin"))
         subprocess.run([exe, os.path.join(OUT, "snn_in.bin"), os.path.join(OUT, "snn_out.bin")], check=True)
         cpp = np.fromfile(os.path.join(OUT, "snn_out.bin"), np.float32).reshape(len(X), -1)

@@ -25,9 +25,6 @@
 namespace {
 constexpr const char* kTag = "lifelog";
 constexpr size_t kRingBytes = 96 * 1024;  // ~15 s of diary while Wi-Fi hiccups
-// The card shares the SPI bus with the screen; the first try crashed (assert in spi_hal_setup_trans: an SD
-// transaction started while the screen's DMA transfer was still running, 2026-10-11). Off until that is solved.
-constexpr bool kSdEnabled = false;
 constexpr size_t kMaxLine = 1300;  // the 5 s stats line is ~1 KB; still one unfragmented datagram
 LifeLog* s_self = nullptr;
 vprintf_like_t s_serial = nullptr;
@@ -42,6 +39,30 @@ struct __attribute__((packed)) LineDatagram {
     char text[kMaxLine];
 };
 EXT_RAM_BSS_ATTR LineDatagram s_line;  // 1.3 KB: internal RAM is scarce (Wi-Fi, camera, the OTA server)
+
+// float -> IEEE 754 half (round to nearest; overflow -> infinity, NaN stays NaN). numpy reads it as '<f2'.
+uint16_t toHalf(float f)
+{
+    uint32_t x;
+    std::memcpy(&x, &f, sizeof(x));
+    const uint32_t sign = (x >> 16) & 0x8000u;
+    const uint32_t e8 = (x >> 23) & 0xffu;
+    uint32_t mant = x & 0x7fffffu;
+    if (e8 == 0xffu) return static_cast<uint16_t>(sign | 0x7c00u | (mant ? 0x200u : 0u));
+    const int32_t e = static_cast<int32_t>(e8) - 127 + 15;
+    if (e >= 31) return static_cast<uint16_t>(sign | 0x7c00u);
+    if (e <= 0) {  // subnormal half (or zero)
+        if (e < -10) return static_cast<uint16_t>(sign);
+        mant |= 0x800000u;
+        const uint32_t shift = static_cast<uint32_t>(14 - e);
+        uint32_t h = mant >> shift;
+        if ((mant >> (shift - 1)) & 1u) ++h;
+        return static_cast<uint16_t>(sign | h);
+    }
+    uint32_t h = sign | (static_cast<uint32_t>(e) << 10) | (mant >> 13);
+    if (mant & 0x1000u) ++h;  // a carry into the exponent is still the right rounding
+    return static_cast<uint16_t>(h);
+}
 }  // namespace
 
 bool LifeLog::begin(const WifiEngine& wifi)
@@ -60,7 +81,7 @@ bool LifeLog::begin(const WifiEngine& wifi)
     if (!s_line_lock) return false;
     boot_id_ = esp_random();
     std::memcpy(pending_.h.magic, "SCL1", 4);
-    pending_.h.kind = 1;
+    pending_.h.kind = 3;
     pending_.h.nValues = kValues;
     pending_.h.bootId = boot_id_;
     s_self = this;
@@ -94,10 +115,7 @@ void LifeLog::tick(uint32_t tickSeq, uint32_t nowMs, uint16_t flags, const float
     r.seq = tickSeq;
     r.ms = nowMs;
     r.flags = flags;
-    for (int i = 0; i < kValues; ++i) {
-        const float x = std::isfinite(values[i]) ? values[i] * kScale : 0.0f;
-        r.v[i] = static_cast<int16_t>(std::lround(std::clamp(x, -32767.0f, 32767.0f)));
-    }
+    for (int i = 0; i < kValues; ++i) r.v[i] = toHalf(values[i]);
     if (++pending_n_ < kTicksPerDatagram) return;
     pending_.h.n = static_cast<uint8_t>(pending_n_);
     pending_.h.seq = seq_.fetch_add(1);
@@ -152,20 +170,14 @@ void LifeLog::taskLoop()
     auto ring = static_cast<RingbufHandle_t>(ring_);
     while (true) {
         // Per datagram nothing is logged in here: every line would come back through teeLog into this ring.
-        // without a card the ring is the only copy: it waits there until Wi-Fi is up (boot lines, short drop-outs)
-        if (!kSdEnabled && !wifi_->hasIp()) {
+        // the ring is the only copy: it waits there until Wi-Fi is up (boot lines, short drop-outs)
+        if (!wifi_->hasIp()) {
             vTaskDelay(pdMS_TO_TICKS(200));
             continue;
         }
         size_t size = 0;
         void* item = xRingbufferReceive(ring, &size, pdMS_TO_TICKS(1000));
         if (!item) continue;
-        const uint32_t now = static_cast<uint32_t>(esp_timer_get_time() / 1000);
-        timeval tv{};
-        gettimeofday(&tv, nullptr);
-        const double unix_s = tv.tv_sec > 1600000000 ? static_cast<double>(tv.tv_sec) + tv.tv_usec * 1e-6 : 0.0;
-        if (kSdEnabled && sd_.write(item, size, unix_s, now)) sd_written_.fetch_add(1);
-        sd_errors_.store(sd_.errors());
         if (wifi_->hasIp() && sock_ < 0) sock_ = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         bool ok = false;
         for (int attempt = 0; attempt < 5 && !ok && wifi_->hasIp() && sock_ >= 0; ++attempt) {
@@ -173,12 +185,11 @@ void LifeLog::taskLoop()
             if (!ok) vTaskDelay(pdMS_TO_TICKS(20 << attempt));  // the Wi-Fi tx queue is full for a moment
         }
         // A backlog (the boot lines, after a drop-out) goes out paced, ~100 datagrams/s: sent all at once it overran
-        // the Wi-Fi tx buffers (4 datagrams lost at boot, 2026-10-11). The live diary is ~8 datagrams/s.
+        // the Wi-Fi tx buffers (4 datagrams lost at boot, 2026-10-11). The live diary is ~5 datagrams/s + lines.
         UBaseType_t waiting = 0;
         vRingbufferGetInfo(ring, nullptr, nullptr, nullptr, nullptr, &waiting);
         if (waiting > 0) vTaskDelay(pdMS_TO_TICKS(10));
         vRingbufferReturnItem(ring, item);
-        // while Wi-Fi is down the card still has it: "unsent", not lost
         if (ok) sent_.fetch_add(1);
         else if (wifi_->hasIp()) dropped_.fetch_add(1);
     }

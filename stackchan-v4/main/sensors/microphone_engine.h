@@ -5,7 +5,7 @@
 #include <functional>
 #include <esp_codec_dev.h>
 
-#include "../hybrid/audio_frontend.h"
+#include "../perception/audio_frontend.h"
 #include "../core/ms_clock.h"
 
 // Both ES7210 microphone channels at 24 kHz (the shared I2S bus), read by a
@@ -34,7 +34,7 @@ public:
     // block peak per phase, taken by the stats line.
     void setMotionPhase(int phase) { motion_phase_.store(phase); }
     int takePhasePeak(int phase) { return phase_peak_[phase].exchange(0); }
-    // The filter-bank frames the Auditory NN reads (hybrid/audio_frontend.h).
+    // The filter-bank frames the Auditory NN reads (perception/audio_frontend.h).
     const AudioFrontEnd& audioFront() const { return front_; }
 
     // Call while our own speaker plays so the robot does not mistake its own
@@ -55,18 +55,12 @@ public:
 
     static constexpr uint32_t kSampleRate = 24000;
 
-    // Media for the PC (platform B, owner's permission 2026-10-17): the last n samples of the left channel at
-    // kSampleRate (n <= kRingSamples), copied from a ring in PSRAM that the mic task fills. Returns the count copied.
-    static constexpr int kRingSamples = 2 * 24000;
-    int recentSamples(int16_t* out, int n) const;
 
 private:
     static void taskEntry(void* arg);
     void taskLoop();
 
     static constexpr size_t kChunkSamplesPerChannel = 128;
-    int16_t* ring_ = nullptr;          // PSRAM, kRingSamples
-    std::atomic<uint32_t> ring_w_{0};  // samples written in total
 
     esp_codec_dev_handle_t mic_ = nullptr;
     std::function<void()> on_loud_sound_;

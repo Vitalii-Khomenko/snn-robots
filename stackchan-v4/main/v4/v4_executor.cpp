@@ -21,14 +21,13 @@ int argmaxRange(const NnV4::Out& o, int at, int count)
 }
 }  // namespace
 
-void V4Executor::apply(const BrainV4& brain, bool decided, bool night, BodySense& sense, uint32_t now,
-                       BrainV4::Executed& done)
+void V4Executor::apply(const BrainV4& brain, bool decided, bool night, uint32_t now, BrainV4::Executed& done)
 {
     if (!brain.nnValid()) return;
     applyFace(brain, now);
     applyVoice(brain, night, now, done);
     applyLeds(brain, night);
-    applyHead(brain, night, sense, now, done);
+    applyHead(brain, night, now, done);
     if (decided) {
         done.emotion = static_cast<int>(shown_);
         float yaw = 0, pitch = 0;
@@ -72,21 +71,20 @@ void V4Executor::applyVoice(const BrainV4& brain, bool night, uint32_t now, Brai
     prev_touch_ = touch;
     reaction_ticks_ = event ? 10 : std::max(0, reaction_ticks_ - 1);
     const bool reaction = reaction_ticks_ > 0;
-    // the v3 voice's intent vector, filled from the main network's voice head
-    PolicyGru::Action a = PolicyGru::neutral();
-    using namespace hybrid;
-    a[ACT_SOUND_ACT] = o[NO_SAY];
-    a[ACT_SOUND_VALENCE] = o[NO_SND_VALENCE];
-    a[ACT_SOUND_AROUSAL] = o[NO_SND_AROUSAL];
-    a[ACT_VOICE_REGISTER] = o[NO_SND_REGISTER];
-    a[ACT_VOICE_SLOPE] = o[NO_SND_VALENCE] * 0.5f;
-    a[ACT_VOICE_EXPR] = o[NO_SND_AROUSAL];
-    a[ACT_VOICE_LENGTH] = o[NO_SND_LENGTH];
-    a[ACT_VOICE_RATE] = o[NO_SND_RATE];
-    a[ACT_STYLE_CALM] = o[NO_STYLE_CALM];
-    a[ACT_STYLE_ASK] = o[NO_STYLE_ASK];
-    a[ACT_STYLE_PLAY] = o[NO_STYLE_PLAY];
-    a[ACT_STYLE_GRUMBLE] = o[NO_STYLE_GRUMBLE];
+    // the voice's intent, from the main network's voice head
+    BabbleVoice::Intent a;
+    a.say = o[NO_SAY];
+    a.valence = o[NO_SND_VALENCE];
+    a.arousal = o[NO_SND_AROUSAL];
+    a.reg = o[NO_SND_REGISTER];
+    a.slope = o[NO_SND_VALENCE] * 0.5f;
+    a.expr = o[NO_SND_AROUSAL];
+    a.length = o[NO_SND_LENGTH];
+    a.rate = o[NO_SND_RATE];
+    a.calm = o[NO_STYLE_CALM];
+    a.ask = o[NO_STYLE_ASK];
+    a.play = o[NO_STYLE_PLAY];
+    a.grumble = o[NO_STYLE_GRUMBLE];
     // Night: silent, whatever the network wants (the owner sleeps next to the robot) - a safety rule, not a choice.
     const bool allowed = !night && tokens_ >= (reaction ? 1.0f : 2.5f);
     if (vocal_.step(a, allowed, static_cast<int>(shown_), reaction)) {
@@ -109,14 +107,13 @@ void V4Executor::applyLeds(const BrainV4& brain, bool night)
     led_.setPattern(kLedRgb[c][0], kLedRgb[c][1], kLedRgb[c][2], p, bright, o[NO_LED_RATE]);
 }
 
-bool V4Executor::command(BodySense& sense, float yaw, float pitch, float speed, uint32_t now, bool force)
+bool V4Executor::command(float yaw, float pitch, float speed, uint32_t now, bool force)
 {
     yaw = std::clamp(yaw, -kYawLimitDeg, kYawLimitDeg);
     pitch = std::clamp(pitch, kPitchMinDeg, kPitchMaxDeg);
     if (!force && now - last_command_ms_ < kMinCommandGapMs) return false;
     if (!force && sent_valid_ && std::fabs(yaw - sent_yaw_) < 3.0f && std::fabs(pitch - sent_pitch_) < 2.5f) return false;
     motion_.moveTo(yaw, pitch, std::clamp(speed, 8.0f, kMaxSpeedDegS));
-    sense.observeMotorCommand(yaw, pitch);
     sent_yaw_ = yaw;
     sent_pitch_ = pitch;
     sent_valid_ = true;
@@ -124,7 +121,7 @@ bool V4Executor::command(BodySense& sense, float yaw, float pitch, float speed, 
     return true;
 }
 
-void V4Executor::applyHead(const BrainV4& brain, bool night, BodySense& sense, uint32_t now, BrainV4::Executed& done)
+void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, BrainV4::Executed& done)
 {
     const auto& o = brain.nn();
     const int mode = argmaxRange(o, kNoHeadAt, kNoHeadCount);
@@ -171,10 +168,10 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, BodySense& sense, u
         const float t = static_cast<float>(now - gesture_start_ms_) * 0.001f;
         if (gesture_ == Gesture::Flinch) {
             if (gesture_step_ < 0) {
-                command(sense, base_yaw_, base_pitch_ + gesture_amp_, 160.0f, now, true);  // the head jerks back
+                command(base_yaw_, base_pitch_ + gesture_amp_, 160.0f, now, true);  // the head jerks back
                 gesture_step_ = 0;
             } else if (gesture_step_ == 0 && t > 0.6f) {
-                command(sense, base_yaw_, base_pitch_, 50.0f, now, true);
+                command(base_yaw_, base_pitch_, 50.0f, now, true);
                 gesture_step_ = 1;
             } else if (t > 1.2f) {
                 gesture_ = Gesture::None;
@@ -187,14 +184,14 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, BodySense& sense, u
             gesture_step_ = step;
             const float speed_deg_s = 2.0f * gesture_amp_ / gesture_half_s_;
             if (step >= frames) {
-                command(sense, base_yaw_, base_pitch_, speed_deg_s * 0.6f, now, true);
+                command(base_yaw_, base_pitch_, speed_deg_s * 0.6f, now, true);
                 gesture_ = Gesture::None;
             } else if (gesture_ == Gesture::Nod) {
                 const float target = step % 2 == 0 ? base_pitch_ - gesture_amp_ : base_pitch_ + gesture_amp_ * 0.25f;
-                command(sense, base_yaw_, target, speed_deg_s, now, true);
+                command(base_yaw_, target, speed_deg_s, now, true);
             } else {
                 const float target = step % 2 == 0 ? base_yaw_ + gesture_amp_ : base_yaw_ - gesture_amp_;
-                command(sense, target, base_pitch_ - (shown_ == Emotion::Sad ? 5.0f : 0.0f), speed_deg_s, now, true);
+                command(target, base_pitch_ - (shown_ == Emotion::Sad ? 5.0f : 0.0f), speed_deg_s, now, true);
             }
         }
         return;
@@ -204,11 +201,11 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, BodySense& sense, u
     const float move_speed = (night ? 8.0f : 18.0f) + 50.0f * speed;
     const float gy = o[NO_GAZE_YAW] * BrainV4::kGazeYawDeg, gp = o[NO_GAZE_PITCH] * BrainV4::kGazePitchDeg;
     switch (mode) {
-        case kHeadLook: command(sense, gy, 5.0f - gp, move_speed, now); break;
-        case kHeadScan: command(sense, gy, 5.0f - gp, move_speed * 0.6f, now); break;
-        case kHeadLookDown: command(sense, sent_yaw_, -15.0f, 15.0f, now); break;
-        case kHeadLookUp: command(sense, sent_yaw_, 22.0f, 15.0f, now); break;
-        case kHeadDoze: command(sense, sent_yaw_ * 0.5f, -18.0f, 8.0f, now); break;
+        case kHeadLook: command(gy, 5.0f - gp, move_speed, now); break;
+        case kHeadScan: command(gy, 5.0f - gp, move_speed * 0.6f, now); break;
+        case kHeadLookDown: command(sent_yaw_, -15.0f, 15.0f, now); break;
+        case kHeadLookUp: command(sent_yaw_, 22.0f, 15.0f, now); break;
+        case kHeadDoze: command(sent_yaw_ * 0.5f, -18.0f, 8.0f, now); break;
         default: break;  // hold
     }
 }

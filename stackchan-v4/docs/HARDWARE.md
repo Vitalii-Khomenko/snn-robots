@@ -19,7 +19,7 @@ PY32 IO expander that switches servo power, LEDs (12 RGB565 LEDs, written as one
 | Touch | Si12T head pad; LCD touch via LVGL `LV_EVENT_PRESSED` (an atomic flag, handled in the main loop) |
 | Proximity / light | LTR-553 |
 | Power | AXP2101 (battery level, charging direction; "USB present but not charging" cannot be told apart) |
-| Camera | GC0308, QQVGA RGB565, ~7 fps (143 ms per frame), one frame buffer (a one-off `cam_hal: FB-SIZE: 30720 != 38400` warning at start-up is harmless); the task runs the vision front end and the CNN (~26 ms per frame) on core 1 at priority 2, below the microphone |
+| Camera | GC0308, QQVGA RGB565, ~7 fps (143 ms per frame), one frame buffer (a one-off `cam_hal: FB-SIZE: 30720 != 38400` warning at start-up is harmless); the task runs the vision front end (~3 ms per frame: brain v4's motion sense) on core 1 at priority 2, below the microphone |
 
 ## Servos
 
@@ -85,25 +85,14 @@ check that `kUpdateMs` was not lowered. `imu=reads/fails` and `gyro_max`
 watchdog tighter than two 2 s windows of >= 10 deg power-cycled healthy
 servos again and again (tried and reverted).
 
-## Gyro: the vestibular sense
+## IMU: shake and tilt
 
-Shake detection stays on while the head moves, with the jolt threshold
-doubled (a smooth turn changes gravity in this head-mounted IMU by well
-under 1 m/s² per sample; a shaking hand gives tens). A detected shake is felt by the brain for 2 s; tilt (the body held up
-or turned over: sustained deviation from the at-rest gravity above 3 m/s² for 15 samples, released below 1.5) for 1.5 s and for as
-long as it stays tilted (`ImuEngine::tiltActive`). The simulator injects both events from its world model, because its own IMU
-path is held back while the head "moves". The at-rest gravity is re-taken after 3 s of lying still wherever the body lies (2026-10-04: lifted and put back, the
-robot otherwise stayed 'tilted' for good, startled, and touches went unanswered).
+`ImuEngine` still reports shake / tilt events (for the log: `shake detected`, `tilt detected`).
 
-The gyro finds by itself which axis is head yaw and which is pitch: it
-correlates each axis with the velocity the spring model expects (EMA 0.995,
-only while the model moves faster than 5°/s) and locks when |correlation| >
-50 (yaw) and > 20 (pitch): `gyro=learning` → `gyro=calibrated`. Then the
-bus gets the real head velocity and a model / gyro mismatch feeds the
-motor prediction error (compared with the model velocity up to 4 ticks back, dead
-zone 0.08, because the servos lag the model by 50–150 ms). If someone holds
-the head or a servo hangs, the brain feels it as a surprise. The efference
-copy still comes from the command, which must arrive before the motion.
+Brain v4 reads the accelerometer itself: the shake channel is the spread of |acceleration| over 0.5 s (our own
+servos' share taken off while they move), the tilt channel the lean from a learned upright (`ChannelEncoder`). The
+IMU channels are not read for 3 s after a servo power cycle (the head's jolt as the servos take hold is not a shake).
+The gyro serves the servo watchdog (real rotation vs commanded travel).
 
 ## Microphones and speaker
 
@@ -138,9 +127,9 @@ copy still comes from the command, which must arrive before the motion.
 GC0308 at QQVGA, one frame buffer, capture task on core 1 at priority 2, ~7 fps.
 Exposure, white balance and gain are locked after a short warm-up so the
 vision front end does not see global brightness drift. The task is paced from the start of the previous frame
-(a 26 ms network run does not lower the frame rate: 7.0 fps). Vision features older than 350 ms fade out before
-they reach the brain, and a stalled camera goes blind after 2 s. Dark frames (luminance spread < 3.5 levels) are
-"blind": no person, face, target or approach is reported.
+(7.0 fps). Brain v4 uses only the motion sense: the share of the picture that moves after the head's own turn is
+searched out, and its centre (the "where" values for attention). A frame taken while the head itself moves is not
+used. Dark frames (luminance spread < 3.5 levels) are "blind". No frame leaves the robot.
 
 ## Display
 
@@ -151,27 +140,27 @@ and skips the frame otherwise, so it never blocks on the display.
 
 ## Memory, tasks, configuration
 
-- `RobotRuntime` (with the whole brain: spiking core state, front ends, network scratch) is a static object placed
+- `RobotRuntime` (with the whole brain: the analyzer's state, front ends, network scratch) is a static object placed
   in PSRAM with `EXT_RAM_BSS_ATTR`
   (`CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL_MEMORY=y`). Before that, `.bss` in
   internal DRAM competed with the Wi-Fi and camera DMA buffers
   (`internal_free` fell to ~23–33 KB and the display froze). Every driver
   allocates its own DMA buffers in internal RAM in `begin()`.
-- Internal RAM: ~47 KB free at runtime (minimum ~40 KB). The Vision NN's layer activations (9 KB) live in
-  internal SRAM when more than 36 KB would remain after Wi-Fi and the camera took theirs; the spiking core's input
-  weights (231 KB) are copied from flash to PSRAM at boot (flash here is DIO, about half the speed).
+- Internal RAM: ~35 KB free at runtime (minimum ~21 KB, brain v4 firmware 2026-10-24). Brain v4's int8 weight tables
+  (236 KB) are copied from flash to PSRAM at boot (flash here is DIO, about half the speed of PSRAM).
 - Wi-Fi buffers are trimmed (static RX 4, dynamic RX/TX 12, no A-MPDU):
-  traffic is one ping every 20 min and NTP. Modem power save is off
+  traffic: the diary (~5 datagrams/s + log lines), a ping every 20 min, NTP. Modem power save is off
   (`WIFI_PS_NONE`), the robot runs on USB.
 - Tasks: main loop (core 0, 8 KB stack, registered with the task watchdog, 20 ms loop, the brain ticks every 50 ms),
   **voice** (core 1, priority 5, 6 KB: renders 20 ms chunks and blocks on the codec), microphone (core 1, priority
-  3), **camera** (core 1, priority 2, 5 KB), Wi-Fi (priority 3), LVGL. The camera is below the microphone so a
-  26 ms network run never keeps the microphone DMA waiting, and off core 0 so it never preempts the main loop.
+  3), **camera** (core 1, priority 2, 5 KB), diary sender (core 0, priority 1), update server (core 0, priority 2),
+  Wi-Fi (priority 3), LVGL. The camera is below the microphone so a frame never keeps the microphone DMA waiting,
+  and off core 0 so it never preempts the main loop.
 - Safety config: `CONFIG_ESP_TASK_WDT_PANIC=y` (a hung loop reboots),
   `CONFIG_COMPILER_STACK_CHECK_MODE_NORM=y`, brownout detector at level 7,
   panic prints and reboots. `stack_headroom` in the stats (~15 KB margin now).
-- CPU 240 MHz, 64-byte data cache lines. The numeric files (`hybrid/*net*`, `spiking_core`, `audio_frontend`,
-  `vision_frontend`, `policy_gru`, `voice/babble_*`) are compiled with `-O3 -funroll-loops` (no fast-math).
+- CPU 240 MHz, 64-byte data cache lines. The numeric files (`v4/snn_v4`, `v4/nn_v4`, `perception/*`,
+  `voice/babble_net`, `voice/droid_synth`) are compiled with `-O3 -funroll-loops` (no fast-math).
 - `sdkconfig.defaults` is complete (16 MB flash, PSRAM pins / mode / 80 MHz,
   custom partition table, the options above): `rm sdkconfig && ./build.sh
   build` is safe. It once was not, and a regenerated config silently lost
@@ -179,28 +168,27 @@ and skips the frame otherwise, so it never blocks on the display.
 
 ## Flash partitions
 
-Platform B layout (2026-10-11, `partitions.csv`). `nvs` kept the v3 offset and size, so the learned memory survived
-the change.
+Platform B's layout (2026-10-11, `partitions.csv`), kept: changing it needs a cable flash. Brain v4 does not use the
+weights slots yet (stage 6, learning from its own life, may send new weights of the main network there).
 
 | Name | Offset | Size | Use |
 |---|---|---|---|
-| nvs | 0x9000 | 24 KB | Wi-Fi calibration, the learned associative memory (`assoc`), the live weights slot (`weights`: `slot`, `next`, `tries`) |
+| nvs | 0x9000 | 24 KB | Wi-Fi calibration, the head pad's sensitivity (`life` / `touch`); platform B's keys may remain (unused) |
 | otadata | 0xF000 | 8 KB | which app slot boots, and its trial state |
 | phy_init | 0x11000 | 4 KB | RF |
 | ota_0, ota_1 | 0x20000, 0x420000 | 4 MB each | the application (~2 MB); an update goes to the idle one and boots on trial: the bootloader returns to the other if it does not reach a healthy minute (`CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`) |
-| weights_a, weights_b | 0x820000, 0x9A0000 | 1.5 MB each | the networks' weights outside the firmware (`main/net/weight_store.h`, blob ~0.5 MB); a new blob goes to the idle slot and is on trial for two boots |
+| weights_a, weights_b | 0x820000, 0x9A0000 | 1.5 MB each | unused by brain v4 (platform B's nightly weights lived here) |
 
 `flash.sh` writes the bootloader, partition table, `otadata` (reset: `ota_0` boots) and the application into `ota_0`.
-`tools/life/flash_weights.sh [a|b]` writes a weights blob over the cable; `tools/life/ota.py` updates both over Wi-Fi.
-Without a blob the networks run on their compiled-in weights.
+`tools/robot/ota.py firmware` updates the application over Wi-Fi. All networks run on their compiled-in weights.
 
 ## microSD
 
 The slot shares the screen's SPI bus (SPI3: SCK 36, MOSI 37, MISO 35, card CS GPIO4). With the card's CS floating an
 inserted card answers the screen's traffic and the picture flickers or vanishes: the firmware drives GPIO4 high at
-boot. Writing the diary to the card (`main/net/sd_diary.*`) crashed the robot in a boot loop (assert in
-`spi_hal_setup_trans`: an SD transaction started while the screen's DMA transfer was running) and is switched off
-(`kSdEnabled` in `main/net/life_log.cpp`). If it is tried again: rare large writes while the screen is idle.
+boot. Writing the diary to the card (platform B, 2026-10-11) crashed the robot in a boot loop (assert in
+`spi_hal_setup_trans`: an SD transaction started while the screen's DMA transfer was running); brain v4 has no card
+code. If it is tried again: rare large writes while the screen is idle.
 
 ## Flashing and recovery
 
@@ -213,7 +201,7 @@ kills other processes.
 
 ```bash
 docker ps --format '{{.ID}} {{.Image}} {{.Command}} {{.Status}}'   # find a stale monitor
-docker rm -f stackchan-neuromorphic-monitor                        # remove only it
+docker rm -f <the stale monitor container>                         # remove only it
 fuser -v /dev/ttyACM0                                              # port must be free
 ./build.sh build && ./flash.sh                                     # wait for "Hash of data verified"
 python3 tools/capture_serial.py --seconds 30                       # then a bounded capture
@@ -239,11 +227,11 @@ dock. If the chip answers with its MAC in download mode, it is alive; an
 incomplete write just keeps the app from booting.
 
 **Decoding a crash:** check that the `ELF file SHA256` in the log matches
-`sha256sum build/stackchan_neuromorphic.elf`, then
+`sha256sum build/stackchan_v4.elf`, then
 
 ```bash
 ../.tooling/espressif/tools/xtensa-esp-elf/*/xtensa-esp-elf/bin/xtensa-esp32s3-elf-addr2line -pfiaC \
-    -e build/stackchan_neuromorphic.elf <addresses from Backtrace>
+    -e build/stackchan_v4.elf <addresses from Backtrace>
 ```
 
 A known, fixed case: a late `esp_ping` callback (`onPingTimeout`) after
@@ -272,10 +260,11 @@ wrapper), `py32_io_expander`, `si12t`. A review fixed:
 ## Known limitations
 
 - No servo feedback (hardware); only the gyro sees real motion.
-- Person and face detection come from a 24 k-parameter CNN on a 32x24 image: it finds people-sized shapes, not
-  identities, and was trained on simulated people and COCO photos; expect false alarms and misses.
+- No recognition of people or faces in brain v4: the camera gives only motion (share and place).
+- The proximity sensor reads 0-16 of 2047 even with a hand at the face (2026-10-24, LED at 40 kHz x 8 pulses); the
+  near channel stays almost empty.
 - No sound direction (two microphones 5 cm apart).
-- The robot has no clock without Wi-Fi / NTP (no night).
+- The robot has no clock without Wi-Fi / NTP: quiet for the first 2 minutes after a boot, then daytime rules.
 - Nearly deaf to quiet sounds while turning (servo noise, see above).
 - Millisecond timestamps wrap after 49.7 days of uptime; all comparisons go
   through `main/core/ms_clock.h` (`msReached` for periodic deadlines,

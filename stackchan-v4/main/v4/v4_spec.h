@@ -3,6 +3,41 @@
 #include <cstdint>
 
 namespace v4 {
+enum Raw : uint8_t {
+    RAW_ENERGY,
+    RAW_SPEECH,
+    RAW_SHARP_EV,
+    RAW_HEAD_EV,
+    RAW_HEAD_HOLD,
+    RAW_SCREEN_EV,
+    RAW_ACCEL_SD,
+    RAW_IMU_PITCH,
+    RAW_IMU_ROLL,
+    RAW_IMU_OK,
+    RAW_NEAR_RAW,
+    RAW_NEAR_OK,
+    RAW_ALS,
+    RAW_ALS_OK,
+    RAW_MOTION_FRAC,
+    RAW_MOTION_X,
+    RAW_MOTION_Y,
+    RAW_FRAME_OK,
+    RAW_BATTERY,
+    RAW_STAMINA,
+    RAW_HOUR,
+    RAW_CLOCK_OK,
+    RAW_COUNT
+};
+inline constexpr const char* kRawNames[] = {"energy", "speech", "sharp_ev", "head_ev", "head_hold", "screen_ev", "accel_sd", "imu_pitch", "imu_roll", "imu_ok", "near_raw", "near_ok", "als", "als_ok", "motion_frac", "motion_x", "motion_y", "frame_ok", "battery", "stamina", "hour", "clock_ok"};
+enum Body : uint8_t {
+    BODY_HEAD_YAW_DEG,
+    BODY_HEAD_PITCH_DEG,
+    BODY_FACE,
+    BODY_SAID,
+    BODY_GESTURE,
+    BODY_COUNT
+};
+inline constexpr const char* kBodyNames[] = {"head_yaw_deg", "head_pitch_deg", "face", "said", "gesture"};
 enum Channel : uint8_t {
     CH_LOUD,
     CH_SHARP,
@@ -193,4 +228,5 @@ inline constexpr int kHeadDoze = 8;
 inline constexpr uint8_t kLedRgb[][3] = {{255, 240, 220}, {255, 200, 40}, {255, 110, 20}, {255, 20, 10}, {255, 70, 150}, {150, 40, 255}, {30, 60, 255}, {20, 200, 230}};
 inline constexpr int kSnnInputs = 15;
 inline constexpr int kNnInputs = 44;
+inline constexpr int kDiaryValues = 135;  // RAW, channels, SO, NO, BODY (tools/v4/diary.py)
 }  // namespace v4

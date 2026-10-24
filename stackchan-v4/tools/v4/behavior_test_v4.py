@@ -17,7 +17,7 @@ LINE = re.compile(r"^[IWE] \((\d+)\) (\w+): (.*)$")
 
 def run(name, minutes):
     out = os.path.join(ROOT, "simulator", "out", "v4_" + name)
-    subprocess.run([SIM, os.path.join(SCN, name + ".scn"), "--out", out, "--minutes", str(minutes), "--v4"],
+    subprocess.run([SIM, os.path.join(SCN, name + ".scn"), "--out", out, "--minutes", str(minutes)],
                    check=True, stdout=subprocess.DEVNULL)
     ev = []
     for line in open(os.path.join(out, "log.txt"), errors="ignore"):

@@ -1,12 +1,5 @@
-# Python environment for training, simulator tools and recording (tools/hybrid/py expects it in tools/vocal_decoder/.venv).
-# Install torch separately for your hardware (CUDA build recommended): https://pytorch.org
+# Python environment for brain v4's training and analysis tools (tools/v4/py runs $STACKCHAN_PY, default
+# ~/.venvs/stackchan/bin/python). Install torch separately for your hardware (CUDA build recommended):
+# https://pytorch.org   - tested with Python 3.13, torch 2.6.0+cu124, numpy 2.x, numba 0.6x
 numpy
-scipy
-soundfile
-Pillow
-faster-whisper
-# platform B, the teachers of perception (tools/life/teachers.py); install torchvision from the same index as torch
-ultralytics
-opencv-python-headless
-silero-vad
-torchlibrosa
+numba

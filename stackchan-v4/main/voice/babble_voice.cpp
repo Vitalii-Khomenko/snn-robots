@@ -10,7 +10,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-using namespace hybrid;
 
 bool BabbleVoice::begin()
 {
@@ -23,14 +22,14 @@ bool BabbleVoice::begin()
 
 void BabbleVoice::taskEntry(void* arg) { static_cast<BabbleVoice*>(arg)->taskLoop(); }
 
-bool BabbleVoice::step(const PolicyGru::Action& a, bool allow, int emotion, bool preempt)
+bool BabbleVoice::step(const Intent& a, bool allow, int emotion, bool preempt)
 {
     ++since_ticks_;
-    const float act = a[ACT_SOUND_ACT];
+    const float act = a.say;
     if (act < 0.3f) armed_ = true;
     const bool free_now = !active_.load() && !pending_.load();
     // a reaction (touch, shake, ...) is answered once, even in the middle of an idle phrase: it stays open from its onset
-    // until it is answered or the reaction window (BodyExecutor) closes - the network's answer may come a tick later
+    // until it is answered or the reaction window (the executor) closes - the network's answer may come a tick later
     if (preempt && !prev_preempt_) reaction_open_ = true;
     if (!preempt) reaction_open_ = false;
     prev_preempt_ = preempt;
@@ -43,11 +42,10 @@ bool BabbleVoice::step(const PolicyGru::Action& a, bool allow, int emotion, bool
     armed_ = false;
     since_ticks_ = 0;
     ++calls_;
-    pending_intent_ = {a[ACT_SOUND_VALENCE], a[ACT_SOUND_AROUSAL], a[ACT_VOICE_REGISTER], a[ACT_VOICE_SLOPE], a[ACT_VOICE_EXPR],
-                       a[ACT_VOICE_LENGTH], a[ACT_VOICE_RATE], a[ACT_STYLE_CALM], a[ACT_STYLE_ASK], a[ACT_STYLE_PLAY],
-                       a[ACT_STYLE_GRUMBLE], 0.0f};  // BabbleNet's 'sing' input: no songs (2026-10-04)
+    pending_intent_ = {a.valence, a.arousal, a.reg, a.slope, a.expr, a.length, a.rate, a.calm, a.ask, a.play, a.grumble,
+                       0.0f};  // BabbleNet's 'sing' input: no songs (2026-10-04)
     pending_emotion_ = emotion;
-    const float reg = std::clamp(a[ACT_VOICE_REGISTER], 0.0f, 1.0f);
+    const float reg = std::clamp(a.reg, 0.0f, 1.0f);
     pending_base_hz_ = wide_ ? 300.0f * std::exp2(2.4f * reg) : 520.0f * std::exp2(1.2f * reg);  // droid register
     base_hz_ = pending_base_hz_;
     active_.store(true);

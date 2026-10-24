@@ -5,7 +5,6 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "../../main/hybrid/assoc_memory.h"
 
 namespace sim {
 namespace {
@@ -111,20 +110,6 @@ Scenario loadScenario(const std::string& path)
             else if (key == "snn_cost") { need(1); sc.snn_cost_ms = num(path, line_no, w[1]); }
             else if (key == "loop_cost") { need(1); sc.loop_cost_ms = num(path, line_no, w[1]); }
             else if (key == "fov") { need(1); sc.fov_deg = num(path, line_no, w[1]); }
-            else if (key == "learned") {
-                need(3);
-                LearnedLink link;
-                link.cue = -1;
-                for (int c = 0; c < AssocMemory::kCues; ++c) {
-                    std::string n = AssocMemory::cueName(c);
-                    std::replace(n.begin(), n.end(), ' ', '_');
-                    if (n == w[1]) link.cue = c;
-                }
-                if (link.cue < 0) fail(path, line_no, "learned: unknown cue '" + w[1] + "'");
-                link.reward = num(path, line_no, w[2]);
-                link.threat = num(path, line_no, w[3]);
-                sc.learned.push_back(link);
-            }
             else if (key == "lamp") {
                 // lamp NAME AZ EL [on|off] [brightness B] [radius R]
                 need(3);

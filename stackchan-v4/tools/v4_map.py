@@ -108,7 +108,7 @@ assert VOICE + LEDS + HEAD == N_ACT, (VOICE, LEDS, HEAD, N_ACT)
 # ====================================================================== the whole robot
 def brain_map():
     s = Svg(2400, 1490)
-    s.text(40, 52, "StackChan, brain v4: a spiking stimulus analyzer and one decision network (mode v4)", 32, weight="bold")
+    s.text(40, 52, "StackChan, brain v4: a spiking stimulus analyzer and one decision network", 32, weight="bold")
     s.text(40, 82, "M5Stack CoreS3 / ESP32-S3  -  20 Hz tick (50 ms): channels and SNN every tick, the main network every "
                    "2nd tick  -  everything runs on the robot; the home PC records and trains", 16, C["dim"])
     s.legend(1560, 26, [(C["snn"], "spiking network (int8)"), (C["nn"], "trained network (float)"),
@@ -237,7 +237,7 @@ def brain_map():
     # ---------------------------------------------------------------- executor + body
     xx, xw = 2090, 280
     s.box(xx, 130, xw, 310, C["det"], "Executor (safety in C++)",
-          [f"takes the {len(S.NN_OUT)} outputs every 100 ms", "face shown >= 1.5 s, confirmed 2 ticks", "voice budget: 5 calls / 10 s refill,",
+          [f"takes the {len(S.NN_OUT)} outputs every 100 ms", "face shown >= 1.5 s, confirmed 2 ticks", "voice budget: 5 tokens, 1 per 10 s;",
            "  reactions may spend the last one", "night 21:45-06:00: silent,", "  LEDs <= 6 %, no nods / shakes",
            "nod / shake at most every 4 s", "servo bus <= 8 commands / s", "yaw ±100°, pitch -20..35°",
            "· the network decides WHAT,", "· the executor only HOW"], tsize=15)
@@ -257,16 +257,16 @@ def brain_map():
     # ---------------------------------------------------------------- the home PC
     py0 = 1060
     s.rect(30, py0, 2340, 410, "#140f1c", C["pc"], rx=14, sw=2)
-    s.text(50, py0 + 34, "Home PC (192.168.8.110): records every tick, trains, sends weights back", 22, "#e2c4f2", "bold")
+    s.text(50, py0 + 34, "Home PC (192.168.8.110): records every tick, analyses, trains, sends new firmware", 22, "#e2c4f2", "bold")
     s.box(50, py0 + 60, 330, 170, C["pc"], "Diary (UDP, 20 Hz)",
-          ["13 channels + 2 where", f"{len(S.SNN_OUT)} SNN numbers", f"{len(S.NN_OUT)} network outputs",
-           "-> lifelogd -> data/life/<day>", "+ status lines (faces, calls, gestures)"], tsize=15)
+          [f"{len(S.RAW)} raw readings, 13 + 2 channels", f"{len(S.SNN_OUT)} SNN numbers", f"{len(S.NN_OUT)} network outputs",
+           "float16, + every log line", "-> lifelogd -> data/life/<day>", "gzipped daily (~5x)"], tsize=15)
     steps = [("0  Calibration", ["7 days of real diary:", "where each channel sits,", "which zones it visits"]),
              ("1  Teachers", ["innate appraisal -> 32", "behaviour teacher with", "memory -> 61"]),
              ("2  Train the SNN", ["1400 synthetic + 400 real", "5-minute lives, surrogate", "gradients, int8 QAT"]),
              ("3  Train the NN", ["imitation of the teacher,", "2 DAgger rounds: the net", "acts, the teacher corrects"]),
              ("4  Check", ["export -> C++, exact parity,", "simulator (digital twin):", "behaviour tests"]),
-             ("5  OTA over Wi-Fi", ["firmware / mode v4", "rollback: mode life", "(platform B)"])]
+             ("5  OTA over Wi-Fi", ["new firmware on trial,", "confirmed after a healthy", "minute, else rolled back"])]
     x = 420
     for i, (title, lines) in enumerate(steps):
         s.box(x, py0 + 60, 300, 130, C["pc"], title, lines, tsize=15)
@@ -283,8 +283,8 @@ def brain_map():
     s.text(440, py0 + 300, "the SNN stays the innate nervous system; the main network learns the habits", 13, C["dim"])
     s.text(50, py0 + 280, "teacher-free on the robot:", 14, weight="bold")
     s.text(50, py0 + 300, "the teachers exist only on the PC", 13, C["dim"])
-    s.text(50, py0 + 360, "Platform B (stackchan-life, mode life) and the v3 hybrid brain stay in the same firmware: "
-                          "ota.py mode life | brain | v4 switches without reflashing.", 15, C["dim"])
+    s.text(50, py0 + 360, "The firmware holds only brain v4; the PC only records, analyses and trains. Nothing else leaves "
+                          "the robot: no camera frames, no sound.", 15, C["dim"])
     s.text(50, py0 + 388, "The simulator runs the real firmware code (channels, SNN, NN, executor) in a virtual room "
                           "with scripted people, sounds, touches and light.", 15, C["dim"])
     s.arrow([(ex + 60, ey + eh), (ex + 60, 1035), (185, 1035), (185, py0 + 58)], C["pc"],

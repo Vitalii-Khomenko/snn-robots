@@ -8,6 +8,7 @@ ticks: dict of arrays sorted by (boot, tick seq): boot, seq, ms (since boot), un
 recv (PC receive time, s), flags, values [T, n_values]. lines: list of (recv time, boot, ms, text).
 """
 import glob
+import gzip
 import os
 import struct
 import sys
@@ -53,7 +54,7 @@ def col(name):
 def read_file(path):
     """-> list of (recv time, datagram bytes)."""
     out = []
-    with open(path, "rb") as f:
+    with (gzip.open if path.endswith(".gz") else open)(path, "rb") as f:  # finished days are gzipped (2026-10-24)
         data = f.read()
     i = 0
     while i + 10 <= len(data):
@@ -68,7 +69,7 @@ def read_file(path):
 
 def load(day, hours=None, root=None):
     folder = os.path.join(root or os.path.join(ROOT, "data", "life"), day)
-    files = sorted(glob.glob(os.path.join(folder, "*.scl")))
+    files = sorted(glob.glob(os.path.join(folder, "*.scl")) + glob.glob(os.path.join(folder, "*.scl.gz")))
     if hours is not None:
         files = [f for f in files if int(os.path.basename(f)[:2]) in hours]
     boot, seq, ms, unix, recv, flags, values, lines = [], [], [], [], [], [], [], []

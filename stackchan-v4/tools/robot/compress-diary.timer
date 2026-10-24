@@ -1,0 +1,9 @@
+[Unit]
+Description=Compress the StackChan diary's finished days, daily at 04:30
+
+[Timer]
+OnCalendar=*-*-* 04:30
+Persistent=true
+
+[Install]
+WantedBy=timers.target

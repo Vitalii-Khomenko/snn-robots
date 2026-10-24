@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
-#include <array>
 #include <cmath>
 #include <bsp/esp-bsp.h>
 #include <driver/gpio.h>
@@ -15,7 +14,6 @@
 #include <esp_core_dump.h>
 #include <esp_ota_ops.h>
 #include <esp_system.h>
-#include <esp_random.h>
 #include <esp_task_wdt.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
@@ -23,22 +21,17 @@
 #include <nvs.h>
 #include <nvs_flash.h>
 
-#include "core/debug_flags.h"
 #include "core/i2c_bus_recovery.h"
-#include "hybrid/spiking_core.h"
 #include "power/power_rails.h"
 
 namespace {
 constexpr const char* kTag = "runtime";
-constexpr uint32_t kMainLoopIntervalMs = 20;  // 50 Hz is enough; motion is capped at 50 Hz and SNN at 20 Hz
+constexpr uint32_t kMainLoopIntervalMs = 20;  // 50 Hz is enough; motion is capped at 50 Hz and the brain at 20 Hz
 constexpr bool kCameraEnabled = true;
 // Switches for hardware diagnosis (2026-09-27 servo investigation). Both
 // on in normal use.
 constexpr bool kMicrophoneEnabled = true;
 constexpr bool kWifiEnabled = true;
-// Dataset logging mode (concept phase 10): 4 lines a second of policy input +
-// action on the serial console, for offline retraining (tools/hybrid/serial_dataset.py).
-constexpr bool kDatasetLogging = false;
 
 // bsp_audio_init(NULL) brings the raw I2S channel up in MONO slot mode.
 // The known-working driver always brings it up in STEREO with both slots,
@@ -103,9 +96,6 @@ bool RobotRuntime::begin()
     }
 
     logBootReason();
-    loadLearned();
-    loadWeights();
-    loadMode();
     {
         const esp_partition_t* run = esp_ota_get_running_partition();
         esp_ota_img_states_t state = ESP_OTA_IMG_UNDEFINED;
@@ -114,8 +104,8 @@ bool RobotRuntime::begin()
                  state == ESP_OTA_IMG_PENDING_VERIFY ? "new, on trial for a minute" : "confirmed");
     }
 
-    ESP_LOGI(kTag, "hybrid brain: SNN %d neurons / %d synapses, policy GRU, vision NN %s, auditory NN %s",
-             SpikingCore::kNeurons, loop_.brain().snn().synapseCount(), camera_.net().trained() ? "trained" : "MISSING",
+    ESP_LOGI(kTag, "brain v4: spiking analyzer %s, main network %s, auditory NN %s",
+             loop_.brain().analyzer().trained() ? "trained" : "UNTRAINED", loop_.brain().trained() ? "trained" : "UNTRAINED",
              loop_.auditory().trained() ? "trained" : "MISSING");
 
     // The microSD slot shares the screen's SPI wires: with its chip select floating an inserted card answers the
@@ -173,14 +163,9 @@ bool RobotRuntime::begin()
 
     ESP_LOGI(kTag, "IMU");
     if (imu_.begin()) {
-        imu_.onShake([this]() {
-            loop_.shake(nowMs());
-            ESP_LOGI(kTag, "shake detected");
-        });
-        imu_.onTilt([this]() {
-            loop_.tilt(nowMs());
-            ESP_LOGI(kTag, "tilt detected");
-        });
+        // brain v4 reads the accelerometer itself (shake, tilt channels); these events are for the log only
+        imu_.onShake([]() { ESP_LOGI(kTag, "shake detected"); });
+        imu_.onTilt([]() { ESP_LOGI(kTag, "tilt detected"); });
     } else {
         ESP_LOGE(kTag, "IMU begin failed");
     }
@@ -222,23 +207,20 @@ bool RobotRuntime::begin()
         }
     }
 
-    // Continuous readings, sampled by tickBrain() as NeuroBrain::Environment.
     ESP_LOGI(kTag, "power status");
     if (!power_status_.begin()) {
         ESP_LOGE(kTag, "power status begin failed");
     }
 
-    // Wi-Fi (net/wifi_engine.h) - station connect + NTP + LAN device-
-    // presence ping, feeding the NIGHT/DAY/OWNER input cells. Non-blocking:
-    // association and sync happen in the background.
+    // Wi-Fi (net/wifi_engine.h): station connect + NTP (the clock of the night rules and the tired channel) + the LAN
+    // device ping (owner=near/away in the stats line). Non-blocking: association and sync happen in the background.
     ESP_LOGI(kTag, "wifi");
     if (!kWifiEnabled) {
         ESP_LOGW(kTag, "wifi disabled (diagnostic)");
     } else if (!wifi_.begin()) {
         ESP_LOGE(kTag, "wifi begin failed");
     } else {
-        ota_.begin(weights_, [this](char* buf, int size) { return formatStatus(buf, size); },
-                   [this](int mode) { return setMode(mode); },
+        ota_.begin([this](char* buf, int size) { return formatStatus(buf, size); },
                    [this](int level) {
                        if (!touch_.setSensitivity(level)) return false;
                        nvs_handle_t h;
@@ -248,40 +230,14 @@ bool RobotRuntime::begin()
                            nvs_close(h);
                        }
                        return true;
-                   },
-                   [this](int kind, uint8_t* buf, int cap) { return formatMedia(kind, buf, cap); });
+                   });
     }
 
     const uint32_t now = nowMs();
-    // The Vision NN's layer activations (9 KB) go to internal SRAM when - and
-    // only when - Wi-Fi and the camera have already taken theirs and a safe
-    // reserve remains (Wi-Fi allocates rx/tx buffers dynamically at runtime).
-    {
-        constexpr size_t kInternalReserve = 36 * 1024;
-        const size_t internal_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-        if (internal_free > VisionNet::kFastScratchBytes + kInternalReserve) {
-            float* scratch = static_cast<float*>(
-                heap_caps_malloc(VisionNet::kFastScratchBytes, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
-            if (scratch) camera_.useFastScratch(scratch);
-        }
-        ESP_LOGI(kTag, "vision activations in %s (internal free %u B)",
-                 internal_free > VisionNet::kFastScratchBytes + kInternalReserve ? "internal SRAM" : "PSRAM",
-                 static_cast<unsigned>(internal_free));
-    }
-    // The spiking core's input weights (231 KB) are read ~30 columns per tick:
-    // PSRAM is about twice as fast as this board's flash (DIO mode).
-    {
-        void* copy = heap_caps_malloc(SpikingCore::kInputWeightBytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-        if (copy) {
-            std::memcpy(copy, SpikingCore::inputWeights(), SpikingCore::kInputWeightBytes);
-            loop_.brain().snn().useFastInputWeights(static_cast<const int8_t*>(copy));
-            loop_.brainV4().analyzer().useFastWeights();  // brain v4's int8 tables (236 KB) to PSRAM as well
-        }
-        ESP_LOGI(kTag, "SNN input weights in %s", copy ? "PSRAM" : "flash");
-    }
+    // brain v4's int8 tables (236 KB) are read every tick: PSRAM is about twice as fast as this board's flash (DIO)
+    loop_.brain().analyzer().useFastWeights();
     diagnostics_window_start_us_ = static_cast<uint64_t>(esp_timer_get_time());
     next_diagnostics_ms_ = now + 5000;
-    next_learn_save_ms_ = now + 600000;
 
     ESP_LOGI(kTag, "RobotRuntime ready");
     return true;
@@ -364,7 +320,7 @@ void RobotRuntime::superviseServos(uint32_t now)
     power::enableServoPower();  // VM EN off 500 ms, on
     motion_.resyncAfterPowerCycle();
     last_repower_ms_ = nowMs();
-    loop_.servoRepowered(last_repower_ms_);  // brain v4: the head's jolt is not a shake
+    loop_.servoRepowered(last_repower_ms_);  // the head's jolt is not a shake
     stalled_windows_ = 0;
     ++servo_repowers_;
     // the last three power cycles (oldest first): three within 3 minutes are a series
@@ -375,96 +331,6 @@ void RobotRuntime::superviseServos(uint32_t now)
     panel_recover_ms_ = last_repower_ms_ + 1000;  // when the rail has settled
 }
 
-namespace {
-constexpr const char* kLearnNs = "assoc";
-constexpr uint32_t kLearnMagic = 0x41534d32;  // "ASM2": 11 cues x 3 outcomes (ASM1 had 2, 2026-10-17)
-constexpr uint32_t kLearnMagicV1 = 0x41534d31;
-struct LearnedBlobV1 {
-    uint32_t magic;
-    std::array<std::array<float, 2>, AssocMemory::kCues> w;
-};
-struct LearnedBlob {
-    uint32_t magic = kLearnMagic;
-    AssocMemory::Weights w{};
-};
-constexpr uint32_t kNeedsMagic = 0x4e454431;  // "NED1": Motivation's five needs
-struct NeedsBlob {
-    uint32_t magic = kNeedsMagic;
-    std::array<float, Motivation::kNeeds> d{};
-};
-}  // namespace
-
-void RobotRuntime::loadLearned()
-{
-    nvs_handle_t h;
-    if (nvs_open(kLearnNs, NVS_READONLY, &h) != ESP_OK) {
-        ESP_LOGI(kTag, "learned: nothing yet (a fresh memory)");
-        return;
-    }
-    LearnedBlob blob;
-    blob.magic = 0;  // nothing read yet
-    size_t size = sizeof(blob);
-    LearnedBlobV1 v1;
-    size_t size_v1 = sizeof(v1);
-    if (nvs_get_blob(h, "w", &v1, &size_v1) == ESP_OK && size_v1 == sizeof(v1) && v1.magic == kLearnMagicV1) {
-        for (int c = 0; c < AssocMemory::kCues; ++c) blob.w[c] = {v1.w[c][0], v1.w[c][1], 0.0f};
-        blob.magic = kLearnMagic;
-        size = sizeof(blob);
-        ESP_LOGI(kTag, "learned: the 2-outcome memory carried over into 3 outcomes");
-    }
-    if ((blob.magic == kLearnMagic && size == sizeof(blob)) ||
-        (nvs_get_blob(h, "w", &blob, &size) == ESP_OK && size == sizeof(blob) && blob.magic == kLearnMagic)) {
-        loop_.brain().assoc().setWeights(blob.w);
-        int links = 0;
-        for (const auto& cue : blob.w)
-            for (float x : cue) links += x >= 0.25f ? 1 : 0;
-        ESP_LOGI(kTag, "learned: memory loaded (%d links >= 0.25)", links);
-    } else {
-        ESP_LOGW(kTag, "learned: stored memory unreadable, starting fresh");
-    }
-    {
-        OnlineLearner::Weights w{};
-        size = sizeof(w);
-        if (nvs_get_blob(h, "online", &w, &size) == ESP_OK && size == sizeof(w)) {
-            learner_.setWeights(w);
-            ESP_LOGI(kTag, "online learning: the day's corrections restored (mean |dW| %.4f)",
-                     static_cast<double>(learner_.size()));
-        }
-    }
-    NeedsBlob needs;
-    size = sizeof(needs);
-    if (nvs_get_blob(h, "needs", &needs, &size) == ESP_OK && size == sizeof(needs) && needs.magic == kNeedsMagic) {
-        loop_.brain().motivation().restore(needs.d);
-        ESP_LOGI(kTag, "needs restored: social %.2f, stimulation %.2f, comfort %.2f",
-                 static_cast<double>(needs.d[Motivation::Social]), static_cast<double>(needs.d[Motivation::Stimulation]),
-                 static_cast<double>(needs.d[Motivation::Comfort]));
-    }
-    nvs_close(h);
-}
-
-void RobotRuntime::saveLearned(uint32_t now)
-{
-    learn_change_ += loop_.brain().assoc().takeChange();
-    if (!msReached(now, next_learn_save_ms_)) return;
-    next_learn_save_ms_ = now + 600000;
-    nvs_handle_t h;
-    if (nvs_open(kLearnNs, NVS_READWRITE, &h) != ESP_OK) return;
-    // the needs every 10 min (24 bytes: a reboot does not make the robot forget it was lonely)
-    NeedsBlob needs;
-    needs.d = loop_.brain().motivation().needs();
-    nvs_set_blob(h, "needs", &needs, sizeof(needs));
-    if (mode_ == 2) nvs_set_blob(h, "online", &learner_.weights(), sizeof(OnlineLearner::Weights));
-    if (learn_change_ >= 0.01f) {  // the memory only when it changed
-        learn_change_ = 0.0f;
-        LearnedBlob blob;
-        blob.w = loop_.brain().assoc().weights();
-        nvs_set_blob(h, "w", &blob, sizeof(blob));
-        ESP_LOGI(kTag, "learned: memory saved");
-    }
-    if (nvs_commit(h) != ESP_OK) ESP_LOGW(kTag, "learned/needs: NVS commit FAILED");
-    nvs_close(h);
-}
-
 void RobotRuntime::logStats(uint32_t now)
 {
     const uint32_t servo_sent = motion_.takePacketCount();
@@ -473,75 +339,60 @@ void RobotRuntime::logStats(uint32_t now)
     imu_.takeHealth(imu_reads, imu_fails, gyro_max);
     const uint64_t now_us = static_cast<uint64_t>(esp_timer_get_time());
     const uint32_t window_us = static_cast<uint32_t>(now_us - diagnostics_window_start_us_);
-    // The voice streams from its own task, so the main loop never waits for the speaker any more: all of its busy
-    // time is work. (Subtracting AudioOutput's DMA wait - measured in the voice task - read ~0 % while it talked.)
-    const uint64_t active_us = diagnostics_busy_us_;
+    // The voice streams from its own task, so all of the main loop's busy time is work.
     const unsigned busy = window_us ? static_cast<unsigned>(diagnostics_busy_us_ * 1000ULL / window_us) : 0;
-    const unsigned active = window_us ? static_cast<unsigned>(active_us * 1000ULL / window_us) : 0;
     float head_yaw = 0.0f, head_pitch = 0.0f;
     motion_.getCurrentDeg(head_yaw, head_pitch);
-    auto& brain = loop_.brain();
-    auto& executor = loop_.executor();
     auto pct = [](float x) { return static_cast<unsigned>(std::clamp(x, 0.0f, 1.0f) * 100.0f + 0.5f); };
     uint32_t face_frames = 0, face_max_us = 0;
     face_.takeDrawStats(face_frames, face_max_us);
-    const unsigned tract_permille = window_us ? static_cast<unsigned>(vocal_.takeRenderUs() * 1000ULL / window_us) : 0;
+    const unsigned voice_permille = window_us ? static_cast<unsigned>(vocal_.takeRenderUs() * 1000ULL / window_us) : 0;
+    // the machine: CPU, memory, timing, servos, sensors, links
     ESP_LOGI(kTag,
-             "stats: busy=%u.%u%% active=%u.%u%% internal_free=%uB internal_min=%uB psram_free=%uB stack_headroom=%uB "
-             "wifi=%s time=%s owner=%s snn_us=%u/%u snn_stage_us=%.0f/%.0f/%.0f policy_us=%u vision_us=%u/%u audio_us=%u mic_block_us=%u tick_us=%u tick_max_us=%u "
-             "missed_ticks=%u tick_ms=%u snn_rate=%.3f snn_resets=%u policy_faults=%u vision_nan=%u audio_nan=%u "
-             "moves=%u calls=%u nods=%u startles=%u stamina=%u%% travel=%udeg battery=%u%% head=%d,%d "
-             "servo_packets=%u cmd_travel=%.0fdeg real_rotation=%.0fdeg gyro=%s imu=%u/%u gyro_max=%.0f servo_repowers=%u "
-             "face_fps=%u face_frame_max_us=%u cam_fps=%.1f mic_peak=%d/%d/%d voice=%s voice_gaps=%u voice_load=%u.%u%% heart=%.0f diary=%u/%u sd=%u/%u world_us=%u gyro_restarts=%u online_dw=%.4f",
-             busy / 10, busy % 10, active / 10, active % 10,
-             static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+             "stats: busy=%u.%u%% internal_free=%uB internal_min=%uB psram_free=%uB stack_headroom=%uB wifi=%s time=%s "
+             "owner=%s tick_us=%u tick_max_us=%u missed_ticks=%u tick_ms=%u audio_us=%u mic_block_us=%u cam_fps=%.1f "
+             "cam_us=%u audio_nan=%u stamina=%u%% travel=%udeg battery=%u%% head=%d,%d servo_packets=%u cmd_travel=%.0fdeg "
+             "real_rotation=%.0fdeg imu=%u/%u gyro_max=%.0f gyro_restarts=%u servo_repowers=%u face_fps=%u "
+             "face_frame_max_us=%u mic_peak=%d/%d/%d voice=%s voice_gaps=%u voice_load=%u.%u%% touch_storms=%u diary=%u/%u",
+             busy / 10, busy % 10, static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
              static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
              static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)),
-             static_cast<unsigned>(uxTaskGetStackHighWaterMark(NULL) * 4),
-             wifi_.isConnected() ? "up" : "down", wifi_.isTimeSynced() ? "synced" : "unsynced",
-             wifi_.knownDeviceNearby() ? "near" : "away", static_cast<unsigned>(brain.snnUs()),
-             static_cast<unsigned>(brain.takeSnnMinUs()), static_cast<double>(brain.snn().stageUs()[0]),
-             static_cast<double>(brain.snn().stageUs()[1]), static_cast<double>(brain.snn().stageUs()[2]),
-             static_cast<unsigned>(brain.policyUs()),
-             static_cast<unsigned>(camera_.visionUs()), static_cast<unsigned>(camera_.takeVisionMinUs()),
-             static_cast<unsigned>(loop_.audioUs()), static_cast<unsigned>(mic_.audioFront().blockUs()), static_cast<unsigned>(loop_.tickLastUs()),
-             static_cast<unsigned>(loop_.takeTickMaxUs()), static_cast<unsigned>(loop_.missedTicks()),
-             static_cast<unsigned>(loop_.tickPeriodMs()), static_cast<double>(brain.snn().meanRate()),
-             static_cast<unsigned>(brain.snnResets()), static_cast<unsigned>(brain.policyFaults()),
-             static_cast<unsigned>(camera_.net().nanCount()), static_cast<unsigned>(loop_.auditory().nanCount()),
-             static_cast<unsigned>(executor.moves()), static_cast<unsigned>(executor.calls()),
-             static_cast<unsigned>(executor.nods()),
-             static_cast<unsigned>(executor.startles()), pct(motion_.staminaLevel()),
-             static_cast<unsigned>(motion_.travelledDeg()), pct(loop_.raw().battery01), static_cast<int>(head_yaw),
-             static_cast<int>(head_pitch), static_cast<unsigned>(servo_sent), motion_.travelledDeg() - last_travel_deg_,
-             imu_.takeRotationDeg(), loop_.gyroValid() ? "calibrated" : "learning", static_cast<unsigned>(imu_reads),
-             static_cast<unsigned>(imu_fails), static_cast<double>(gyro_max),
-             static_cast<unsigned>(servo_repowers_),
-             static_cast<unsigned>(face_frames / 5), static_cast<unsigned>(face_max_us),
+             static_cast<unsigned>(uxTaskGetStackHighWaterMark(NULL) * 4), wifi_.isConnected() ? "up" : "down",
+             wifi_.isTimeSynced() ? "synced" : "unsynced", wifi_.knownDeviceNearby() ? "near" : "away",
+             static_cast<unsigned>(loop_.tickLastUs()), static_cast<unsigned>(loop_.takeTickMaxUs()),
+             static_cast<unsigned>(loop_.missedTicks()), static_cast<unsigned>(loop_.tickPeriodMs()),
+             static_cast<unsigned>(loop_.audioUs()), static_cast<unsigned>(mic_.audioFront().blockUs()),
              static_cast<double>(camera_.takeFrameCount() * 1e6f / static_cast<float>(window_us)),
-             mic_.takePhasePeak(0), mic_.takePhasePeak(1), mic_.takePhasePeak(2),
-             executor.voiceTrained() ? "babble" : "silent", static_cast<unsigned>(vocal_.gaps()), tract_permille / 10, tract_permille % 10,
-             static_cast<double>(brain.physiology().heartBpm), static_cast<unsigned>(life_.sent()),
-             static_cast<unsigned>(life_.dropped()), static_cast<unsigned>(life_.sdWritten()),
-             static_cast<unsigned>(life_.sdErrors()), static_cast<unsigned>(world_us_), static_cast<unsigned>(imu_.gyroRestarts()),
-             static_cast<double>(learner_.size()));
+             static_cast<unsigned>(camera_.frontUs()), static_cast<unsigned>(loop_.auditory().nanCount()),
+             pct(motion_.staminaLevel()), static_cast<unsigned>(motion_.travelledDeg()),
+             pct(power_status_.batteryLevel01()), static_cast<int>(head_yaw), static_cast<int>(head_pitch),
+             static_cast<unsigned>(servo_sent), motion_.travelledDeg() - last_travel_deg_, imu_.takeRotationDeg(),
+             static_cast<unsigned>(imu_reads), static_cast<unsigned>(imu_fails), static_cast<double>(gyro_max),
+             static_cast<unsigned>(imu_.gyroRestarts()), static_cast<unsigned>(servo_repowers_),
+             static_cast<unsigned>(face_frames / 5), static_cast<unsigned>(face_max_us), mic_.takePhasePeak(0),
+             mic_.takePhasePeak(1), mic_.takePhasePeak(2), vocal_.trained() ? "babble" : "silent",
+             static_cast<unsigned>(vocal_.gaps()), voice_permille / 10, voice_permille % 10,
+             static_cast<unsigned>(loop_.stormDropped()), static_cast<unsigned>(life_.sent()),
+             static_cast<unsigned>(life_.dropped()));
     {
-        // brain v4's senses (v4/channel_encoder.h): the 13 channels now, and the raw light / proximity readings
+        // the brain: the 13 channels now, the raw light / proximity readings, the analyzer's mood, what was done
         const auto& c = loop_.channels();
-        auto& v4b = loop_.brainV4();
-        const auto& so = v4b.snn();
-        const auto& ex = loop_.executorV4();
+        auto& b = loop_.brain();
+        const auto& so = b.snn();
+        const auto& ex = loop_.executor();
         ESP_LOGI(kTag, "v4: als=%u ir=%u ps=%u/%02x near=%.0f ch=%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f "
-                 "snn=%s/%uus/rate%.3f val=%.2f aro=%.2f under=%.2f over=%.2f threat=%.2f nn=%s/faults%u active=%d face=%s "
-                 "calls=%u nods=%u shakes=%u",
+                 "snn=%s/%uus/rate%.3f val=%.2f aro=%.2f under=%.2f over=%.2f threat=%.2f nn=%s/faults%u drives=%d "
+                 "night=%d face=%s calls=%u nods=%u shakes=%u gestures=%u",
                  static_cast<unsigned>(presence_.alsRaw()), static_cast<unsigned>(presence_.alsIrRaw()),
                  static_cast<unsigned>(presence_.lastRaw()), static_cast<unsigned>(presence_.psHigh()),
-                 static_cast<double>(presence_.nearOverBaseline()), c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9], c[10], c[11], c[12],
-                 v4b.analyzer().trained() ? "on" : "untrained", static_cast<unsigned>(v4b.analyzer().lastUs()),
-                 static_cast<double>(v4b.analyzer().mixRate()), so[v4::SO_VALENCE], so[v4::SO_AROUSAL], so[v4::SO_UNDER],
-                 so[v4::SO_OVER], so[v4::SO_THREAT], v4b.trained() ? "on" : "untrained",
-                 static_cast<unsigned>(v4b.nnFaults()), loop_.v4Active() ? 1 : 0, emotionName(static_cast<Emotion>(ex.shownEmotion())),
-                 static_cast<unsigned>(ex.calls()), static_cast<unsigned>(ex.nods()), static_cast<unsigned>(ex.shakes()));
+                 static_cast<double>(presence_.nearOverBaseline()), c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8],
+                 c[9], c[10], c[11], c[12], b.analyzer().trained() ? "on" : "untrained",
+                 static_cast<unsigned>(b.analyzer().lastUs()), static_cast<double>(b.analyzer().mixRate()),
+                 so[v4::SO_VALENCE], so[v4::SO_AROUSAL], so[v4::SO_UNDER], so[v4::SO_OVER], so[v4::SO_THREAT],
+                 b.trained() ? "on" : "untrained", static_cast<unsigned>(b.nnFaults()), loop_.driving() ? 1 : 0,
+                 loop_.night() ? 1 : 0, emotionName(static_cast<Emotion>(ex.shownEmotion())),
+                 static_cast<unsigned>(ex.calls()), static_cast<unsigned>(ex.nods()), static_cast<unsigned>(ex.shakes()),
+                 static_cast<unsigned>(ex.gestures()));
     }
     {
         // the rails of the black-screen power-offs (2026-10-22/23): lowest VBUS / VSYS over the last stats window
@@ -552,79 +403,36 @@ void RobotRuntime::logStats(uint32_t now)
     last_travel_deg_ = motion_.travelledDeg();
     diagnostics_window_start_us_ = now_us;
     diagnostics_busy_us_ = 0;
-    brain.setLoad(std::clamp(static_cast<float>(active) / 1000.0f, 0.0f, 1.0f));
     next_diagnostics_ms_ = now + 5000;
 }
 
-// Who acts: the policy network (the v3 brain), the data collector (motor babbling, behavior/collector.h), or life
-// (platform B: the collector's decisions sampled from the actor trained on the diary, hybrid/actor_net.h).
-void RobotRuntime::loadMode()
+// The diary (net/life_log.h): every brain tick in the order of tools/v4/spec_v4.py DIARY.
+void RobotRuntime::logTick()
 {
-    nvs_handle_t h;
-    uint8_t v = 0;
-    if (nvs_open("life", NVS_READONLY, &h) == ESP_OK) {
-        nvs_get_u8(h, "collector", &v);
-        nvs_close(h);
-    }
-    mode_ = v <= 3 ? v : 0;
-    collector_mode_ = mode_ == 1 || mode_ == 2;
-    if (collector_mode_) {
-        collector_ = Collector(esp_random());
-        loop_.brain().setExternalPolicy([this](const PolicyGru::Input&, PolicyGru::Action& a) {
-            const auto& bus = loop_.brain().bus();
-            if (mode_ == 2) {
-                // the actor's state, in the order of tools/life/train_critic.py STATE_NAMES
-                float x[ActorNet::kIn];
-                float* p = x;
-                p = std::copy(bus.vision.begin(), bus.vision.end(), p);
-                p = std::copy(bus.audio.begin(), bus.audio.end(), p);
-                p = std::copy(bus.body.begin(), bus.body.end(), p);
-                p = std::copy(bus.ctx.begin(), bus.ctx.end(), p);
-                p = std::copy(bus.pe.begin(), bus.pe.end(), p);
-                p = std::copy(bus.learn.begin(), bus.learn.end(), p);
-                const auto& needs = loop_.brain().motivation().needs();
-                p = std::copy(needs.begin(), needs.end(), p);
-                p = std::copy(wm_log_, wm_log_ + WorldModel::kLogValues, p);
-                *p = loop_.brain().assoc().expectation(AssocMemory::Talk);
-                float out[ActorNet::kOut];
-                const bool ok = actor_.step(x, out);
-                if (ok) learner_.apply(actor_.features(), out);
-                collector_.setActor(ok ? out : nullptr);
-                collector_.step(bus, nowMs(), a);
-                loop_.executor().setVoiceEmotion(collector_.voiceEmotion());
-                if (ok) {
-                    const auto& d = collector_.lastDecision();
-                    learner_.learn(loop_.brain().motivation().reward(), actor_.features(), out,
-                                   {d.move_possible, d.moved, d.call_possible, d.called, d.yaw, d.pitch},
-                                   bus.ctx[hybrid::CTX_NIGHT] > 0.5f);
-                }
-                return;
-            }
-            collector_.step(bus, nowMs(), a);
-        });
-    }
-    if (mode_ == 3) {
-        // brain v4 drives the body (v4/brain_v4.h); the v3 policy is not computed (its slot gets a neutral action)
-        loop_.brain().setExternalPolicy([](const PolicyGru::Input&, PolicyGru::Action& a) { a = PolicyGru::neutral(); });
-        loop_.setV4Active(true);
-    }
-    loop_.brain().setSpikingCore(mode_ == 0 || mode_ == 1);  // modes life and v4 do not read the v3 spiking core
-    loop_.executor().setFree(mode_ == 2);      // ... and has no behaviour budgets in the executor, only physical limits
-    static const char* const names[] = {"brain (the v3 policy network)", "collector (motor babbling)",
-                                        "life (platform B: the actor learned from the diary)",
-                                        "v4 (brain v4: spiking analyzer + main network)"};
-    ESP_LOGI(kTag, "mode: %s", names[mode_]);
-}
-
-// PUT /mode from the update server: stored, then the robot reboots into it.
-bool RobotRuntime::setMode(int mode)
-{
-    nvs_handle_t h;
-    if (mode < 0 || mode > 3 || nvs_open("life", NVS_READWRITE, &h) != ESP_OK) return false;
-    const bool ok = nvs_set_u8(h, "collector", static_cast<uint8_t>(mode)) == ESP_OK && nvs_commit(h) == ESP_OK;
-    nvs_close(h);
-    ESP_LOGI(kTag, "mode -> %d after the reboot", mode);
-    return ok;
+    const uint32_t tick = loop_.tickCount();
+    if (tick == logged_tick_) return;
+    logged_tick_ = tick;
+    static float values[LifeLog::kValues];
+    const auto& r = loop_.raw();
+    const float raw[] = {r.energy, r.speech, r.sharpEv, r.headEv, r.headHold, r.screenEv, r.accelSd, r.imuPitch,
+                         r.imuRoll, r.imuOk ? 1.0f : 0.0f, r.nearRaw, r.nearOk ? 1.0f : 0.0f, r.als,
+                         r.alsOk ? 1.0f : 0.0f, r.motionFrac, r.motionX, r.motionY, r.frameOk ? 1.0f : 0.0f,
+                         r.battery, r.stamina, r.hour, r.clockOk ? 1.0f : 0.0f};
+    static_assert(sizeof(raw) / sizeof(float) == v4::RAW_COUNT, "diary order: tools/v4/spec_v4.py RAW");
+    float* p = std::copy(std::begin(raw), std::end(raw), values);
+    p = std::copy(loop_.channels().begin(), loop_.channels().end(), p);
+    p = std::copy(loop_.brain().snn().begin(), loop_.brain().snn().end(), p);
+    p = std::copy(loop_.brain().nn().begin(), loop_.brain().nn().end(), p);
+    float yaw = 0, pitch = 0;
+    motion_.getCurrentDeg(yaw, pitch);
+    *p++ = yaw;
+    *p++ = pitch;
+    *p++ = static_cast<float>(loop_.executor().shownEmotion());
+    *p++ = loop_.saidThisTick() ? 1.0f : 0.0f;
+    *p++ = loop_.gestureThisTick() ? 1.0f : 0.0f;
+    static_assert(v4::RAW_COUNT + v4::kSnnInputs + v4::SO_COUNT + v4::NO_COUNT + v4::BODY_COUNT == LifeLog::kValues,
+                  "diary order: tools/v4/spec_v4.py DIARY");
+    life_.tick(tick, nowMs(), static_cast<uint16_t>((loop_.driving() ? 1 : 0) | (loop_.night() ? 2 : 0)), values);
 }
 
 // Why the robot (re)started, into the diary: a freeze without a trace (2026-10-11) is what this is for. A panic or
@@ -658,119 +466,6 @@ void RobotRuntime::logBootReason()
     esp_core_dump_image_erase();
 }
 
-// The nightly weights (net/weight_store.h), net by net: a net takes them only when every one of its arrays is there
-// with the size this firmware expects; otherwise it keeps the weights compiled into the firmware.
-namespace {
-// A net of the policy's shape from the blob ("<net>.<array>"): all its arrays with the expected sizes, or nothing.
-bool loadParams(const WeightStore& store, const char* net, const PolicyGru::ParamInfo* info, PolicyGru::Params& out)
-{
-    const void* ptr[PolicyGru::kParamCount];
-    static_assert(sizeof(PolicyGru::Params) == sizeof(ptr), "Params = the pointers in paramInfo() order");
-    for (int i = 0; i < PolicyGru::kParamCount; ++i) {
-        char name[32];
-        std::snprintf(name, sizeof(name), "%s.%s", net, info[i].name);
-        ptr[i] = store.find(name, info[i].int8, info[i].count);
-        if (!ptr[i]) {
-            ESP_LOGW(kTag, "weights: %s missing in the blob: %s keeps its compiled-in weights", name, net);
-            return false;
-        }
-    }
-    std::memcpy(&out, ptr, sizeof(out));
-    return true;
-}
-
-// A layered INT8 net (Vision, Auditory) from the blob: every layer's weights, scales and biases, or nothing.
-template <size_t N>
-bool loadLayers(const WeightStore& store, const char* net, const LayerInfo* info, std::array<LayerParams, N>& out)
-{
-    std::array<LayerParams, N> p;
-    for (size_t i = 0; i < N; ++i) {
-        char w[32], s[32], b[32];
-        std::snprintf(w, sizeof(w), "%s.%s_w", net, info[i].name);
-        std::snprintf(s, sizeof(s), "%s.%s_s", net, info[i].name);
-        std::snprintf(b, sizeof(b), "%s.%s_b", net, info[i].name);
-        p[i].w = static_cast<const int8_t*>(store.find(w, true, info[i].weights));
-        p[i].s = static_cast<const float*>(store.find(s, false, info[i].outputs));
-        p[i].b = static_cast<const float*>(store.find(b, false, info[i].outputs));
-        if (!p[i].w || !p[i].s || !p[i].b) {
-            ESP_LOGW(kTag, "weights: %s.%s missing in the blob: %s keeps its compiled-in weights", net, info[i].name, net);
-            return false;
-        }
-    }
-    out = p;
-    return true;
-}
-}  // namespace
-
-// The nightly weights (net/weight_store.h), net by net: a net takes them only when every one of its arrays is there
-// with the size this firmware expects; otherwise it keeps the weights compiled into the firmware.
-void RobotRuntime::loadWeights()
-{
-    if (weights_.open()) applyWeights();
-}
-
-void RobotRuntime::applyWeights()
-{
-    PolicyGru::Params p;
-    if (loadParams(weights_, "policy", PolicyGru::paramInfo(), p)) {
-        loop_.brain().policy().use(p);
-        ESP_LOGI(kTag, "weights: policy from flash (slot %c, version %u)", weights_.slot(),
-                 static_cast<unsigned>(weights_.version()));
-    }
-    if (loadParams(weights_, "actor", ActorNet::paramInfo(), p)) {
-        actor_.use(p);
-        ESP_LOGI(kTag, "weights: actor from flash");
-    }
-    if (loadParams(weights_, "world", WorldModel::paramInfo(), p)) {
-        world_.use(p);
-        ESP_LOGI(kTag, "weights: world model from flash");
-    }
-    // perception retrained on the robot's own frames and sounds (tools/life/train_perception.py)
-    VisionNet::Params vp;
-    if (loadLayers(weights_, "vision", VisionNet::layerInfo(), vp)) {
-        camera_.useVisionWeights(vp);
-        ESP_LOGI(kTag, "weights: vision from flash");
-    }
-    AuditoryNet::Params ap;
-    if (loadLayers(weights_, "auditory", AuditoryNet::layerInfo(), ap)) {
-        loop_.auditory().use(ap);
-        ESP_LOGI(kTag, "weights: auditory from flash");
-    }
-}
-
-// New weights over Wi-Fi are switched in here, between two ticks, and watched for a minute: a net that produces
-// NaN on them reboots the robot (the trial then counts that boot; two and the old weights come back). After a clean
-// minute they are confirmed.
-void RobotRuntime::superviseWeights(uint32_t now)
-{
-    const uint32_t faults = loop_.brain().policyFaults() + world_.nanCount() + actor_.nanCount() +
-                            camera_.net().nanCount() + loop_.auditory().nanCount();
-    // the camera task may still be inside a frame on the old arrays: they are unmapped a moment later
-    if (release_old_ms_ && now - release_old_ms_ >= 1000) {
-        weights_.releaseOld();
-        release_old_ms_ = 0;
-    }
-    if (weights_.takeSwitchRequest()) {
-        if (weights_.open()) {
-            applyWeights();
-            release_old_ms_ = now | 1;
-            learner_.reset();  // the night learned the same days from the diary: the day's corrections start again
-            ESP_LOGI(kTag, "weights: switched to slot %c (version %u) without a reboot, on trial for a minute",
-                     weights_.slot(), static_cast<unsigned>(weights_.version()));
-        }
-        weights_trial_ms_ = now;
-        weights_faults_ = faults;
-    }
-    if (!weights_.onTrial()) return;
-    if (faults > weights_faults_ + 3) {
-        ESP_LOGW(kTag, "weights: the nets fail on the new weights (%u NaN): reboot, the trial counts it",
-                 static_cast<unsigned>(faults - weights_faults_));
-        vTaskDelay(pdMS_TO_TICKS(200));
-        esp_restart();
-    }
-    if (now - weights_trial_ms_ >= 60000) weights_.confirm();
-}
-
 // A firmware that came over the air is on trial (bootloader rollback): after a healthy minute it stays. One that
 // crashes or hangs before that boots back into the previous one.
 void RobotRuntime::confirmFirmware(uint32_t now)
@@ -785,7 +480,7 @@ void RobotRuntime::confirmFirmware(uint32_t now)
     }
 }
 
-// GET /status of the update server (net/ota_server.h, tools/life/ota.py). Runs on the server's task: only values
+// GET /status of the update server (net/ota_server.h, tools/robot/ota.py). Runs on the server's task: only values
 // that are set once at boot or are single words.
 int RobotRuntime::formatStatus(char* buf, int size)
 {
@@ -793,79 +488,11 @@ int RobotRuntime::formatStatus(char* buf, int size)
     esp_ota_img_states_t state = ESP_OTA_IMG_UNDEFINED;
     esp_ota_get_state_partition(run, &state);
     return std::snprintf(buf, static_cast<size_t>(size),
-                         "{\"firmware\":\"%s\",\"firmware_trial\":%s,\"weights_slot\":\"%c\",\"weights_version\":%u,"
-                         "\"weights_trial\":%s,\"uptime_s\":%u,\"diary_sent\":%u,\"diary_dropped\":%u,\"mode\":\"%s\",\"touch_level\":%d}\n",
+                         "{\"firmware\":\"%s\",\"firmware_trial\":%s,\"brain\":\"v4\",\"uptime_s\":%u,\"diary_sent\":%u,"
+                         "\"diary_dropped\":%u,\"touch_level\":%d}\n",
                          run ? run->label : "?", state == ESP_OTA_IMG_PENDING_VERIFY ? "true" : "false",
-                         weights_.slot(), static_cast<unsigned>(weights_.version()),
-                         weights_.onTrial() ? "true" : "false", static_cast<unsigned>(nowMs() / 1000),
-                         static_cast<unsigned>(life_.sent()), static_cast<unsigned>(life_.dropped()),
-                         mode_ == 3 ? "v4" : mode_ == 2 ? "life" : mode_ == 1 ? "collector" : "brain", touch_.sensitivity());
-}
-
-// GET /snapshot, /audio of the update server (on its task): what the perception networks see and hear, for their
-// training on the PC (the owner allowed frames and sound to the home PC, 2026-10-17).
-int RobotRuntime::formatMedia(int kind, uint8_t* buf, int cap)
-{
-    if (kind == 0) return camera_.snapshot(buf, cap, 1500);
-    struct __attribute__((packed)) Head {
-        char magic[4];
-        uint32_t rate, samples, feat_ticks, feat_dim, ms;
-    } head{{'A', 'U', 'D', '1'}, MicrophoneEngine::kSampleRate, 0, 0, 100, nowMs()};
-    const int max_samples = (cap - static_cast<int>(sizeof(head)) - 40 * 100 * 4) / 2;
-    if (max_samples <= 0) return 0;
-    int16_t* pcm = reinterpret_cast<int16_t*>(buf + sizeof(head));
-    head.samples = static_cast<uint32_t>(mic_.recentSamples(pcm, std::min(max_samples, MicrophoneEngine::kRingSamples)));
-    float* feat = reinterpret_cast<float*>(buf + sizeof(head) + head.samples * 2);
-    const uint32_t k = audio_feat_n_.load();
-    const uint32_t n = audio_feat_ ? std::min<uint32_t>(k, 40) : 0;
-    for (uint32_t i = 0; i < n; ++i) std::copy(audio_feat_ + ((k - n + i) % 40) * 100, audio_feat_ + ((k - n + i) % 40) * 100 + 100, feat + i * 100);
-    head.feat_ticks = n;
-    std::memcpy(buf, &head, sizeof(head));
-    return static_cast<int>(sizeof(head) + head.samples * 2 + n * 100 * 4);
-}
-
-// The diary (net/life_log.h): what the policy saw and did in every brain tick.
-void RobotRuntime::logTick(uint32_t now)
-{
-    auto& brain = loop_.brain();
-    const uint32_t tick = brain.tickCount();
-    if (tick == logged_tick_) return;
-    logged_tick_ = tick;
-    static float values[LifeLog::kValues];
-    float* p = std::copy(brain.lastPolicyInput().begin(), brain.lastPolicyInput().end(), values);
-    p = std::copy(brain.action().begin(), brain.action().end(), p);
-    p = std::copy(brain.bus().eff.begin(), brain.bus().eff.end(), p);
-    static_assert(WorldModel::kIn == hybrid::kPolicyInputs + hybrid::ACT_COUNT + hybrid::EFF_COUNT, "diary order");
-    const int64_t t0 = esp_timer_get_time();
-    world_.step(values);
-    world_us_ = static_cast<uint32_t>(esp_timer_get_time() - t0);
-    brain.motivation().logValues(p);
-    world_.logValues(p + Motivation::kLogValues);
-    world_.logValues(wm_log_);
-    if (!audio_feat_) audio_feat_ = static_cast<float*>(heap_caps_malloc(40 * 100 * sizeof(float), MALLOC_CAP_SPIRAM));
-    if (audio_feat_) {  // the Auditory NN's input of this tick, for GET /audio
-        const auto& in = loop_.auditory().lastInput();
-        const uint32_t k = audio_feat_n_.load();
-        std::copy(in.begin(), in.begin() + 100, audio_feat_ + (k % 40) * 100);
-        audio_feat_n_.store(k + 1);
-    }
-    brain.motivation().setWorldErrors(wm_log_[0], wm_log_[1]);  // curiosity in the next tick (motivation.h)
-    learner_.logValues(p + Motivation::kLogValues + WorldModel::kLogValues);
-    {  // bus v4: the perception networks' hidden layers, x 1/4 (ReLU activations reach ~20; the diary holds +-8)
-        float* e = p + Motivation::kLogValues + WorldModel::kLogValues + OnlineLearner::kLogValues;
-        for (float x : loop_.visionEmbedding()) *e++ = 0.25f * x;
-        for (float x : loop_.auditory().hidden()) *e++ = 0.25f * x;
-        *e++ = loop_.brain().assoc().expectation(AssocMemory::Talk);  // the third learned expectation (2026-10-17)
-        // brain v4: senses, then the analyzer's report and the main network's decision (zeros until they run)
-        e = std::copy(loop_.channels().begin(), loop_.channels().end(), e);
-        const auto& v4b = loop_.brainV4();
-        e = std::copy(v4b.snn().begin(), v4b.snn().end(), e);
-        e = std::copy(v4b.nn().begin(), v4b.nn().end(), e);
-        static_assert(LifeLog::kV4Values == v4::kSnnInputs + v4::SO_COUNT + v4::NO_COUNT, "diary order");
-    }
-    // flags bit 0: the action came from the collector's random decisions; bit 1: from the actor (mode life)
-    // flags: 1 the collector's random decisions, 2 the actor (mode life), 4 brain v4 drives (mode v4)
-    life_.tick(tick, now, static_cast<uint16_t>(mode_ == 1 ? 1 : mode_ == 2 ? 2 : mode_ == 3 ? 4 : 0), values);
+                         static_cast<unsigned>(nowMs() / 1000), static_cast<unsigned>(life_.sent()),
+                         static_cast<unsigned>(life_.dropped()), touch_.sensitivity());
 }
 
 void RobotRuntime::loop()
@@ -902,9 +529,8 @@ void RobotRuntime::loop()
         BrainLoop::Env env;
         env.timeSynced = wifi_.isTimeSynced();
         env.hour = env.timeSynced ? wifi_.hourOfDay() : 12.0f;
-        env.ownerNear = wifi_.knownDeviceNearby();
         loop_.step(now, env);
-        logTick(now);
+        logTick();
         loop_.afterVoice(now);
         superviseServos(now);
         if (panel_recover_ms_ && msReached(now, panel_recover_ms_)) {
@@ -919,37 +545,11 @@ void RobotRuntime::loop()
             next_panel_refresh_ms_ = now + 60000;
             face_.recoverPanel(false);
         }
-        saveLearned(now);
         confirmFirmware(now);
-        superviseWeights(now);
 
         const uint64_t loop_elapsed_us = static_cast<uint64_t>(esp_timer_get_time()) - loop_start_us;
         diagnostics_busy_us_ += loop_elapsed_us;
-        if (msReached(now, next_telemetry_ms_)) {
-            static char line[768];
-            loop_.formatTelemetry(line, sizeof(line));
-            ESP_LOGI("brain", "%s", line);
-            next_telemetry_ms_ = now + 1000;
-        }
-        if (msReached(now, next_diagnostics_ms_)) {
-            logStats(now);
-        }
-        if constexpr (kAudioRecording) {
-            if (msReached(now, next_audio_rec_ms_)) {
-                static char line[480];
-                loop_.formatAudioRecord(now, line, sizeof(line));
-                ESP_LOGI("audio", "%s", line + 9);
-                next_audio_rec_ms_ = now + 50;
-            }
-        }
-        if constexpr (kDatasetLogging) {
-            if (msReached(now, next_dataset_ms_)) {
-                static char line[640];
-                loop_.formatDataset(now, line, sizeof(line));
-                ESP_LOGI("dataset", "%s", line + 9);
-                next_dataset_ms_ = now + 250;
-            }
-        }
+        if (msReached(now, next_diagnostics_ms_)) logStats(now);
         vTaskDelay(pdMS_TO_TICKS(kMainLoopIntervalMs));
     }
 }

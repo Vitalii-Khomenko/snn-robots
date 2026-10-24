@@ -3,45 +3,30 @@
 #include <cstdarg>
 #include <cstdint>
 
-#include "hybrid_spec.h"
-#include "motivation.h"
-#include "online_learner.h"
-#include "world_model.h"
-#include "sd_diary.h"
 #include "v4_spec.h"
 
 class WifiEngine;
 
-// The robot's diary on the wire (platform B, stage 0: "eyes and ears for us").
+// The robot's diary on the wire: statistics, analysis and debugging of brain v4.
 //
-// Every brain tick (20 Hz) the main loop hands over what the policy saw and
-// what it did; four ticks make one UDP datagram to the PC logger
-// (tools/life/lifelogd.py). Every ESP_LOG line goes out too, as text: the
-// events (touches, learned links, limits) and the 5 s stats line. Nothing is
-// sent from the main loop itself - it only copies into a ring buffer in
-// PSRAM; a low-priority task on core 0 keeps every datagram on the microSD
-// card (SdDiary) and sends it while Wi-Fi is up; what does not fit the ring
-// is dropped (counted).
+// Every brain tick (20 Hz) the main loop hands over the tick's values (v4::kDiaryValues, tools/v4/spec_v4.py DIARY:
+// the raw sense readings, the 13 + 2 channels, the analyzer's 32 numbers, the main network's 61 outputs, what the body
+// did); four ticks make one UDP datagram to the PC logger (tools/robot/lifelogd.py). Every ESP_LOG line goes out too,
+// as text: the events (touches, faces, calls, gestures) and the 5 s stats lines. Nothing is sent from the main loop
+// itself - it only copies into a ring buffer in PSRAM; a low-priority task on core 0 sends it while Wi-Fi is up; what
+// does not fit the ring is dropped (counted).
 //
-// Wire format, little endian (tools/life/lifedata.py reads it):
-//   header (16 B): magic "SCL1", kind (1 ticks, 2 log line), n (ticks in this
-//     datagram), n_values (int16 values per tick), boot_id, datagram seq
-//   kind 1: int64 unix ms of the first tick (0 = clock not synced yet), then
-//     n x { uint32 tick seq, uint32 ms since boot, uint16 flags, int16 values[n_values] }
-//     values = policy input (100), action (51), efference copy (3), motivation (8: needs, reward, novelty,
-//     head movement), world model (4: RMS error of vision, audio, body; learning progress x 10), scaled by kScale
-//   kind 2: uint32 ms since boot, then the text of the line (no terminator)
+// Wire format, little endian (tools/v4/diary.py reads it):
+//   header (16 B): magic "SCL1", kind, n (ticks in this datagram), n_values (values per tick), boot_id, datagram seq
+//   kind 3 (brain v4 ticks): int64 unix ms of the first tick (0 = clock not synced yet), then
+//     n x { uint32 tick seq, uint32 ms since boot, uint16 flags, float16 values[n_values] }
+//     flags: bit 0 brain v4 drives the body, bit 1 night rules (silent, dim)
+//   kind 2 (a log line): uint32 ms since boot, then the text of the line (no terminator)
+//   (kind 1 was platform B's int16 tick layout, until 2026-10-24: tools/v4/legacy_diary.py)
 class LifeLog {
 public:
-    static constexpr int kEmbValues = 64 + 32;  // bus v4: vision and hearing embeddings (x 1/4), 2026-10-17
-    // brain v4 (2026-10-24): the 13 sense channels + 2 "where", the spiking analyzer's 32 numbers, the main network's
-    // 61 outputs (zeros while the network is not running)
-    static constexpr int kV4Values = v4::kSnnInputs + v4::SO_COUNT + v4::NO_COUNT;
-    static constexpr int kValues =
-        hybrid::kPolicyInputs + hybrid::ACT_COUNT + hybrid::EFF_COUNT + Motivation::kLogValues + WorldModel::kLogValues +
-        OnlineLearner::kLogValues + kEmbValues + 1 + kV4Values;  // + expect_talk + brain v4
-    static constexpr float kScale = 4096.0f;  // int16 = value x 4096: +-8, step 0.00024
-    static constexpr int kTicksPerDatagram = 1;  // 4 until the embeddings (2026-10-17), 2 until brain v4 (2026-10-24)
+    static constexpr int kValues = v4::kDiaryValues;
+    static constexpr int kTicksPerDatagram = 4;
 
     // Starts the sender task and tees ESP_LOG into the diary. false if there is no host
     // configured (secrets/life_log_host.h) or no memory - then everything else is a no-op.
@@ -52,9 +37,6 @@ public:
 
     uint32_t sent() const { return sent_.load(); }
     uint32_t dropped() const { return dropped_.load(); }
-    // datagrams kept on the microSD card / card failures (sd_diary.h)
-    uint32_t sdWritten() const { return sd_written_.load(); }
-    uint32_t sdErrors() const { return sd_errors_.load(); }
 
 private:
     static int teeLog(const char* fmt, va_list args);
@@ -71,7 +53,7 @@ private:
     struct __attribute__((packed)) TickRec {
         uint32_t seq, ms;
         uint16_t flags;
-        int16_t v[kValues];
+        uint16_t v[kValues];  // IEEE 754 half precision
     };
     struct __attribute__((packed)) TickDatagram {
         Header h;
@@ -86,6 +68,5 @@ private:
     TickDatagram pending_{};
     int pending_n_ = 0;
     uint32_t boot_id_ = 0;
-    std::atomic<uint32_t> seq_{0}, sent_{0}, dropped_{0}, sd_written_{0}, sd_errors_{0};
-    SdDiary sd_;
+    std::atomic<uint32_t> seq_{0}, sent_{0}, dropped_{0};
 };

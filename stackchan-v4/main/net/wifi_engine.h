@@ -2,10 +2,8 @@
 #include <atomic>
 #include <cstdint>
 
-// Wi-Fi station connection + NTP time sync + periodic "is a known device on
-// this LAN" presence check, feeding SnnCore's NIGHT_MODE/DAY_MODE/
-// OWNER_NEARBY populations (see neuromorphic/snn_core.h's Population enum
-// and RobotRuntime::updateWifiEnvironment()).
+// Wi-Fi station connection + NTP time sync (the clock of brain v4's night rules and tired channel) + a periodic
+// "is a known device on this LAN" presence check (owner=near/away in the stats line).
 //
 // Runs its own FreeRTOS task for reconnect handling and the periodic
 // presence scan: the Wi-Fi/lwIP stack already does its own event-driven

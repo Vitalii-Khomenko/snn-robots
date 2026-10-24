@@ -1,7 +1,0 @@
-# The morning report (tools/life/morning.sh); started by life-morning.timer.
-[Unit]
-Description=StackChan morning report and dashboard
-
-[Service]
-Type=oneshot
-ExecStart=%h/Codex/StackChan/stackchan-life/tools/life/morning.sh

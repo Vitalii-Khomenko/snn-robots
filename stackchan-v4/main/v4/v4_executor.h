@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 
-#include "../hybrid/body_sense.h"
 #include "../led/led_engine.h"
 #include "../motion/motion_engine.h"
 #include "../ui/face_engine.h"
@@ -23,7 +22,7 @@ public:
     {}
     // Every brain tick (20 Hz) with the latest decision; `decided` when the main network ran this tick.
     // `night`: the owner's sleep window, or the clock not synced yet (it might be night: quiet until it is known). Fills `done` with what really happened (BrainV4::Executed).
-    void apply(const BrainV4& brain, bool decided, bool night, BodySense& sense, uint32_t nowMs, BrainV4::Executed& done);
+    void apply(const BrainV4& brain, bool decided, bool night, uint32_t nowMs, BrainV4::Executed& done);
 
     uint32_t calls() const { return calls_; }
     uint32_t gestures() const { return gestures_; }
@@ -41,8 +40,8 @@ private:
     void applyFace(const BrainV4& brain, uint32_t now);
     void applyVoice(const BrainV4& brain, bool night, uint32_t now, BrainV4::Executed& done);
     void applyLeds(const BrainV4& brain, bool night);
-    void applyHead(const BrainV4& brain, bool night, BodySense& sense, uint32_t now, BrainV4::Executed& done);
-    bool command(BodySense& sense, float yaw, float pitch, float speed, uint32_t now, bool force = false);
+    void applyHead(const BrainV4& brain, bool night, uint32_t now, BrainV4::Executed& done);
+    bool command(float yaw, float pitch, float speed, uint32_t now, bool force = false);
 
     FaceEngine& face_;
     LedEngine& led_;

@@ -1,5 +1,10 @@
 # stackchan-life
 
+> **History, 2026-10-24.** The robot now runs brain v4 (`../stackchan-v4/`); this folder is platform B as it was
+> (2026-10-11 .. 24) and the way back to it (`../stackchan-v4/README.md`, Rollback). Its PC services (`mediad`,
+> `life-sleep`, `life-morning`) are disabled; the diary receiver now runs from `../stackchan-v4/tools/robot/`;
+> finished diary days are gzipped (`tools/life/lifedata.py` reads them).
+
 Platform B of the StackChan brain: a robot that is free and **learns from its own life**. The same robot and the same
 perception, voice and body as the v3 hybrid brain (git tag `v3-neuromorphic`; still in the firmware: `ota.py mode brain`), with a
 learning loop around them:

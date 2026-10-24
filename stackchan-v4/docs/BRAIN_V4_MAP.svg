@@ -1,21 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1490" width="2400" height="1490">
 <defs>
-<marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
-<marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
-<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
-<marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
+<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
 <marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
+<marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
+<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
+<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
+<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
+<marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
+<marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
+<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
 <marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
 <marker id="a26a6a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#26a6a6"/></marker>
 <marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
-<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
-<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
-<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
-<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
 <marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
 </defs>
 <rect width="2400" height="1490" fill="#0f1420"/>
-<text x="40" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="32" fill="#e6ebf5" font-weight="bold" text-anchor="start">StackChan, brain v4: a spiking stimulus analyzer and one decision network (mode v4)</text>
+<text x="40" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="32" fill="#e6ebf5" font-weight="bold" text-anchor="start">StackChan, brain v4: a spiking stimulus analyzer and one decision network</text>
 <text x="40" y="82" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#9aa6bf" font-weight="normal" text-anchor="start">M5Stack CoreS3 / ESP32-S3  -  20 Hz tick (50 ms): channels and SNN every tick, the main network every 2nd tick  -  everything runs on the robot; the home PC records and trains</text>
 <rect x="1560" y="26" width="22" height="16" rx="3" fill="#d9534f"/>
 <text x="1592" y="39" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#9aa6bf" font-weight="normal" text-anchor="start">spiking network (int8)</text>
@@ -275,7 +275,7 @@
 <text x="2102" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Executor (safety in C++)</text>
 <text x="2102" y="182" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">takes the 61 outputs every 100 ms</text>
 <text x="2102" y="200" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">face shown &gt;= 1.5 s, confirmed 2 ticks</text>
-<text x="2102" y="218" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">voice budget: 5 calls / 10 s refill,</text>
+<text x="2102" y="218" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">voice budget: 5 tokens, 1 per 10 s;</text>
 <text x="2102" y="236" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">  reactions may spend the last one</text>
 <text x="2102" y="254" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">night 21:45-06:00: silent,</text>
 <text x="2102" y="272" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">  LEDs &lt;= 6 %, no nods / shakes</text>
@@ -316,16 +316,17 @@
 <path d="M2350,430 L2350,1010 L1895.0,1010 L1895.0,1026" stroke="#3a9d6e" stroke-width="2.2" fill="none" stroke-dasharray="7 5" marker-end="url(#a3a9d6e)"/>
 <text x="1750" y="1002" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#3a9d6e" font-weight="normal" text-anchor="start">what really happened -&gt; own state</text>
 <rect x="30" y="1060" width="2340" height="410" rx="14" fill="#140f1c" stroke="#b06bd1" stroke-width="2"/>
-<text x="50" y="1094" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="22" fill="#e2c4f2" font-weight="bold" text-anchor="start">Home PC (192.168.8.110): records every tick, trains, sends weights back</text>
+<text x="50" y="1094" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="22" fill="#e2c4f2" font-weight="bold" text-anchor="start">Home PC (192.168.8.110): records every tick, analyses, trains, sends new firmware</text>
 <rect x="50" y="1120" width="330" height="170" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
 <rect x="50" y="1120" width="330" height="30" rx="10" fill="#b06bd1"/>
 <rect x="50" y="1138" width="330" height="12" fill="#b06bd1"/>
 <text x="62" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Diary (UDP, 20 Hz)</text>
-<text x="62" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">13 channels + 2 where</text>
+<text x="62" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">22 raw readings, 13 + 2 channels</text>
 <text x="62" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">32 SNN numbers</text>
 <text x="62" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">61 network outputs</text>
-<text x="62" y="1226" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">-&gt; lifelogd -&gt; data/life/&lt;day&gt;</text>
-<text x="62" y="1244" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ status lines (faces, calls, gestures)</text>
+<text x="62" y="1226" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">float16, + every log line</text>
+<text x="62" y="1244" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">-&gt; lifelogd -&gt; data/life/&lt;day&gt;</text>
+<text x="62" y="1262" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">gzipped daily (~5x)</text>
 <rect x="420" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
 <rect x="420" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
 <rect x="420" y="1138" width="300" height="12" fill="#b06bd1"/>
@@ -369,9 +370,9 @@
 <rect x="2020" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
 <rect x="2020" y="1138" width="300" height="12" fill="#b06bd1"/>
 <text x="2032" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">5  OTA over Wi-Fi</text>
-<text x="2032" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">firmware / mode v4</text>
-<text x="2032" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">rollback: mode life</text>
-<text x="2032" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">(platform B)</text>
+<text x="2032" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">new firmware on trial,</text>
+<text x="2032" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">confirmed after a healthy</text>
+<text x="2032" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">minute, else rolled back</text>
 <path d="M2000,1185 L2018,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
 <path d="M380,1185 L418,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
 <rect x="420" y="1280" width="1900" height="100" rx="10" fill="#1d1428" stroke="#b06bd1" stroke-width="1.5"/>
@@ -381,7 +382,7 @@
 <text x="440" y="1360" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">the SNN stays the innate nervous system; the main network learns the habits</text>
 <text x="50" y="1340" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">teacher-free on the robot:</text>
 <text x="50" y="1360" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">the teachers exist only on the PC</text>
-<text x="50" y="1420" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#9aa6bf" font-weight="normal" text-anchor="start">Platform B (stackchan-life, mode life) and the v3 hybrid brain stay in the same firmware: ota.py mode life | brain | v4 switches without reflashing.</text>
+<text x="50" y="1420" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#9aa6bf" font-weight="normal" text-anchor="start">The firmware holds only brain v4; the PC only records, analyses and trains. Nothing else leaves the robot: no camera frames, no sound.</text>
 <text x="50" y="1448" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#9aa6bf" font-weight="normal" text-anchor="start">The simulator runs the real firmware code (channels, SNN, NN, executor) in a virtual room with scripted people, sounds, touches and light.</text>
 <path d="M450,1022 L450,1035 L185,1035 L185,1118" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
 <text x="195" y="1028" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#b06bd1" font-weight="normal" text-anchor="start">diary: channels, SNN, NN</text>

@@ -21,8 +21,6 @@ stackchan-v4/managed_components/
 stackchan-v4/simulator/build/
 stackchan-v4/simulator/out/
 stackchan-v4/data
-stackchan-v4/tools/hybrid/data/*
-!stackchan-v4/tools/hybrid/data/*.pt
 stackchan-v4/tools/v4/out/*
 !stackchan-v4/tools/v4/out/*.txt
 !stackchan-v4/tools/v4/out/*.log

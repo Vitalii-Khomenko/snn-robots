@@ -33,7 +33,7 @@ docker run --rm \
   stackchan-firmware-builder:local \
   bash -c '
     source /cache/esp-idf-v5.5.4/export.sh
-    exec python /cache/esp-idf-v5.5.4/tools/idf_monitor.py -p "$1" -b 115200 /project/build/stackchan_neuromorphic.elf
+    exec python /cache/esp-idf-v5.5.4/tools/idf_monitor.py -p "$1" -b 115200 /project/build/stackchan_v4.elf
   ' bash "$port" &
 monitor_client=$!
 wait "$monitor_client"

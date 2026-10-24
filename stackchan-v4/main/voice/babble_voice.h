@@ -4,21 +4,31 @@
 #include <cstdint>
 
 #include "../audio/audio_output.h"
-#include "../hybrid/policy_gru.h"
 #include "babble_net.h"
 #include "droid_synth.h"
 
-// The robot's voice: the policy's sound intent -> BabbleNet (notes) -> droid synth ->
-// speaker. Replaces the old chirp chain (voice cells + vocal decoder + vocal tract).
+// The robot's voice: the main network's sound intent -> BabbleNet (notes) -> droid synth -> speaker.
 //
-//   policy action (sound_act, mood, register, slope, expressiveness, length, rate, 4 styles, sing)
-//     -> a call is started on a rising edge of sound_act (armed, not too soon, not while sounding)
+//   Intent (say, mood, register, slope, expressiveness, length, rate, 4 styles)
+//     -> a call is started on a rising edge of `say` (armed, not too soon, not while sounding)
 //     -> BabbleNet composes the phrase note by note, a quarter second ahead of the sound
 //     -> droid::Synth renders 24 kHz audio, streamed in 20 ms chunks through AudioOutput
 //
 // Pitch register: a droid voice, base F0 about 520 .. 1200 Hz, syllables glide a long way above and below it.
 class BabbleVoice {
 public:
+    // What to say, from brain v4's voice head (v4/v4_executor.cpp). Values 0..1 unless noted.
+    struct Intent {
+        float say = 0.0f;                                // a call starts when this rises above 0.55
+        float valence = 0.0f;                            // -1..1
+        float arousal = 0.3f;
+        float reg = 0.5f;                                // pitch register
+        float slope = 0.0f;                              // -1..1, the phrase's melodic direction
+        float expr = 0.3f;                               // expressiveness
+        float length = 0.5f, rate = 0.5f;
+        float calm = 0.0f, ask = 0.0f, play = 0.0f, grumble = 0.0f;  // style
+    };
+
     explicit BabbleVoice(AudioOutput& audio) : audio_(audio) {}
 
     // Starts the audio task (call after AudioOutput::begin()). The voice is rendered and written
@@ -29,7 +39,7 @@ public:
 
     // Once per brain tick (50 ms): may start a phrase (`preempt`: a reaction - a touch, a shake - may cut an idle phrase short). `emotion` = the face being shown (Emotion enum), it picks the character of the voice. `allow` = the call budget (token bucket)
     // has room. Returns true when this tick started a phrase.
-    bool step(const PolicyGru::Action& a, bool allow, int emotion, bool preempt = false);
+    bool step(const Intent& a, bool allow, int emotion, bool preempt = false);
 
     bool active() const { return active_.load(); }
     bool trained() const { return net_.trained(); }
@@ -41,8 +51,8 @@ public:
     // Chunks that came later than 1.5 chunk durations while sounding (audible gaps), since boot.
     uint32_t gaps() const { return gaps_.load(); }
     void seed(uint32_t s) { net_.seed(s); }
-    // Mode life: a wider voice - phrase register 300-1580 Hz (v3: 520-1190) and 1.5x the jumps between notes. Measured
-    // 2026-10-18 from the robot's own takes: 60 % of the voice's energy sat between 400 and 1500 Hz.
+    // A wider voice - phrase register 300-1580 Hz (default: 520-1190) and 1.5x the jumps between notes (platform B used
+    // it; brain v4 keeps the default). Measured 2026-10-18: 60 % of the voice's energy sat between 400 and 1500 Hz.
     void setWide(bool wide)
     {
         wide_ = wide;

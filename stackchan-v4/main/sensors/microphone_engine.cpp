@@ -67,19 +67,8 @@ void MicrophoneEngine::taskEntry(void* arg)
     static_cast<MicrophoneEngine*>(arg)->taskLoop();
 }
 
-int MicrophoneEngine::recentSamples(int16_t* out, int n) const
-{
-    if (!ring_) return 0;
-    n = std::min(n, kRingSamples);
-    const uint32_t w = ring_w_.load();
-    if (w < static_cast<uint32_t>(n)) n = static_cast<int>(w);
-    for (int i = 0; i < n; ++i) out[i] = ring_[(w - n + i) % kRingSamples];
-    return n;
-}
-
 void MicrophoneEngine::taskLoop()
 {
-    ring_ = static_cast<int16_t*>(heap_caps_malloc(kRingSamples * sizeof(int16_t), MALLOC_CAP_SPIRAM));
     std::array<int16_t, kChunkSamplesPerChannel * 2> buf{};  // interleaved L R
 
     while (true) {
@@ -98,11 +87,6 @@ void MicrophoneEngine::taskLoop()
         }
 
         front_.processBlock(buf.data(), kChunkSamplesPerChannel);
-        if (ring_) {  // the left channel into the ring for the PC (recentSamples)
-            uint32_t w = ring_w_.load();
-            for (size_t i = 0; i < kChunkSamplesPerChannel; ++i) ring_[(w + i) % kRingSamples] = buf[2 * i];
-            ring_w_.store(w + kChunkSamplesPerChannel);
-        }
 
         const uint32_t now = static_cast<uint32_t>(esp_timer_get_time() / 1000);
         const bool own_motion = msWithin(now, raised_until_ms_.load());
