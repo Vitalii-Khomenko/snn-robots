@@ -111,8 +111,10 @@ bool V4Executor::command(float yaw, float pitch, float speed, uint32_t now, bool
 {
     yaw = std::clamp(yaw, -kYawLimitDeg, kYawLimitDeg);
     pitch = std::clamp(pitch, kPitchMinDeg, kPitchMaxDeg);
-    if (!force && now - last_command_ms_ < kMinCommandGapMs) return false;
-    if (!force && sent_valid_ && std::fabs(yaw - sent_yaw_) < 3.0f && std::fabs(pitch - sent_pitch_) < 2.5f) return false;
+    if (!force && now - last_command_ms_ < kGazeGapMs) return false;
+    if (!force && sent_valid_ && std::fabs(yaw - sent_yaw_) < kGazeDeadYawDeg &&
+        std::fabs(pitch - sent_pitch_) < kGazeDeadPitchDeg)
+        return false;
     motion_.moveTo(yaw, pitch, std::clamp(speed, 8.0f, kMaxSpeedDegS));
     sent_yaw_ = yaw;
     sent_pitch_ = pitch;

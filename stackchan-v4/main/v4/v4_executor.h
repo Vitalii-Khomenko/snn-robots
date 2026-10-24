@@ -32,7 +32,12 @@ public:
     int shownEmotion() const { return static_cast<int>(shown_); }
 
     static constexpr float kYawLimitDeg = 100.0f, kPitchMinDeg = -20.0f, kPitchMaxDeg = 35.0f;
-    static constexpr uint32_t kMinCommandGapMs = 120;  // servo bus: <= ~8 packets/s
+    static constexpr uint32_t kMinCommandGapMs = 120;  // servo bus: <= ~8 packets/s (gesture keyframes)
+    // Gaze moves (look, scan, look up / down, doze): at most one every 2.5 s, and only for a visible change. The servos
+    // hang more often the more packets they get (docs/HARDWARE.md); with every small gaze correction sent, the lively
+    // network of 2026-10-24 sent 45-80 packets a minute, the servos hung 60-100 times an hour and the head barely moved.
+    static constexpr uint32_t kGazeGapMs = 2500;
+    static constexpr float kGazeDeadYawDeg = 8.0f, kGazeDeadPitchDeg = 5.0f;
     static constexpr uint32_t kGestureGapMs = 4000;    // nod / shake at most every 4 s
     static constexpr float kMaxSpeedDegS = 110.0f;
 

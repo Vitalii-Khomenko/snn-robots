@@ -66,6 +66,11 @@ one), the frozen head is stiff to the hand (torque on), VM EN stays on, pose and
 no fewer stalls, and the same evening the whole board froze 3 times, each 30-130 s after a servo power cycle -
 turned off again the same day.
 
+**2026-10-24, brain v4:** the livelier main network sent every small gaze correction: 2600-4900 packets an hour
+(45-80 a minute), 60-100 servo power cycles an hour, and the gyro saw only 26-36 % of the commanded rotation - the owner
+saw a head that hardly moved. The stall rate per move stayed the same (1.1-1.9 per 100 moves); what grew was the number
+of moves. The executor now sends a gaze move at most every 2.5 s and only for a visible change (8° / 5°).
+
 **Servo watchdog** (`RobotRuntime::superviseServos`): if two consecutive
 2 s windows had ≥10° commanded and <1.5° real rotation (gyro), it switches
 VM EN off for 500 ms and on again and resyncs the motion model; at most

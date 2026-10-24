@@ -99,7 +99,7 @@ The network decides **what**; `V4Executor` decides only **how**, inside fixed ru
 | head mode | the chosen mode, debounced | a mode counts once the network has kept it for two decisions (a one-decision wish - a flinch at a touch's very start - is ignored) |
 | voice | the droid babble (BabbleNet + synth) with the network's style and mood | call budget 5 tokens, 1 per 10 s (a reaction may spend the last one); **silent 21:45-06:00** and for the first 2 min of a boot without clock |
 | LEDs | colour, pattern, brightness, rate | brightness <= 6 % at night |
-| head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +12° | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; <= 8 servo commands/s; yaw ±100°, pitch -20..35° |
+| head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +12° | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; gaze moves at most every 2.5 s and only for >= 8° yaw / 5° pitch (the servos hang more often the more packets they get); gesture keyframes <= 8 commands/s; yaw ±100°, pitch -20..35° |
 
 What really happened (shown face, said, gestured, head pose, LED level) goes back into the network's own state.
 
@@ -120,7 +120,7 @@ in pixel by pixel (0.42 s). `face::kPixelFace = false` brings the earlier smooth
 50 ms. Hand-written filters that keep the senses honest (each found on the real robot, see HISTORY):
 
 - **Own motion:** the servos click up to 32k into the microphone: loud / onset events are dropped while the head moves
-  and 350 ms after; camera frames taken while the head turns are not used; the servos' own share is taken off the
+  and 700 ms after (the servo glides on after the motion model has arrived); camera frames taken while the head turns are not used; the servos' own share is taken off the
   shake channel; the IMU is ignored for 3 s after a servo power cycle.
 - **Own voice:** the microphone is muted while the voice plays; the ear is told when the robot itself speaks.
 - **Head pad phantoms:** a touch during a fast move counts only if it is held (level 3 >= 120 ms, level 2 >= 250 ms);

@@ -79,10 +79,11 @@ void BrainLoop::coupleMotion(uint32_t now)
     }
     e_.mic.setMotionPhase(now - motion_edge_ms_ < 400 ? 1 : moving ? 2 : 0);
     if (moving) {
-        // The IMU and the microphone hear our own servos: raise their thresholds while the head moves and 350 ms
-        // after (the servo stops ~120 ms after the last packet).
-        e_.mic.raiseThresholdFor(350);
-        own_motion_until_ms_ = now + 350;
+        // The IMU and the microphone hear our own servos: raise their thresholds while the head moves and 700 ms
+        // after. With the sparse writes the servo glides on after the motion model has arrived; its stop click came
+        // 400 ms after it and read as a sharp sound - the robot startled at its own head (sim, 2026-10-24).
+        e_.mic.raiseThresholdFor(700);
+        own_motion_until_ms_ = now + 700;
     }
     e_.imu.update(moving);
     MicrophoneEngine::Onset onset;
