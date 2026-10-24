@@ -124,7 +124,14 @@ bool V4Executor::command(float yaw, float pitch, float speed, uint32_t now, bool
 void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, BrainV4::Executed& done)
 {
     const auto& o = brain.nn();
-    const int mode = argmaxRange(o, kNoHeadAt, kNoHeadCount);
+    // A head mode counts once the network has kept it for two decisions (3 ticks): at a touch's very start the analyzer's
+    // surprise peaks and the network wished a flinch for one decision before the nod (2026-10-24: 9 flinches on 11
+    // strokes); the face has the same rule.
+    const int wish = argmaxRange(o, kNoHeadAt, kNoHeadCount);
+    if (wish == head_cand_) ++head_cand_ticks_;
+    else head_cand_ = wish, head_cand_ticks_ = 1;
+    if (head_cand_ticks_ >= 3) head_mode_ = head_cand_;
+    const int mode = head_mode_;
     const float amp = o[NO_GEST_AMP], speed = o[NO_GEST_SPEED], reps = o[NO_GEST_REPS];
     float yaw = 0, pitch = 0;
     motion_.getCurrentDeg(yaw, pitch);

@@ -66,4 +66,5 @@ private:
     float sent_yaw_ = 0.0f, sent_pitch_ = 5.0f;
     bool sent_valid_ = false;
     int prev_mode_ = 0;
+    int head_cand_ = 0, head_cand_ticks_ = 0, head_mode_ = 0;  // the head mode, debounced
 };

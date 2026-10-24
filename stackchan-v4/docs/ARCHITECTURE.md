@@ -86,7 +86,8 @@ input 44 = 32 SNN numbers + 12 own state -> GRU 64 -> emotion head: 21 emotions 
 - Float, ~31 k parameters, runs every second tick (10 Hz), the first 5 s after a boot only settle the SNN.
 - Trained by imitation of a behaviour teacher with memory (`tools/v4/teacher_nn.py`) on the SNN's outputs, then two
   rounds of DAgger (the network acts, its choices feed back into its own inputs, the teacher labels what it really
-  visits). Emotion agreement with the teacher when acting alone: 0.90 (real days 0.92).
+  visits). Emotion agreement with the teacher when acting alone: 0.91 (real days 0.95). The head modes are
+  class-weighted in training (rare ones count more: without it the network looked around 8x less than its teacher).
 
 ## 4. The executor
 
@@ -95,6 +96,7 @@ The network decides **what**; `V4Executor` decides only **how**, inside fixed ru
 | Output | How it is shown | Rules |
 |---|---|---|
 | face | the chosen emotion: 21 pixel-art faces (below); eyes follow the SNN's attention | a choice must last 2 ticks; a shown face stays >= 1.5 s |
+| head mode | the chosen mode, debounced | a mode counts once the network has kept it for two decisions (a one-decision wish - a flinch at a touch's very start - is ignored) |
 | voice | the droid babble (BabbleNet + synth) with the network's style and mood | call budget 5 tokens, 1 per 10 s (a reaction may spend the last one); **silent 21:45-06:00** and for the first 2 min of a boot without clock |
 | LEDs | colour, pattern, brightness, rate | brightness <= 6 % at night |
 | head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +12° | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; <= 8 servo commands/s; yaw ±100°, pitch -20..35° |

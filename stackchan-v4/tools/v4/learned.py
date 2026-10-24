@@ -4,7 +4,8 @@
   blob = pack(version, heads, shift)        heads: {"act1_w": [64, 85], "act1_b": [64], "act2_w": [39, 64], "act2_b": [39]}
   version, arrays = unpack(blob)
   x2 = warp(x, channel, shift)              what the robot's analyzer sees of channel value x
-  ./py learned.py innate out/learned_innate.bin   a blob with the compiled-in heads and no shift (tests the chain)
+  ./py learned.py innate out/learned_innate.bin [VERSION]   the compiled-in heads, no shift (tests the chain; after a
+                                                            retrained network: what the robot should start from)
 """
 import os
 import struct
@@ -74,14 +75,15 @@ def heads_of(model):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "innate":
+    if len(sys.argv) in (3, 4) and sys.argv[1] == "innate":
+        version = int(sys.argv[3]) if len(sys.argv) == 4 else 1
         import torch
         from nn_v4 import NnV4
         m = NnV4()
         m.load_state_dict(torch.load(os.path.join(os.path.dirname(__file__), "data", "nn_v4.pt"), weights_only=False,
                                      map_location="cpu")["state"])
-        blob = pack(1, heads_of(m), np.zeros(len(CHANNELS)))
+        blob = pack(version, heads_of(m), np.zeros(len(CHANNELS)))
         open(sys.argv[2], "wb").write(blob)
-        print(f"wrote {sys.argv[2]}: {len(blob)} bytes, version 1 (innate heads, no shift)")
+        print(f"wrote {sys.argv[2]}: {len(blob)} bytes, version {version} (innate heads, no shift)")
     else:
         sys.exit(__doc__)

@@ -28,15 +28,23 @@ def run(name, minutes):
         m = LINE.match(line.strip())
         if m:
             ev.append((int(m.group(1)) / 1000.0, m.group(2), m.group(3), line[0]))
-    return ev, minutes
+    moves = 0  # head movements the simulated servos started (summary.txt, per minute)
+    for line in open(os.path.join(out, "summary.txt")):
+        cells = [c.strip() for c in line.split("|")]
+        if len(cells) > 3 and cells[0].isdigit():
+            moves += int(cells[3])
+    return ev, minutes, moves
 
 
-def metrics(ev, minutes):
+def metrics(ev, minutes, moves=0):
     faces = [(t, x.split()[1]) for t, tag, x, _ in ev if tag == "v4" and x.startswith("face:")]
     calls = [t for t, tag, x, _ in ev if tag == "v4" and x.startswith("call")]
     gestures = [(t, x.split()[1]) for t, tag, x, _ in ev if tag == "v4" and x.startswith("gesture:")]
     touches = [t for t, tag, x, _ in ev if tag == "runtime" and x.startswith("head touch (")]
-    answered = sum(1 for t in touches if any(t <= c <= t + 2.0 for c in calls) or
+    # isolated touches (5 s after the one before): in a burst of taps every 2 s the robot cannot answer each one (a call
+    # in 10 s, a nod in 4 s: the voice budget and the servos' power peaks) - it gets cross instead (the pokes test)
+    isolated = [t for i, t in enumerate(touches) if i == 0 or t - touches[i - 1] >= 5.0]
+    answered = sum(1 for t in isolated if any(t <= c <= t + 2.0 for c in calls) or
                    any(t <= g <= t + 2.0 for g, _ in gestures))
     share = collections.Counter()
     end = minutes * 60.0
@@ -44,7 +52,7 @@ def metrics(ev, minutes):
         share[f] += (faces[i + 1][0] if i + 1 < len(faces) else end) - t
     total = sum(share.values()) or 1.0
     return {
-        "touches": len(touches), "touch_answered_frac": answered / len(touches) if touches else None,
+        "touches": len(touches), "touch_answered_frac": answered / len(isolated) if isolated else None,
         "calls": len(calls), "calls_per_h": len(calls) / (minutes / 60.0),
         "n_faces": len(set(f for _, f in faces)), "faces": dict(share),
         "angry_faces": sum(1 for _, f in faces if f in ("Angry", "Annoyed")),
@@ -56,17 +64,21 @@ def metrics(ev, minutes):
         "nods": sum(1 for _, g in gestures if g == "nod"), "shakes": sum(1 for _, g in gestures if g == "shake"),
         "sleepy_frac": share["Sleepy"] / total,
         "errors": sum(1 for _, _, _, lvl in ev if lvl == "E"),
+        "moves_per_min": moves / minutes,
+        "nods_per_touch": sum(1 for _, g in gestures if g == "nod") / len(touches) if touches else None,
     }
 
 
 # (scenario, minutes, [(metric, min, max, why)])
 CASES = [
-    ("touch_response", 9, [("touch_answered_frac", 0.8, 1.01, "answers every touch (voice or gesture within 2 s)")]),
+    ("touch_response", 9, [("touch_answered_frac", 0.9, 1.01, "answers every isolated touch (voice or gesture within 2 s)")]),
     ("pokes", 5, [("cross", 1, 200, "poked every 0.8 s it gets cross (an annoyed / angry face or a head shake)")]),
-    ("petting", 6, [("angry_after_touch", 0, 0, "petting never angers"), ("touch_answered_frac", 0.8, 1.01, "answers the hand")]),
+    ("petting", 6, [("angry_after_touch", 0, 0, "petting never angers"), ("touch_answered_frac", 0.8, 1.01, "answers the hand"),
+                    ("nods_per_touch", 0.2, 5, "nods 'yes' to the hand (owner 2026-10-24: the head hardly moved)")]),
     ("night_quiet", 40, [("calls", 0, 0, "silent at night (the owner sleeps)"), ("sleepy_frac", 0.3, 1.01, "sleeps")]),
     ("play_session", 12, [("n_faces", 5, 30, "a variety of faces"), ("calls", 3, 400, "talks")]),
-    ("day_alone", 20, [("calls_per_h", 40, 600, "babbles by itself by day"), ("n_faces", 2, 30, "moods change")]),
+    ("day_alone", 20, [("calls_per_h", 40, 600, "babbles by itself by day"), ("n_faces", 2, 30, "moods change"),
+                       ("moves_per_min", 3, 60, "looks around by itself (owner 2026-10-24: the head hardly moved)")]),
     ("learn_rough", 7, [("frightened", 1, 500, "being shaken frightens it (scared / dizzy / surprised / flinch)")]),
     ("hearing", 4, [("frightened", 1, 500, "claps and bangs startle it")]),
 ]
@@ -74,8 +86,8 @@ CASES = [
 
 def check(case):
     name, minutes, checks = case
-    ev, minutes = run(name, minutes)
-    return name, metrics(ev, minutes), checks
+    ev, minutes, moves = run(name, minutes)
+    return name, metrics(ev, minutes, moves), checks
 
 
 if __name__ == "__main__":
@@ -85,7 +97,8 @@ if __name__ == "__main__":
     with ThreadPoolExecutor(os.cpu_count() or 4) as ex:
         for name, m, checks in ex.map(check, CASES):
             print(f"== {name}   faces {', '.join(f'{k} {v:.0f}s' for k, v in sorted(m['faces'].items(), key=lambda kv: -kv[1])[:6])}"
-                  f"   calls {m['calls']} nods {m['nods']} shakes {m['shakes']} touches {m['touches']}")
+                  f"   calls {m['calls']} nods {m['nods']} shakes {m['shakes']} touches {m['touches']} "
+                  f"head moves/min {m['moves_per_min']:.1f}")
             if m["errors"]:
                 failed.append(f"{name}: firmware logged {m['errors']} error(s)")
             for key, lo, hi, why in checks:

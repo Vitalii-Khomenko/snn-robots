@@ -115,6 +115,16 @@ An automatic pixelation of the vector faces was tried first and dropped (mouths 
 unreadable); all 21 faces were drawn by hand as pixel glyphs in the site's palette instead, with every animation kept
 in whole pixels and a pixel dissolve between emotions. Same drawing cost as before on the robot.
 
+### Review, lighter load, a livelier head (2026-10-24, afternoon)
+
+The owner asked for less load and a check of everything, and noticed that the head hardly moved, even at touches.
+Load: the pixel face redraws only the pixels that changed, the main network reads its weights from PSRAM (busy 36 ->
+33 %). Logic: the teacher flinched at every stroke (the analyzer's surprise peaks at a touch's start), and the
+executor took a single-decision flinch wish over the nod that followed; the teacher now startles only for outer
+stimuli and answers a stroke with a nod or by lifting its gaze to the hand, looks around every ~5 s, and the executor
+debounces head modes like faces. The network was retrained with class-weighted head modes: in the simulator 0.9 nods
+per stroke, 8-17 head moves a minute instead of ~2.
+
 ## Where the old things are
 
 | What | Where |

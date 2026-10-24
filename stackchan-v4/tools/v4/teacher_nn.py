@@ -215,14 +215,18 @@ class Teacher:
             self.gesture = (mode, left - 1) if left > 1 else None
         elif self.since_gesture > 1.5:
             nod_ok = self.since_gesture > 4.0 and not night  # the executor's gesture spacing (power peaks)
-            if events["threat_onset"] or events["surprise_onset"]:
+            # a startle is for a sudden thing out there (a bang, a shake, something rushing close, a light), never for a
+            # hand: at a touch's start the analyzer's surprise can rise before the touch's own salience does
+            outer = max(s[S["sal_sharp"]], s[S["sal_loud"]], s[S["sal_shake"]], s[S["sal_tilt"]], s[S["sal_near"]],
+                        s[S["sal_light"]], s[S["sal_motion"]])
+            touchy = max(s[S["sal_touch_head"]], s[S["sal_touch_screen"]])
+            if (events["threat_onset"] or events["surprise_onset"]) and outer > touchy:
                 mode = "flinch"
             elif nod_ok and emo in ("angry", "annoyed") and (events["over_onset"] or events["touch_onset"] or
                                                              emo != self.emo) and pace[2] > -0.6:
                 mode = "shake"
-            elif nod_ok and emo in ("love", "happy", "very_happy", "laughing", "wink") and events["touch_onset"] and \
-                    pace[2] > -0.2:
-                mode = "nod"
+            elif nod_ok and emo in ("love", "happy", "very_happy", "laughing", "wink", "shy") and events["touch_onset"]:
+                mode = "nod"  # a stroke answered with "yes, more" (2026-10-24: the owner saw the head hardly move)
             elif nod_ok and self.touch_open and self.touch_age > 0.3 and emo in ("love", "happy", "shy", "laughing", "very_happy",
                                                                       "wink"):
                 mode = "nod"
@@ -231,16 +235,21 @@ class Teacher:
             if mode != "hold":
                 self.gesture = (mode, 12)  # ~1.2 s
         if mode == "hold":
+            head_touch = s[S["sal_touch_head"]] >= s[S["sal_touch_screen"]]
             if night and emo == "sleepy":
                 mode = "doze"
+            elif self.touch_open and self.touch_age < 2.0 and emo not in ("angry", "annoyed", "scared", "sad"):
+                # a hand: the head lifts towards it (on the head pad) or looks at whoever tapped the face
+                mode, gaze = ("look_up", gaze) if head_touch else ("look", (0.0, -0.2))
             elif emo in ("sad", "shy", "crying") and self.emo_age < 3:
                 mode = "look_down"
             elif emo == "thinking" and self.emo_age < 3:
                 mode = "look_up"
             elif att > 0.2:
                 mode, gaze = "look", (float(np.clip(s[S["att_x"]] * 0.5, -1, 1)), float(np.clip(s[S["att_y"]] * 0.4, -1, 1)))
-            elif not night and self.since_scan > 8.0 and pace[1] > 0.0 and emo in ("bored", "curious", "normal",
-                                                                                  "thinking", "cool"):
+            elif not night and self.since_scan > 5.0 and pace[1] > -0.3 and emo in ("bored", "curious", "normal",
+                                                                                   "thinking", "cool", "happy", "wink",
+                                                                                   "very_happy"):
                 self.scan_target = (float(np.clip(pace[1] * 0.9 + pace[2] * 0.3, -1, 1)),
                                     float(np.clip(pace[2] * 0.3, -0.5, 0.5)))
                 self.since_scan = 0.0

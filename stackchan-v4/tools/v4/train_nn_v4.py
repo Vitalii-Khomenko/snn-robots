@@ -85,11 +85,15 @@ def decisive(a):
     return e
 
 
-def class_weights(Y, idx, dev):
-    """Rare choices weigh more (inverse square root of their frequency, 0.3..5): without it the network looked around
-    8x less than its teacher (head scan 0.6 % vs 4.8 %, 2026-10-24)."""
+def class_weights(Y, idx, dev, power=0.5, cap=5.0, keep=()):
+    """Rare choices weigh more (inverse frequency ** power, 0.3..cap; `keep`: positions left at 1). For the head
+    modes: without it the network looked around 8x less than its teacher (scan 0.6 % vs 4.8 %); with the full square
+    root it looked around 2x more and flinched more (2026-10-24) - so power 0.3, cap 3 and the flinch left at 1."""
     freq = Y[..., idx].reshape(-1, len(idx)).mean(0) + 1e-3
-    return torch.tensor(np.clip((freq.mean() / freq) ** 0.5, 0.3, 5.0), dtype=torch.float32, device=dev)
+    w = np.clip((freq.mean() / freq) ** power, 0.3, cap)
+    for k in keep:
+        w[k] = 1.0
+    return torch.tensor(w, dtype=torch.float32, device=dev)
 
 
 def loss_fn(raw, y, emo_w, head_w=None):
@@ -170,7 +174,7 @@ def train(dagger_rounds):
     print(f"imitation labels {X.shape} in {time.time() - t0:.0f}s", flush=True)
     freq = Y[..., EMO_IDX].reshape(-1, len(EMO_IDX)).mean(0) + 1e-3
     emo_w = torch.tensor(np.clip((freq.mean() / freq) ** 0.5, 0.3, 5.0), dtype=torch.float32, device=dev)
-    head_w = class_weights(Y, GROUPS["head"], dev)
+    head_w = class_weights(Y, GROUPS["head"], dev, power=0.3, cap=3.0, keep=(HEAD_MODES.index("flinch"),))
     log.append("head mode weights: " + ", ".join(f"{m} {w:.2f}" for m, w in zip(HEAD_MODES, head_w.tolist())))
     model = NnV4().to(dev)
     log.append("imitation")
