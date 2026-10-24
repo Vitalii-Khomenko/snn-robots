@@ -133,8 +133,8 @@ used. Dark frames (luminance spread < 3.5 levels) are "blind". No frame leaves t
 
 ## Display
 
-LVGL on core 1; a face frame takes ~36 ms and is drawn only when something
-changes (5–10 fps). The main loop takes the display lock with a 2 ms timeout
+LVGL on core 1; a face frame (the pixel face: up to ~250 squares) takes ~35-70 ms, as the vector face did, and is
+drawn only when something changes (5-10 fps). The main loop takes the display lock with a 2 ms timeout
 and skips the frame otherwise, so it never blocks on the display.
 `face_fps` and `face_frame_max_us` are in the stats.
 

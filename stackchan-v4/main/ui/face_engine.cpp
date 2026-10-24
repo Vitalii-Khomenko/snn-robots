@@ -1,5 +1,7 @@
 #include "face_engine.h"
 
+#include <esp_attr.h>
+
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_touch.h>
 #include "../core/ms_clock.h"
@@ -195,6 +197,7 @@ void FaceEngine::setGaze(float x, float y)
 void FaceEngine::setEmotion(Emotion emotion)
 {
     if (emotion == emotion_) return;
+    from_emotion_ = morph_t_ < 0.5f ? from_emotion_ : emotion_;  // pixel face: dissolve from what mostly shows
     emotion_ = emotion;
     from_ = shape_;  // morph from wherever the face is right now
     to_ = face::shapeFor(emotion);
@@ -236,6 +239,19 @@ void FaceEngine::draw(lv_layer_t* layer) const
     const int ox = area.x1 + (lv_obj_get_width(pixel_face_) - face::kScreenW) / 2;
     const int oy = area.y1 + (lv_obj_get_height(pixel_face_) - face::kScreenH) / 2;
     LvglPainter painter(layer, ox, oy);
+    if constexpr (face::kPixelFace) {
+        // LVGL task only: three grids of 3 KB, in PSRAM (internal RAM is scarce)
+        EXT_RAM_BSS_ATTR static face::PixelGrid to, from, mixed;
+        face::renderPixelFace(drawn_emotion_, drawn_anim_, to);
+        if (drawn_morph_t_ < 1.0f) {
+            face::renderPixelFace(drawn_from_, drawn_anim_, from);
+            face::dissolve(from, to, drawn_morph_t_, mixed);
+            mixed.flush(painter);
+        } else {
+            to.flush(painter);
+        }
+        return;
+    }
     face::renderFace(drawn_shape_, drawn_anim_, painter);
     if (person_seen_) {  // head and shoulders, green
         painter.roundRect(282, 21, 302, 33, 6, 0x1FD060, LV_OPA_COVER);
@@ -255,9 +271,11 @@ bool FaceEngine::animate(uint32_t now)
         const float t = std::min(1.0f, static_cast<float>(mt) / kMorphMs);
         const float e = 1.0f - (1.0f - t) * (1.0f - t);
         shape_ = face::blend(from_, to_, e);
+        morph_t_ = t;
         changed = true;
     } else {
         shape_ = to_;
+        morph_t_ = 1.0f;
     }
 
     face::Anim a{};
@@ -392,6 +410,9 @@ void FaceEngine::update()
     frames_.fetch_add(1);
     drawn_shape_ = shape_;
     drawn_anim_ = anim_;
+    drawn_emotion_ = emotion_;
+    drawn_from_ = from_emotion_;
+    drawn_morph_t_ = morph_t_;
     lv_obj_invalidate(pixel_face_);
     bsp_display_unlock();
 }

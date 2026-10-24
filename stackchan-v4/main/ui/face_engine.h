@@ -6,10 +6,12 @@
 #include <lvgl.h>
 
 #include "face_style.h"
+#include "pixel_face.h"
 
-// The robot's animated face. The look of every emotion lives in
-// face_style.{h,cpp} (pure geometry, previewable on the PC with
-// tools/face_preview); this class animates it on the LCD through LVGL:
+// The robot's animated face. Since 2026-10-24 it is the pixel face (pixel_face.h: hand-drawn pixel glyphs in the
+// palette of the owner's site, a new emotion dissolves in pixel by pixel); face::kPixelFace = false brings the smooth
+// vector face back, whose look lives in face_style.{h,cpp}. Both are previewable on the PC (tools/face_preview).
+// This class animates the face on the LCD through LVGL:
 //  - an emotion change morphs smoothly (~0.25 s) instead of jumping;
 //  - blinks (sometimes double), eyes glide after the gaze;
 //  - small idle life when nothing happens (a glance aside, a slow blink);
@@ -56,11 +58,14 @@ private:
 
     lv_obj_t* pixel_face_ = nullptr;
     Emotion emotion_ = Emotion::Normal;
+    Emotion from_emotion_ = Emotion::Normal;            // pixel face: the dissolve's start
+    Emotion drawn_emotion_ = Emotion::Normal, drawn_from_ = Emotion::Normal;
+    float morph_t_ = 1.0f, drawn_morph_t_ = 1.0f;       // 0..1 through the change of emotion
 
     // Morph between expressions.
     face::Shape from_{}, to_{}, shape_{};
     uint32_t morph_start_ms_ = 0;
-    static constexpr uint32_t kMorphMs = 240;
+    static constexpr uint32_t kMorphMs = face::kPixelFace ? 420 : 240;  // the pixel dissolve takes a little longer
 
     // Animation state (updated in update(), drawn in draw()).
     face::Anim anim_{}, drawn_anim_{};

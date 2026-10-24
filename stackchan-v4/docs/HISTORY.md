@@ -108,6 +108,13 @@ answers, fine-tunes the action heads with AWR, shifts the environment channels' 
 result only through its gates (all behaviour tests in the simulator). A first lesson: a third of the raw "speech" onsets
 were the tail of the robot's own voice - the talk reward ignores the 5 s after its own calls.
 
+### The pixel face (2026-10-24, evening)
+
+The owner asked for faces in the pixel style of his site airwitech.com (the head is square, so should the face be).
+An automatic pixelation of the vector faces was tried first and dropped (mouths 1-2 pixels thin, the ^ ^ eyes
+unreadable); all 21 faces were drawn by hand as pixel glyphs in the site's palette instead, with every animation kept
+in whole pixels and a pixel dissolve between emotions. Same drawing cost as before on the robot.
+
 ## Where the old things are
 
 | What | Where |

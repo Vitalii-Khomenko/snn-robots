@@ -242,7 +242,7 @@ def brain_map():
            "nod / shake at most every 4 s", "servo bus <= 8 commands / s", "yaw ±100°, pitch -20..35°",
            "· the network decides WHAT,", "· the executor only HOW"], tsize=15)
     s.arrow([(nx + nw, ny + 150), (xx - 2, ny + 150)], C["nn"], width=3)
-    body = [("Display: the face", [f"{N_EMO} emotions, smooth morph,", "eyes follow attention"]),
+    body = [("Display: the face", [f"{N_EMO} pixel-art faces (airwitech", "style), eyes follow attention"]),
             ("Speaker: droid babble", ["child-like phrases, style and", "mood from the network"]),
             ("LED ring", [f"{len(S.LED_COLORS)} colours x {len(S.LED_PATTERNS)} patterns", "steady breathe pulse flicker wave"]),
             ("Head servos (yaw, pitch)", ["look, scan, look up / down, doze,", "nod YES, shake NO, flinch"])]

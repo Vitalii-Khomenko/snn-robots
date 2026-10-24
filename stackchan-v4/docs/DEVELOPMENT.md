@@ -159,7 +159,9 @@ send the innate blob, the next nights start from the new network.
 `tools/v4_map.py` draws `docs/BRAIN_V4_MAP.svg` (the whole robot) and `docs/NETWORKS_V4.svg` (inside the networks)
 from `spec_v4.py`. `tools/publish_maps.sh` redraws them, renders `docs/png/*.png` at 2x (4800 px, for the website) with
 `rsvg-convert`, commits only `docs/*.svg` and `docs/png/`, and pushes. `tools/face_preview/run.sh` renders all 21 faces
-into `docs/faces.png`.
+into `docs/faces.png` and the named sheet `docs/png/FACES_V4.png` (2x, for the website) exactly as the robot draws
+them (`run.sh vector`: the old smooth faces). New or changed faces: the glyphs and the composition per emotion are in
+`main/ui/pixel_face.cpp` (`renderPixelFace`); `publish_maps.sh` redraws and publishes the sheet too.
 
 ## 8. Recipes
 

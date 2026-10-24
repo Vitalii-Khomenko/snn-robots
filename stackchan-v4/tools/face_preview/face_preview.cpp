@@ -4,11 +4,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
 
 #include "../../main/ui/face_style.h"
+#include "../../main/ui/pixel_face.h"
 
 namespace {
 
@@ -105,6 +107,8 @@ struct Canvas : face::Painter {
 int main(int argc, char** argv)
 {
     const char* out = argc > 1 ? argv[1] : "faces.ppm";
+    // argv[2]: "vector" draws the smooth vector faces instead of the pixel ones
+    const bool pixel = face::kPixelFace && !(argc > 2 && std::strcmp(argv[2], "vector") == 0);
     const int cols = 7, rows = (kEmotionCount + cols - 1) / cols;
     const int W = face::kScreenW, H = face::kScreenH, gap = 6;
     const int OW = cols * (W + gap), OH = rows * (H + gap);
@@ -115,7 +119,14 @@ int main(int argc, char** argv)
         face::Anim a;
         a.pulse = 0.5f;
         a.phase = 0.35f;
-        face::renderFace(face::shapeFor(static_cast<Emotion>(e)), a, c);
+        if (pixel) {  // as FaceEngine draws it
+            a.pulse = 0.8f;
+            static face::PixelGrid grid;
+            face::renderPixelFace(static_cast<Emotion>(e), a, grid);
+            grid.flush(c);
+        } else {
+            face::renderFace(face::shapeFor(static_cast<Emotion>(e)), a, c);
+        }
         const int gx = (e % cols) * (W + gap), gy = (e / cols) * (H + gap);
         for (int y = 0; y < H; ++y)
             for (int x = 0; x < W; ++x)

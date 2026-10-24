@@ -19,6 +19,11 @@ trains the networks; nothing else leaves the robot (no frames, no sound).
 Inside the two networks: [docs/png/NETWORKS_V4.png](docs/png/NETWORKS_V4.png). Both pictures are drawn from the code
 (`tools/v4_map.py`, SVG in `docs/`).
 
+The 21 faces, pixel art in the style of [airwitech.com](https://airwitech.com) (the robot's head is square, so is its
+face):
+
+![The faces](docs/png/FACES_V4.png)
+
 ## Documentation
 
 | | |
