@@ -85,11 +85,19 @@ def decisive(a):
     return e
 
 
-def loss_fn(raw, y, emo_w):
+def class_weights(Y, idx, dev):
+    """Rare choices weigh more (inverse square root of their frequency, 0.3..5): without it the network looked around
+    8x less than its teacher (head scan 0.6 % vs 4.8 %, 2026-10-24)."""
+    freq = Y[..., idx].reshape(-1, len(idx)).mean(0) + 1e-3
+    return torch.tensor(np.clip((freq.mean() / freq) ** 0.5, 0.3, 5.0), dtype=torch.float32, device=dev)
+
+
+def loss_fn(raw, y, emo_w, head_w=None):
     l_emo = F.cross_entropy(raw[..., EMO_IDX].reshape(-1, len(EMO_IDX)), y[..., EMO_IDX].argmax(-1).reshape(-1),
                             weight=emo_w)
-    l_grp = sum(F.cross_entropy(raw[..., idx].reshape(-1, len(idx)), y[..., idx].argmax(-1).reshape(-1))
-                for idx in GROUPS.values())
+    l_grp = sum(F.cross_entropy(raw[..., idx].reshape(-1, len(idx)), y[..., idx].argmax(-1).reshape(-1),
+                                weight=head_w if g == "head" else None)
+                for g, idx in GROUPS.items())
     l_say = F.binary_cross_entropy_with_logits(raw[..., SAY], y[..., SAY], pos_weight=torch.tensor(4.0, device=raw.device))
     sig = [STRENGTH] + [i for i in SIG if i != SAY]
     l_sig = F.mse_loss(torch.sigmoid(raw[..., sig]), y[..., sig])
@@ -100,7 +108,7 @@ def loss_fn(raw, y, emo_w):
     return l_emo + 0.5 * l_grp + 1.5 * l_say + 2.0 * l_sig + 2.0 * l_gaze + l_sv
 
 
-def fit(model, X, Y, epochs, dev, emo_w, log):
+def fit(model, X, Y, epochs, dev, emo_w, log, head_w=None):
     opt = torch.optim.Adam(model.parameters(), lr=3e-3)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
     n_val = max(20, len(X) // 12)
@@ -112,7 +120,7 @@ def fit(model, X, Y, epochs, dev, emo_w, log):
         for b in np.array_split(rng.permutation(tr), max(1, len(tr) // 48)):
             xb, yb = torch.tensor(X[b], device=dev), torch.tensor(Y[b], device=dev)
             raw, _ = model(xb)
-            loss = loss_fn(raw, yb, emo_w)
+            loss = loss_fn(raw, yb, emo_w, head_w)
             opt.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -120,7 +128,7 @@ def fit(model, X, Y, epochs, dev, emo_w, log):
         sched.step()
         with torch.no_grad():
             raw, _ = model(torch.tensor(X[va], device=dev))
-            vl = float(loss_fn(raw, torch.tensor(Y[va], device=dev), emo_w))
+            vl = float(loss_fn(raw, torch.tensor(Y[va], device=dev), emo_w, head_w))
             acc = float((raw[..., EMO_IDX].argmax(-1).cpu() == torch.tensor(Y[va][..., EMO_IDX]).argmax(-1)).float().mean())
         msg = f"  epoch {ep + 1}/{epochs} val {vl:.3f} emotion acc {acc:.3f} {time.time() - t0:.0f}s"
         print(msg, flush=True)
@@ -162,9 +170,11 @@ def train(dagger_rounds):
     print(f"imitation labels {X.shape} in {time.time() - t0:.0f}s", flush=True)
     freq = Y[..., EMO_IDX].reshape(-1, len(EMO_IDX)).mean(0) + 1e-3
     emo_w = torch.tensor(np.clip((freq.mean() / freq) ** 0.5, 0.3, 5.0), dtype=torch.float32, device=dev)
+    head_w = class_weights(Y, GROUPS["head"], dev)
+    log.append("head mode weights: " + ", ".join(f"{m} {w:.2f}" for m, w in zip(HEAD_MODES, head_w.tolist())))
     model = NnV4().to(dev)
     log.append("imitation")
-    fit(model, X, Y, 25, dev, emo_w, log)
+    fit(model, X, Y, 25, dev, emo_w, log, head_w)
     for r in range(dagger_rounds):
         sub = rng.choice(pool, size=min(600, len(pool)), replace=False)
         t0 = time.time()
@@ -172,7 +182,7 @@ def train(dagger_rounds):
         print(f"DAgger round {r + 1}: {Xd.shape} labelled in {time.time() - t0:.0f}s", flush=True)
         X, Y = np.concatenate([X, Xd]), np.concatenate([Y, Yd])
         log.append(f"DAgger round {r + 1}")
-        fit(model, X, Y, 15, dev, emo_w, log)
+        fit(model, X, Y, 15, dev, emo_w, log, head_w)
     os.makedirs(DATA, exist_ok=True)
     torch.save({"state": model.state_dict()}, os.path.join(DATA, "nn_v4.pt"))
     lines = census(model, S[test], rng, dev)

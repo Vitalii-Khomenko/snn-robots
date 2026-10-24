@@ -142,7 +142,8 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
         Gesture g = Gesture::None;
         if (mode == kHeadNod && gap_ok && !night) g = Gesture::Nod;
         else if (mode == kHeadShake && gap_ok && !night) g = Gesture::Shake;
-        else if (mode == kHeadFlinch && (last_gesture_ms_ == 0 || now - last_gesture_ms_ >= 1500)) g = Gesture::Flinch;
+        // not at night either: a jerk of the head is servo noise next to the sleeping owner
+        else if (mode == kHeadFlinch && !night && (last_gesture_ms_ == 0 || now - last_gesture_ms_ >= 1500)) g = Gesture::Flinch;
         if (g != Gesture::None) {
             gesture_ = g;
             gesture_start_ms_ = now;

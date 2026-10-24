@@ -239,6 +239,7 @@ bool RobotRuntime::begin()
     const uint32_t now = nowMs();
     // brain v4's int8 tables (236 KB) are read every tick: PSRAM is about twice as fast as this board's flash (DIO)
     loop_.brain().analyzer().useFastWeights();
+    loop_.brain().network().useFastWeights();  // the main network's 120 KB of floats as well
     diagnostics_window_start_us_ = static_cast<uint64_t>(esp_timer_get_time());
     next_diagnostics_ms_ = now + 5000;
 
@@ -384,7 +385,7 @@ void RobotRuntime::logStats(uint32_t now)
         const auto& so = b.snn();
         const auto& ex = loop_.executor();
         ESP_LOGI(kTag, "v4: als=%u ir=%u ps=%u/%02x near=%.0f ch=%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f "
-                 "snn=%s/%uus/rate%.3f val=%.2f aro=%.2f under=%.2f over=%.2f threat=%.2f nn=%s/faults%u drives=%d "
+                 "snn=%s/%uus/rate%.3f val=%.2f aro=%.2f under=%.2f over=%.2f threat=%.2f nn=%s/%uus/faults%u drives=%d "
                  "night=%d face=%s calls=%u nods=%u shakes=%u gestures=%u learned=%u%s",
                  static_cast<unsigned>(presence_.alsRaw()), static_cast<unsigned>(presence_.alsIrRaw()),
                  static_cast<unsigned>(presence_.lastRaw()), static_cast<unsigned>(presence_.psHigh()),
@@ -392,11 +393,24 @@ void RobotRuntime::logStats(uint32_t now)
                  c[9], c[10], c[11], c[12], b.analyzer().trained() ? "on" : "untrained",
                  static_cast<unsigned>(b.analyzer().lastUs()), static_cast<double>(b.analyzer().mixRate()),
                  so[v4::SO_VALENCE], so[v4::SO_AROUSAL], so[v4::SO_UNDER], so[v4::SO_OVER], so[v4::SO_THREAT],
-                 b.trained() ? "on" : "untrained", static_cast<unsigned>(b.nnFaults()), loop_.driving() ? 1 : 0,
+                 b.trained() ? "on" : "untrained", static_cast<unsigned>(b.network().lastUs()),
+                 static_cast<unsigned>(b.nnFaults()), loop_.driving() ? 1 : 0,
                  loop_.night() ? 1 : 0, emotionName(static_cast<Emotion>(ex.shownEmotion())),
                  static_cast<unsigned>(ex.calls()), static_cast<unsigned>(ex.nods()), static_cast<unsigned>(ex.shakes()),
                  static_cast<unsigned>(ex.gestures()), static_cast<unsigned>(learned_.version()),
                  learned_.onTrial() ? "(trial)" : "");
+    }
+    {
+        // where the main loop's time went in this window: mean / worst pass per stage, us
+        const uint32_t n = std::max<uint32_t>(1, stage_passes_);
+        char buf[200];
+        int len = 0;
+        for (int i = 0; i < kStages; ++i)
+            len += std::snprintf(buf + len, sizeof(buf) - len, "%s%u/%u", i ? " " : "",
+                                 static_cast<unsigned>(stage_sum_us_[i] / n), static_cast<unsigned>(stage_max_us_[i]));
+        ESP_LOGI(kTag, "loop_us (servos face leds+pad imu+mic sensors brain diary supervise, mean/max): %s", buf);
+        for (int i = 0; i < kStages; ++i) stage_sum_us_[i] = stage_max_us_[i] = 0;
+        stage_passes_ = 0;
     }
     {
         // the rails of the black-screen power-offs (2026-10-22/23): lowest VBUS / VSYS over the last stats window
@@ -600,31 +614,49 @@ void RobotRuntime::loop()
         esp_task_wdt_reset();
         const uint64_t loop_start_us = static_cast<uint64_t>(esp_timer_get_time());
         const uint32_t now = nowMs();
+        // where the main loop's time goes (stats line `loop_us`): per stage, the mean and the worst pass
+        int stage = 0;
+        uint64_t mark = loop_start_us;
+        auto lap = [&]() {
+            const uint64_t t = static_cast<uint64_t>(esp_timer_get_time());
+            const uint32_t us = static_cast<uint32_t>(t - mark);
+            stage_sum_us_[stage] += us;
+            stage_max_us_[stage] = std::max(stage_max_us_[stage], us);
+            mark = t;
+            ++stage;
+        };
         motion_.update();
+        lap();  // 0 servos
         face_.update();
+        lap();  // 1 face
         led_.update();
         if (face_.takeScreenTouch()) {
             loop_.screenTouch(now);
             ESP_LOGI(kTag, "screen touch");
         }
         touch_.update();
+        lap();  // 2 LEDs + head pad
         // Our own servos shake the IMU and click into the microphone: raise
         // those thresholds while the head moves (BrainLoop::coupleMotion).
         loop_.coupleMotion(now);
         if constexpr (kMicrophoneEnabled) {
             mic_.update();
         }
+        lap();  // 3 IMU + microphone events
         presence_.update();
         if constexpr (kCameraEnabled) {
             camera_.update();
         }
         power_status_.update();
+        lap();  // 4 light / proximity, camera hand-off, power chip
         BrainLoop::Env env;
         env.timeSynced = wifi_.isTimeSynced();
         env.hour = env.timeSynced ? wifi_.hourOfDay() : 12.0f;
         loop_.step(now, env);
+        lap();  // 5 the brain tick (ear, channels, SNN, NN, executor)
         logTick();
         loop_.afterVoice(now);
+        lap();  // 6 diary
         superviseServos(now);
         if (panel_recover_ms_ && msReached(now, panel_recover_ms_)) {
             panel_recover_ms_ = 0;
@@ -640,6 +672,8 @@ void RobotRuntime::loop()
         }
         confirmFirmware(now);
         superviseLearned(now);
+        lap();  // 7 supervision (servo watchdog, panel refresh, firmware / learned trials)
+        ++stage_passes_;
 
         const uint64_t loop_elapsed_us = static_cast<uint64_t>(esp_timer_get_time()) - loop_start_us;
         diagnostics_busy_us_ += loop_elapsed_us;

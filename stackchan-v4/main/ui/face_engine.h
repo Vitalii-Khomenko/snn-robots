@@ -17,8 +17,8 @@
 //  - small idle life when nothing happens (a glance aside, a slow blink);
 //  - per-emotion motion: fear trembles, laughter bounces, hearts beat,
 //    tears fall, "z" rises.
-// CPU: one transparent LVGL object; nothing is redrawn while nothing moves,
-// continuous motion is capped at ~15 frames/s, morphs and blinks at ~30.
+// CPU: one transparent LVGL object; nothing is redrawn while nothing moves, continuous motion is capped at ~15
+// frames/s, morphs and blinks at ~30; the pixel face redraws only the pixels that changed.
 class FaceEngine {
 public:
     void begin();
@@ -59,8 +59,9 @@ private:
     lv_obj_t* pixel_face_ = nullptr;
     Emotion emotion_ = Emotion::Normal;
     Emotion from_emotion_ = Emotion::Normal;            // pixel face: the dissolve's start
-    Emotion drawn_emotion_ = Emotion::Normal, drawn_from_ = Emotion::Normal;
-    float morph_t_ = 1.0f, drawn_morph_t_ = 1.0f;       // 0..1 through the change of emotion
+    float morph_t_ = 1.0f;                               // 0..1 through the change of emotion
+    bool full_redraw_ = true;                            // pixel face: the whole screen next time (boot, panel recovery)
+    static const face::PixelGrid& shownGrid();
 
     // Morph between expressions.
     face::Shape from_{}, to_{}, shape_{};

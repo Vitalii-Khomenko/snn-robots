@@ -13,6 +13,7 @@ constexpr const char* kTag = "runtime";
 BrainLoop::BrainLoop(Engines e) : e_(e), exec_(e.face, e.led, e.vocal, e.motion)
 {
     brain_.analyzer().setClock([]() -> int64_t { return esp_timer_get_time(); });
+    brain_.network().setClock([]() -> int64_t { return esp_timer_get_time(); });
 }
 
 // A storm of touches with nobody around is the pad, not a hand: it fired every 2-4 s all night while the owner slept

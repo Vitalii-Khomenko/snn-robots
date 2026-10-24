@@ -64,6 +64,7 @@ class Teacher:
         self.since_gesture = 30.0
         self.touch_open = False      # a touch is waiting for its answer
         self.touch_age = 0.0
+        self.since_touch = 10.0  # s since the last touch onset
         self.prev_touch = 0.0
         self.prev_screen = 0.0
         self.prev_sur = 0.0
@@ -146,10 +147,13 @@ class Teacher:
         y = np.zeros(len(NN_OUT), np.float32)
         touch_now = max(s[S["sal_touch_head"]], s[S["sal_touch_screen"]])
         touch_onset = touch_now > 0.12 and touch_now - self.prev_touch > 0.04
+        self.since_touch = 0.0 if touch_onset else self.since_touch + DT
         events = {"touch_onset": touch_onset,
-                  # news that is not a touch (a touch is its own news: answered as a touch, not as a fright)
-                  "surprise_onset": (not touch_onset and touch_now < 0.3 and s[S["surprise"]] > 0.35 and
-                                     s[S["surprise"]] - self.prev_sur > 0.1),
+                  # news that is not a touch (a touch is its own news: answered as a touch, not as a fright). The
+                  # analyzer's surprise peaks a tick or two after the touch's onset: 1.5 s after a touch onset a rise
+                  # of surprise is still the touch (2026-10-24: every stroke on the head made the robot flinch)
+                  "surprise_onset": (not touch_onset and touch_now < 0.3 and self.since_touch > 1.5 and
+                                     s[S["surprise"]] > 0.35 and s[S["surprise"]] - self.prev_sur > 0.1),
                   "over_onset": s[S["over"]] > 0.4 and self.prev_over <= 0.4,
                   "threat_onset": s[S["threat"]] > 0.45 and self.prev_threat <= 0.45}
         self.prev_touch, self.prev_sur = touch_now, s[S["surprise"]]

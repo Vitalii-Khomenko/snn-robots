@@ -186,6 +186,7 @@ void FaceEngine::recoverPanel(bool reset)
     bsp_display_unlock();
     bsp_display_backlight_on();
     dirty_ = true;
+    full_redraw_ = true;
 }
 
 void FaceEngine::setGaze(float x, float y)
@@ -225,6 +226,14 @@ void FaceEngine::renderEvent(lv_event_t* event)
     }
 }
 
+namespace {
+// The pixel face's grids (PSRAM: internal RAM is scarce). The main loop renders the next one; the one on the screen is
+// written only under the display lock and read by the LVGL task's draw.
+EXT_RAM_BSS_ATTR face::PixelGrid g_from, g_to, g_next, g_shown;
+}  // namespace
+
+const face::PixelGrid& FaceEngine::shownGrid() { return g_shown; }
+
 void FaceEngine::touchEvent(lv_event_t* event)
 {
     auto* self = static_cast<FaceEngine*>(lv_event_get_user_data(event));
@@ -240,15 +249,18 @@ void FaceEngine::draw(lv_layer_t* layer) const
     const int oy = area.y1 + (lv_obj_get_height(pixel_face_) - face::kScreenH) / 2;
     LvglPainter painter(layer, ox, oy);
     if constexpr (face::kPixelFace) {
-        // LVGL task only: three grids of 3 KB, in PSRAM (internal RAM is scarce)
-        EXT_RAM_BSS_ATTR static face::PixelGrid to, from, mixed;
-        face::renderPixelFace(drawn_emotion_, drawn_anim_, to);
-        if (drawn_morph_t_ < 1.0f) {
-            face::renderPixelFace(drawn_from_, drawn_anim_, from);
-            face::dissolve(from, to, drawn_morph_t_, mixed);
-            mixed.flush(painter);
-        } else {
-            to.flush(painter);
+        // Only the pixels inside the area LVGL redraws (update() invalidates just what changed).
+        const lv_area_t& clip = layer->_clip_area;
+        const auto& g = shownGrid();
+        for (int r = 0; r < face::kPixRows; ++r) {
+            const int y = oy + r * face::kPixCell;
+            if (y > clip.y2 || y + face::kPixCell - 2 < clip.y1) continue;
+            for (int c = 0; c < face::kPixCols; ++c) {
+                const int x = ox + c * face::kPixCell;
+                if (!g.px[r][c] || x > clip.x2 || x + face::kPixCell - 2 < clip.x1) continue;
+                painter.roundRect(c * face::kPixCell, r * face::kPixCell, c * face::kPixCell + face::kPixCell - 2,
+                                  r * face::kPixCell + face::kPixCell - 2, 0, g.px[r][c] & 0xFFFFFF, LV_OPA_COVER);
+            }
         }
         return;
     }
@@ -398,6 +410,32 @@ void FaceEngine::update()
     const uint32_t now = nowMs();
     if (now - last_frame_ms_ < 30) return;  // LVGL refreshes at ~30 Hz anyway
     if (!animate(now) && !frame_pending_) return;
+    int c1 = 0, r1 = 0, c2 = face::kPixCols - 1, r2 = face::kPixRows - 1;  // what to redraw (pixels)
+    if constexpr (face::kPixelFace) {
+        // The pixel face: render the next grid here and redraw only the pixels that changed - nothing at all when an
+        // animation step lands on the same pixels (a blink is ~1/10 of the screen instead of all of it).
+        face::renderPixelFace(emotion_, anim_, g_to);
+        if (morph_t_ < 1.0f) {
+            face::renderPixelFace(from_emotion_, anim_, g_from);
+            face::dissolve(g_from, g_to, morph_t_, g_next);
+        } else {
+            g_next = g_to;
+        }
+        c1 = face::kPixCols, r1 = face::kPixRows, c2 = -1, r2 = -1;
+        for (int r = 0; r < face::kPixRows; ++r)
+            for (int c = 0; c < face::kPixCols; ++c)
+                if (g_next.px[r][c] != g_shown.px[r][c]) {
+                    c1 = std::min(c1, c), c2 = std::max(c2, c);
+                    r1 = std::min(r1, r), r2 = std::max(r2, r);
+                }
+        if (c2 < 0 && !full_redraw_) {  // the same pixels: nothing to send to the panel
+            frame_pending_ = false;
+            last_frame_ms_ = now;
+            drawn_anim_ = anim_;
+            return;
+        }
+        if (full_redraw_) c1 = 0, r1 = 0, c2 = face::kPixCols - 1, r2 = face::kPixRows - 1;
+    }
     // Never make the main loop (and the brain) wait for the LVGL task while
     // it renders a frame: if the display is busy, hand over the new
     // picture on the next pass.
@@ -410,9 +448,19 @@ void FaceEngine::update()
     frames_.fetch_add(1);
     drawn_shape_ = shape_;
     drawn_anim_ = anim_;
-    drawn_emotion_ = emotion_;
-    drawn_from_ = from_emotion_;
-    drawn_morph_t_ = morph_t_;
-    lv_obj_invalidate(pixel_face_);
+    if constexpr (face::kPixelFace) {
+        g_shown = g_next;
+        full_redraw_ = false;
+        lv_area_t obj;
+        lv_obj_get_coords(pixel_face_, &obj);
+        const int ox = obj.x1 + (lv_obj_get_width(pixel_face_) - face::kScreenW) / 2;
+        const int oy = obj.y1 + (lv_obj_get_height(pixel_face_) - face::kScreenH) / 2;
+        lv_area_t a{static_cast<int32_t>(ox + c1 * face::kPixCell), static_cast<int32_t>(oy + r1 * face::kPixCell),
+                    static_cast<int32_t>(ox + (c2 + 1) * face::kPixCell - 1),
+                    static_cast<int32_t>(oy + (r2 + 1) * face::kPixCell - 1)};
+        lv_obj_invalidate_area(pixel_face_, &a);
+    } else {
+        lv_obj_invalidate(pixel_face_);
+    }
     bsp_display_unlock();
 }

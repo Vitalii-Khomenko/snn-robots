@@ -5,7 +5,7 @@ duration 9:00
 clock 14:00
 seed 8
 room_light on
-at 0:30 touch_head 300
+at 0:50 touch_head 300   # after the clock (synced at 0:40): before it the robot keeps the quiet night rules
 at 0:55 touch_head 300
 at 1:20 touch_head 300
 at 1:45 touch_head 300

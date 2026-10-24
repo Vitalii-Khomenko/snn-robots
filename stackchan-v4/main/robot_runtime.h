@@ -73,4 +73,8 @@ private:
     uint32_t next_diagnostics_ms_ = 0;
     uint64_t diagnostics_window_start_us_ = 0;
     uint64_t diagnostics_busy_us_ = 0;
+    static constexpr int kStages = 8;  // the main loop's stages (RobotRuntime::loop, stats line loop_us)
+    uint64_t stage_sum_us_[kStages] = {};
+    uint32_t stage_max_us_[kStages] = {};
+    uint32_t stage_passes_ = 0;
 };

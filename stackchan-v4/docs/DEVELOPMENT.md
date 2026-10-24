@@ -151,6 +151,7 @@ send the innate blob, the next nights start from the new network.
 | `runtime: stats: busy=... internal_min=... tick_us=... cam_fps=... servo_repowers=... diary=sent/dropped` | every 5 s: the machine |
 | `runtime: v4: als=.. ps=.. ch=13 values snn=on/3246us val= aro= ... drives=1 night=0 face= calls= nods= shakes=` | every 5 s: the brain |
 | `runtime: power: vbus_min=... vsys_min=...` | every 5 s: the power rails |
+| `runtime: loop_us (servos face leds+pad imu+mic sensors brain diary supervise, mean/max): ...` | every 5 s: where the main loop's time goes, per stage, us |
 | `runtime: servo rail power cycle (...)` | the servo watchdog acted (HARDWARE.md) |
 | `runtime: boot reason: ...`, `crash of the last run: ...` | why it (re)started |
 

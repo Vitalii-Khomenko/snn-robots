@@ -97,7 +97,7 @@ The network decides **what**; `V4Executor` decides only **how**, inside fixed ru
 | face | the chosen emotion: 21 pixel-art faces (below); eyes follow the SNN's attention | a choice must last 2 ticks; a shown face stays >= 1.5 s |
 | voice | the droid babble (BabbleNet + synth) with the network's style and mood | call budget 5 tokens, 1 per 10 s (a reaction may spend the last one); **silent 21:45-06:00** and for the first 2 min of a boot without clock |
 | LEDs | colour, pattern, brightness, rate | brightness <= 6 % at night |
-| head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +12° | nod / shake at most every 4 s and never at night; flinch every 1.5 s at most; <= 8 servo commands/s; yaw ±100°, pitch -20..35° |
+| head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +12° | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; <= 8 servo commands/s; yaw ±100°, pitch -20..35° |
 
 What really happened (shown face, said, gestured, head pose, LED level) goes back into the network's own state.
 
@@ -181,11 +181,14 @@ Learning happens on the PC at night; the robot only receives the result, without
 
 | Task | Core | Priority | Work |
 |---|---|---|---|
-| main loop | 0 | 1 | engines, brain tick (ear 1.2 ms, SNN 3-5 ms, NN every 2nd tick), executor, diary copy |
+| main loop | 0 | 1 | engines, brain tick (ear 1.3 ms, SNN 3-5 ms, NN ~5 ms every 2nd tick), executor, diary copy |
 | voice | 1 | 5 | renders 20 ms chunks of the droid voice |
 | microphone | 1 | 3 | 16-band filter bank, loud / onset detectors |
 | camera | 1 | 2 | ~7 fps, motion front end (~3 ms a frame) |
 | diary sender | 0 | 1 | UDP to the PC from a PSRAM ring |
 | update server | 0 | 2 | HTTP: status, touch sensitivity, learned blob, firmware |
 
-Measured 2026-10-24: main loop busy ~37 %, internal RAM free ~35 KB (minimum 21 KB), PSRAM free ~7.9 MB.
+Measured 2026-10-24 (evening): main loop busy ~33 %, internal RAM minimum ~22 KB, PSRAM free ~7.8 MB. Per 20 ms pass
+(the stats line `loop_us`): the brain ~4.2 ms, LEDs + head pad ~1.7 ms, IMU + microphone ~1.4 ms (both I2C), the face
+~0.15 ms, the rest < 0.2 ms. The networks read their weights from PSRAM (copied at boot: this board's flash is DIO,
+about half as fast); the pixel face redraws only the pixels that changed (a blink: ~1/10 of the screen, ~15 ms).

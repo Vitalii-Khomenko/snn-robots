@@ -14,7 +14,8 @@
 //            reactions may spend the last tokens); SILENT at night 21:45-06:00 (the owner sleeps next to the robot)
 //   LEDs   - colour, pattern (steady / breathe / pulse / flicker / wave), brightness, rate; dim at night
 //   head   - gaze targets and the gesture library: nod "yes" (pitch), shake "no" (yaw), flinch, look down / up,
-//            doze. Small amplitudes, at most one nod / shake every 4 s (current peaks: the AXP power-offs, 2026-10-23).
+//            doze. Small amplitudes, at most one nod / shake every 4 s (current peaks: the AXP power-offs, 2026-10-23);
+//            no nods, shakes or flinches at night.
 class V4Executor {
 public:
     V4Executor(FaceEngine& face, LedEngine& led, BabbleVoice& vocal, MotionEngine& motion)
