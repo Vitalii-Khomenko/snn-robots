@@ -24,6 +24,7 @@ namespace sim {
 
 struct RunOptions {
     FILE* v4_dump = nullptr;  // every brain tick: 15 channels, 32 analyzer outputs, 61 main-network outputs (float32)
+    const uint8_t* learned = nullptr;  // a learned blob (main/v4/learned_blob.h), checked; nullptr = innate
     FILE* trace = nullptr;    // CSV, one row per 100 ms
     FILE* summary = nullptr;  // per-minute table
     float brain_cost_ms = 4.0f;  // modelled brain-tick time on the ESP32-S3

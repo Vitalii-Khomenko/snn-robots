@@ -118,16 +118,37 @@ What really happened (shown face, said, gestured, head pose, LED level) goes bac
 ## 6. The diary
 
 Every tick goes to the home PC over UDP (`main/net/life_log.*`, kind 3 datagrams, four ticks each, float16), with
-every log line. Columns (`spec_v4.DIARY`, 135): the 22 raw readings the channels are made from, the 15 channel values,
-the 32 SNN numbers, the 61 network outputs, and what the body did (head yaw / pitch, shown face, said, gestured). With
-the raw readings, any day can be re-encoded after a change of the channels and used for training. Flags: bit 0 brain
-v4 drives the body, bit 1 night rules. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it.
+every log line. Columns (`spec_v4.DIARY`, 147): the 22 raw readings the channels are made from, the 15 channel values
+(after the zone shift: what the analyzer saw), the 32 SNN numbers, the 61 network outputs, what the body did (head
+yaw / pitch, shown face, said, gestured) and the main network's 12 own-state inputs of its last decision. With the raw
+readings any day can be re-encoded after a change of the channels; with the own state every decision can be replayed
+exactly on the PC (stage 6). Flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided
+this tick. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it (also the first 135-column layout).
 
 Every 5 s the robot logs three lines: `stats:` (CPU, memory, timing, servos, sensors, voice, diary counters), `v4:`
 (raw light / proximity, the 13 channels, the SNN's mood, the network's state, face, calls, gestures) and `power:`
 (rails of the power management chip).
 
-## 7. Tasks and timing
+## 7. What the robot learns from its life (stage 6)
+
+Learning happens on the PC at night; the robot only receives the result, without a reboot:
+
+- **The learned blob** (`main/v4/learned_blob.h`, made by `tools/v4/learned.py`): new weights of the main network's
+  action heads (voice, LEDs, head: `act1`, `act2`, 8039 floats) and one zone shift per channel. The GRU, the emotion
+  head and the spiking analyzer stay innate.
+- **Zone shift** (`main/v4/zone_shift.h`): per channel a shift s of its alarm border a (the lower border of its first
+  anxiety or anger zone), |s| <= 0.15, applied as a monotone warp of the channel value before the analyzer (a + s maps
+  onto a; 0 and 1 stay), so the analyzer's innate wiring stays as trained. s > 0 is habituation (an always-humming
+  fridge stops being alarming), s < 0 sensitization.
+- **In flash** (`main/net/learned_store.*`): the partitions `weights_a` / `weights_b`, NVS namespace `learned`. A new
+  blob (`PUT /learned`, `tools/robot/ota.py learned FILE`) goes into the idle slot, the main loop switches to it between
+  two ticks, watches it for a minute and confirms it; if the main network fails on it, the robot goes back to the
+  previous blob, also without a reboot. No blob: the innate (compiled-in) networks.
+- **Clean start** (2026-10-24): at boot the firmware erases what the earlier brains left in flash (NVS namespaces
+  `life`, `assoc`, `weights` and platform B's weights blobs); brain v4's own settings live in NVS `v4` (head pad
+  sensitivity) and `learned`.
+
+## 8. Tasks and timing
 
 | Task | Core | Priority | Work |
 |---|---|---|---|
@@ -136,6 +157,6 @@ Every 5 s the robot logs three lines: `stats:` (CPU, memory, timing, servos, sen
 | microphone | 1 | 3 | 16-band filter bank, loud / onset detectors |
 | camera | 1 | 2 | ~7 fps, motion front end (~3 ms a frame) |
 | diary sender | 0 | 1 | UDP to the PC from a PSRAM ring |
-| update server | 0 | 2 | HTTP: status, touch sensitivity, firmware |
+| update server | 0 | 2 | HTTP: status, touch sensitivity, learned blob, firmware |
 
 Measured 2026-10-24: main loop busy ~37 %, internal RAM free ~35 KB (minimum 21 KB), PSRAM free ~7.9 MB.

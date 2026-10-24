@@ -259,8 +259,9 @@ def brain_map():
     s.rect(30, py0, 2340, 410, "#140f1c", C["pc"], rx=14, sw=2)
     s.text(50, py0 + 34, "Home PC (192.168.8.110): records every tick, analyses, trains, sends new firmware", 22, "#e2c4f2", "bold")
     s.box(50, py0 + 60, 330, 170, C["pc"], "Diary (UDP, 20 Hz)",
-          [f"{len(S.RAW)} raw readings, 13 + 2 channels", f"{len(S.SNN_OUT)} SNN numbers", f"{len(S.NN_OUT)} network outputs",
-           "float16, + every log line", "-> lifelogd -> data/life/<day>", "gzipped daily (~5x)"], tsize=15)
+          [f"{len(S.RAW)} raw readings, 13 + 2 channels", f"{len(S.SNN_OUT)} SNN numbers, {len(S.NN_OUT)} outputs",
+           f"body + {len(S.PREV)} own-state inputs", "float16, + every log line", "-> lifelogd -> data/life/<day>",
+           "gzipped daily (~5x)"], tsize=15)
     steps = [("0  Calibration", ["7 days of real diary:", "where each channel sits,", "which zones it visits"]),
              ("1  Teachers", ["innate appraisal -> 32", "behaviour teacher with", "memory -> 61"]),
              ("2  Train the SNN", ["1400 synthetic + 400 real", "5-minute lives, surrogate", "gradients, int8 QAT"]),

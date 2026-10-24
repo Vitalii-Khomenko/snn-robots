@@ -103,14 +103,16 @@ NN_SOFTMAX = {"emo": ["emo_" + e for e in EMOTIONS], "style": ["style_" + s for 
 NN_SIGNED = {"gaze_yaw", "gaze_pitch", "snd_valence"}
 
 # The diary (main/net/life_log.h -> tools/v4/diary.py): every brain tick as float16 - the raw sense readings the
-# channels are made from (BrainLoop -> ChannelEncoder::Raw), the channels, the analyzer's numbers, the main network's
-# outputs and what the body did.
+# channels are made from (BrainLoop -> ChannelEncoder::Raw), the channels (after the learned zone shift: what the
+# analyzer saw), the analyzer's numbers, the main network's outputs, what the body did, the network's own state.
 RAW = ["energy", "speech", "sharp_ev", "head_ev", "head_hold", "screen_ev", "accel_sd", "imu_pitch", "imu_roll",
        "imu_ok", "near_raw", "near_ok", "als", "als_ok", "motion_frac", "motion_x", "motion_y",
        "frame_ok", "battery", "stamina", "hour", "clock_ok"]
 BODY = ["head_yaw_deg", "head_pitch_deg", "face", "said", "gesture"]
+# + the main network's own-state inputs (PREV) of the tick it last decided: with the SNN numbers they are its whole
+# input, so the PC can replay every decision exactly (stage 6, sleep_v4.py)
 DIARY = (["raw_" + r for r in RAW] + ["ch_" + c for c in SNN_IN] + ["snn_" + o for o in SNN_OUT] +
-         ["nn_" + o for o in NN_OUT] + BODY)
+         ["nn_" + o for o in NN_OUT] + BODY + ["pv_" + p for p in PREV])
 
 GROUPS = [("Raw", "RAW", RAW), ("Body", "BODY", BODY), ("Channel", "CH", CHANNELS), ("Where", "WH", WHERE), ("SnnOut", "SO", SNN_OUT), ("Prev", "PV", PREV),
           ("NnOut", "NO", NN_OUT), ("Zone", "ZONE", ZONES)]
@@ -152,7 +154,7 @@ def header():
                ", ".join("{%d, %d, %d}" % LED_RGB[c] for c in LED_COLORS) + "};")
     out.append(f"inline constexpr int kSnnInputs = {len(SNN_IN)};")
     out.append(f"inline constexpr int kNnInputs = {len(NN_IN)};")
-    out.append(f"inline constexpr int kDiaryValues = {len(DIARY)};  // RAW, channels, SO, NO, BODY (tools/v4/diary.py)")
+    out.append(f"inline constexpr int kDiaryValues = {len(DIARY)};  // RAW, channels, SO, NO, BODY, PV (tools/v4/diary.py)")
     out.append("}  // namespace v4")
     return "\n".join(out) + "\n"
 

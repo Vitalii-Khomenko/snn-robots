@@ -4,6 +4,7 @@
 #include "core/brain_loop.h"
 #include "led/led_engine.h"
 #include "motion/motion_engine.h"
+#include "net/learned_store.h"
 #include "net/life_log.h"
 #include "net/ota_server.h"
 #include "net/wifi_engine.h"
@@ -34,6 +35,9 @@ private:
     void logBootReason();
     void confirmFirmware(uint32_t now);
     int formatStatus(char* buf, int size);
+    void forgetOldProject();
+    void loadLearned();
+    void superviseLearned(uint32_t now);
 
     MotionEngine motion_;
     FaceEngine face_;
@@ -49,7 +53,9 @@ private:
     WifiEngine wifi_;
     LifeLog life_;
     OtaServer ota_;
+    LearnedStore learned_;
     BrainLoop loop_;
+    uint32_t learned_trial_ms_ = 0, learned_faults_ = 0, release_old_ms_ = 0;
 
     uint32_t logged_tick_ = 0;
     bool firmware_confirmed_ = false;

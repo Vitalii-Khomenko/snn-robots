@@ -24,6 +24,7 @@ Never flash at night (the owner sleeps next to the robot, 21:45-06:00): a reboot
 python3 tools/robot/ota.py firmware    # over Wi-Fi (normal way); build/stackchan_v4.bin
 python3 tools/robot/ota.py status      # {"firmware": "ota_0", "brain": "v4", "uptime_s": ..., "diary_sent": ...}
 python3 tools/robot/ota.py touch 5     # head pad sensitivity 0..7, kept in NVS
+python3 tools/robot/ota.py learned F   # a learned blob (stage 6): switched in without a reboot, on trial for a minute
 ./flash.sh                             # over the cable (first flash, recovery); nothing else may hold /dev/ttyACM0
 python3 tools/capture_serial.py --seconds 30   # bounded serial capture, no reset
 ```
@@ -38,7 +39,7 @@ sensor engines) in a simulated room with scripted people, sounds, touches, light
 
 ```bash
 simulator/build.sh                                   # g++, no ESP-IDF needed
-simulator/run.sh simulator/scenarios/petting.scn [--minutes N] [--seed N] [--echo] [--voice-wav F] [--v4-dump F]
+simulator/run.sh simulator/scenarios/petting.scn [--minutes N] [--seed N] [--echo] [--voice-wav F] [--learned F] [--v4-dump F]
 # -> simulator/out/<scenario>/log.txt (the robot's log), trace.csv (10 Hz: head, face, channels, mood), summary.txt
 tools/v4/py behavior_test_v4.py                      # 8 scenarios in parallel, ~25 s
 ```
@@ -154,6 +155,9 @@ into `docs/faces.png`.
 - **Change behaviour:** the teacher (`teacher_nn.py`), then `train_nn_v4.py data && train_nn_v4.py train`; the SNN stays.
 - **Add a raw reading to the diary:** `RAW` (or `BODY`) in `spec_v4.py`, `./py spec_v4.py`, fill it in
   `RobotRuntime::logTick` in the same order (a `static_assert` checks the count).
+- **Test the learned-blob chain:** `tools/v4/py learned.py innate out/learned_innate.bin` packs the compiled-in heads
+  with no zone shift; in the simulator (`--learned`) the log must be identical to a run without it; on the robot
+  `ota.py learned` must switch and confirm without a reboot.
 - **Look at a moment of the robot's life:** `diary.load(day, hours=[h])`, find the time in `lines`, plot `ticks["v"]`.
 
 ## 8. The PC side

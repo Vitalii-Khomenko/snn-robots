@@ -17,7 +17,9 @@
 #include "../voice/babble_voice.h"
 #include "../v4/brain_v4.h"
 #include "../v4/channel_encoder.h"
+#include "../v4/learned_blob.h"
 #include "../v4/v4_executor.h"
+#include "../v4/zone_shift.h"
 
 // Everything between the hardware engines and brain v4, shared by the robot (RobotRuntime) and the digital twin
 // (SimRuntime) so the two can not drift apart:
@@ -59,6 +61,11 @@ public:
     // The servo rail was power-cycled: the head jolts as the servos take hold again - not a shake (2026-10-24: shake
     // 0.33 right after a power cycle). The IMU channels are not read for the next 3 s.
     void servoRepowered(uint32_t now) { imu_mask_until_ms_ = now + 3000; }
+    // What the robot learned from its life (stage 6): the main network's action heads and the zone shifts from a blob
+    // (net/learned_store.h on the robot, --learned in the simulator); an empty view = innate. Between two ticks only.
+    // Returns the number of arrays taken (0, 1 or 5).
+    int useLearned(const learned::View& v);
+    const ZoneShift& zoneShift() const { return zones_; }
 
     // ---- per main-loop pass
     // Before the microphone / IMU update(): our own servos make noise.
@@ -80,6 +87,7 @@ public:
     bool night() const { return night_; }
     bool driving() const { return brain_.trained(); }  // brain v4 drives the body (false: untrained networks)
     bool saidThisTick() const { return said_tick_; }
+    bool decidedThisTick() const { return decided_tick_; }
     bool gestureThisTick() const { return gesture_tick_; }
     // diagnostics
     uint64_t tickLastUs() const { return tick_last_us_; }
@@ -105,7 +113,8 @@ private:
     BrainV4 brain_;
     V4Executor exec_;
     BrainV4::Executed done_{};
-    bool night_ = false, said_tick_ = false, gesture_tick_ = false;
+    bool night_ = false, said_tick_ = false, gesture_tick_ = false, decided_tick_ = false;
+    ZoneShift zones_;
 
     // the camera's last frame (~7 fps): motion share and centre
     float motion_[3] = {0, 0, 0};

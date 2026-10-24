@@ -176,6 +176,7 @@ void BrainLoop::updateChannels(uint32_t now, float sharpEv, const Env& env)
     r.hour = env.hour;
     r.clockOk = env.timeSynced;
     encoder_.update(r, channels_);
+    zones_.apply(channels_);  // the zones as experience shifted them (zone_shift.h)
     frame_this_tick_ = false;
 }
 
@@ -194,6 +195,7 @@ void BrainLoop::tick(uint32_t now, const Env& env)
     if (ear_[AUD_SPEECH] > 0.4f || channels_[CH_MOTION] > 0.1f || channels_[CH_NEAR] > 0.3f) last_somebody_ms_ = now;
 
     const bool decided = brain_.tick(channels_);
+    decided_tick_ = decided;
     // the owner's sleep (21:45-06:00): the executor keeps silent and dim; before the clock is synced it might be night
     // too (a reboot at 3 am): quiet for the first 2 minutes, then a clock that never comes means daytime rules
     night_ = env.timeSynced ? (env.hour >= 21.75f || env.hour < 6.0f) : now < 120000;
@@ -251,6 +253,28 @@ void BrainLoop::step(uint32_t now, const Env& env)
     // Never run a catch-up burst after a slow tick.
     if (static_cast<int32_t>(static_cast<uint32_t>(esp_timer_get_time() / 1000) - next_tick_ms_) >= 0)
         next_tick_ms_ = static_cast<uint32_t>(esp_timer_get_time() / 1000) + kTickIntervalMs;
+}
+
+int BrainLoop::useLearned(const learned::View& v)
+{
+    int taken = 0;
+    const float* a1w = v.find("nn.act1_w", NnV4::kAct1W);
+    const float* a1b = v.find("nn.act1_b", NnV4::kAct1B);
+    const float* a2w = v.find("nn.act2_w", NnV4::kAct2W);
+    const float* a2b = v.find("nn.act2_b", NnV4::kAct2B);
+    if (a1w && a1b && a2w && a2b) {
+        brain_.network().useHeads(a1w, a1b, a2w, a2b);
+        taken += 4;
+    } else {
+        brain_.network().useHeads(nullptr, nullptr, nullptr, nullptr);
+    }
+    zones_.shift.fill(0.0f);
+    if (const float* s = v.find("zones.shift", v4::CH_COUNT)) {
+        for (int c = 0; c < v4::CH_COUNT; ++c)
+            zones_.shift[c] = std::isfinite(s[c]) ? std::clamp(s[c], -v4::kZoneShiftMax, v4::kZoneShiftMax) : 0.0f;
+        ++taken;
+    }
+    return taken;
 }
 
 void BrainLoop::afterVoice(uint32_t now)

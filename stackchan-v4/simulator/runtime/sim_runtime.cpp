@@ -42,6 +42,12 @@ bool SimRuntime::begin()
     ESP_LOGI(kTag, "brain v4: spiking analyzer %s, main network %s, auditory NN %s",
              loop_.brain().analyzer().trained() ? "trained" : "UNTRAINED", loop_.brain().trained() ? "trained" : "UNTRAINED",
              loop_.auditory().trained() ? "trained" : "MISSING");
+    if (opt_.learned) {  // as RobotRuntime::loadLearned
+        const learned::View v{opt_.learned};
+        const int n = loop_.useLearned(v);
+        ESP_LOGI(kTag, "learned: version %u (%d arrays: %s%s)", static_cast<unsigned>(v.version()), n,
+                 n >= 4 ? "action heads" : "innate heads", n % 4 == 1 ? ", zone shifts" : "");
+    }
     ESP_LOGI(kTag, "screen");
     face_.begin();
     ESP_LOGI(kTag, "LEDs");

@@ -6,7 +6,8 @@
   ./py diary.py 2026-10-25 [...]                 # summary of a day: hours, losses, channels, faces, calls
 
 ticks: dict of arrays sorted by (receive time, tick seq): boot, seq, ms (since boot), unix (s, NaN before the clock
-synced), recv (PC receive time, s), flags (bit 0 brain v4 drives, bit 1 night rules), v [T, len(DIARY)].
+synced), recv (PC receive time, s), flags (bit 0 brain v4 drives, bit 1 night rules, bit 2 the main network decided
+this tick), v [T, len(DIARY)].
 lines: list of (recv time, boot, ms, text) - every ESP_LOG line of the robot.
 
 Days before brain v4's own diary (until 2026-10-24) are platform B's layout: legacy_diary.py. Old hours may be
@@ -27,6 +28,9 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 LIFE = os.path.join(ROOT, "data", "life")
 HEADER = struct.Struct("<4sBBHII")  # magic, kind, n, n_values, boot id, datagram seq
 KIND_LINE, KIND_V4 = 2, 3
+# the v4 layout grew: 135 values (2026-10-24, until 14:30) had no pv_* columns; missing columns read as NaN
+KNOWN_LAYOUTS = (len(DIARY) - 12, len(DIARY))
+FLAG_DRIVES, FLAG_NIGHT, FLAG_DECIDED = 1, 2, 4
 
 
 def col(name):
@@ -71,8 +75,8 @@ def load(day, hours=None, root=None):
     boot, seq, ms, unix, recv, flags, values, lines = [], [], [], [], [], [], [], []
     for t, kind, n, nv, b, d in datagrams(day, hours, root):
         if kind == KIND_V4:
-            if nv != len(DIARY):
-                raise ValueError(f"{day}: {nv} values per tick, spec_v4.DIARY has {len(DIARY)}")
+            if nv not in KNOWN_LAYOUTS:
+                raise ValueError(f"{day}: {nv} values per tick, this reader knows {KNOWN_LAYOUTS}")
             (u0,) = struct.unpack_from("<q", d, HEADER.size)
             rec = np.dtype([("seq", "<u4"), ("ms", "<u4"), ("flags", "<u2"), ("v", "<f2", (nv,))])
             r = np.frombuffer(d, rec, count=n, offset=HEADER.size + 8)
@@ -82,7 +86,10 @@ def load(day, hours=None, root=None):
             unix.append(np.where(u0 > 0, u0 / 1000.0 + (r["ms"] - r["ms"][0]) / 1000.0, np.nan))
             recv.append(np.full(n, t))
             flags.append(r["flags"])
-            values.append(r["v"].astype(np.float32))
+            vals = r["v"].astype(np.float32)
+            if nv < len(DIARY):
+                vals = np.concatenate([vals, np.full((n, len(DIARY) - nv), np.nan, np.float32)], axis=1)
+            values.append(vals)
         elif kind == KIND_LINE:
             (m,) = struct.unpack_from("<I", d, HEADER.size)
             lines.append((t, b, m, d[HEADER.size + 4:].decode("utf-8", "replace")))

@@ -10,6 +10,7 @@
 //   --echo             also print the log to the terminal
 //   --voice-wav F      write everything the speaker plays (raw int16, 24 kHz) to F
 //   --brain-cost MS    modelled brain-tick CPU time on the ESP32-S3 (default 4)
+//   --learned F        start with what the robot learned (a blob of tools/v4/sleep_v4.py: action heads, zone shifts)
 //   --v4-dump F        every brain tick: brain v4's channels, analyzer and main-network outputs (float32 stream)
 
 #include <cstdio>
@@ -19,6 +20,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "core/log.h"
 #include "core/vrtos.h"
@@ -30,7 +32,7 @@ int main(int argc, char** argv)
 {
     if (argc < 2) {
         std::fprintf(stderr, "usage: %s SCENARIO.scn [--out DIR] [--minutes N] [--seed N] [--echo] "
-                             "[--voice-wav F] [--brain-cost MS] [--v4-dump F]\n", argv[0]);
+                             "[--voice-wav F] [--brain-cost MS] [--learned F] [--v4-dump F]\n", argv[0]);
         return 2;
     }
     sim::Scenario scenario;
@@ -62,6 +64,18 @@ int main(int argc, char** argv)
         } else if (a == "--brain-cost") options.brain_cost_ms = std::stof(value());
         else if (a == "--v4") {
             // brain v4 is the only brain now; accepted so older command lines still run
+        } else if (a == "--learned") {
+            static std::vector<uint8_t> blob;
+            FILE* f = std::fopen(value().c_str(), "rb");
+            if (!f) return 1;
+            uint8_t buf[4096];
+            for (size_t n; (n = std::fread(buf, 1, sizeof(buf), f)) > 0;) blob.insert(blob.end(), buf, buf + n);
+            std::fclose(f);
+            if (!learned::valid(blob.data(), blob.size())) {
+                std::fprintf(stderr, "--learned: not a valid learned blob\n");
+                return 2;
+            }
+            options.learned = blob.data();
         } else if (a == "--v4-dump") {
             options.v4_dump = std::fopen(value().c_str(), "wb");
             if (!options.v4_dump) return 1;

@@ -9,6 +9,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
+#include "learned_store.h"
+
 #if __has_include("life_log_host.h")
 #include "life_log_host.h"  // secrets/: LIFE_OTA_TOKEN
 #endif
@@ -67,6 +69,25 @@ esp_err_t statusHandler(httpd_req_t* req)
     return ESP_OK;
 }
 
+esp_err_t learnedHandler(httpd_req_t* req)
+{
+    if (!authorized(req)) return ESP_OK;
+    auto* store = static_cast<LearnedStore*>(req->user_ctx);
+    ESP_LOGI(kTag, "new learned blob: %u bytes into slot %c", static_cast<unsigned>(req->content_len), store->idleSlot());
+    if (!store->beginWrite(req->content_len)) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "cannot write now (size, or a blob is on trial)");
+        return ESP_OK;
+    }
+    const bool ok = receive(req, [&](const char* d, size_t n) { return store->write(d, n); }) && store->finishWrite();
+    if (!ok) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "upload broken or blob rejected");
+        return ESP_OK;
+    }
+    store->requestSwitch();  // the main loop switches between two ticks, no reboot
+    httpd_resp_sendstr(req, "ok: switching now, on trial for a minute\n");
+    return ESP_OK;
+}
+
 esp_err_t touchHandler(httpd_req_t* req)
 {
     if (!authorized(req)) return ESP_OK;
@@ -106,12 +127,13 @@ esp_err_t firmwareHandler(httpd_req_t* req)
 }
 }  // namespace
 
-bool OtaServer::begin(StatusFn status, SettingFn touchSensitivity)
+bool OtaServer::begin(LearnedStore& learned, StatusFn status, SettingFn touchSensitivity)
 {
 #ifndef LIFE_OTA_TOKEN
     ESP_LOGW(kTag, "no LIFE_OTA_TOKEN in secrets/life_log_host.h: updates over Wi-Fi are off");
     return false;
 #else
+    learned_ = &learned;
     status_ = std::move(status);
     touch_ = std::move(touchSensitivity);
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
@@ -129,6 +151,7 @@ bool OtaServer::begin(StatusFn status, SettingFn touchSensitivity)
         {"/status", HTTP_GET, statusHandler, &status_},
         {"/firmware", HTTP_PUT, firmwareHandler, nullptr},
         {"/touch", HTTP_PUT, touchHandler, &touch_},
+        {"/learned", HTTP_PUT, learnedHandler, learned_},
     };
     for (const auto& u : uris) httpd_register_uri_handler(server, &u);
     ESP_LOGI(kTag, "updates over Wi-Fi on port %d", cfg.server_port);

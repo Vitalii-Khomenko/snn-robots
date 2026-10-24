@@ -228,5 +228,5 @@ inline constexpr int kHeadDoze = 8;
 inline constexpr uint8_t kLedRgb[][3] = {{255, 240, 220}, {255, 200, 40}, {255, 110, 20}, {255, 20, 10}, {255, 70, 150}, {150, 40, 255}, {30, 60, 255}, {20, 200, 230}};
 inline constexpr int kSnnInputs = 15;
 inline constexpr int kNnInputs = 44;
-inline constexpr int kDiaryValues = 135;  // RAW, channels, SO, NO, BODY (tools/v4/diary.py)
+inline constexpr int kDiaryValues = 147;  // RAW, channels, SO, NO, BODY, PV (tools/v4/diary.py)
 }  // namespace v4

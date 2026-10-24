@@ -63,6 +63,7 @@ bool BrainV4::tick(const ChannelEncoder::Out& channels)
     NnV4::In in;
     std::copy(snn_out_.begin(), snn_out_.end(), in.begin());
     prevInputs(in.data() + v4::SO_COUNT);
+    std::copy(in.begin() + v4::SO_COUNT, in.end(), prev_.begin());
     nn_valid_ = nn_.step(in, nn_out_);
     if (!nn_valid_ && nn_.trained()) ++nn_faults_;
     return nn_valid_;

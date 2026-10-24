@@ -6,8 +6,10 @@
 #include "nn_v4_data.h"
 
 namespace {
-constexpr int kEmo = 21;
-constexpr int kAct = NnV4::kOut - kEmo - 1;
+constexpr int kEmo = NnV4::kEmo;
+constexpr int kAct = NnV4::kAct;
+static_assert(sizeof(nnv4::kWAct1) / sizeof(float) == NnV4::kAct1W && sizeof(nnv4::kWAct2) / sizeof(float) == NnV4::kAct2W,
+              "action heads' shape (tools/v4/nn_v4.py)");
 float sigmoidf(float x) { return 1.0f / (1.0f + std::exp(-x)); }
 
 void denseF(const float* w, const float* b, const float* x, int rows, int cols, float* y)
@@ -22,6 +24,15 @@ void denseF(const float* w, const float* b, const float* x, int rows, int cols, 
 }  // namespace
 
 bool NnV4::trained() const { return nnv4::kTrained; }
+
+void NnV4::useHeads(const float* act1W, const float* act1B, const float* act2W, const float* act2B)
+{
+    heads_set_ = act1W && act1B && act2W && act2B;
+    act1_w_ = act1W;
+    act1_b_ = act1B;
+    act2_w_ = act2W;
+    act2_b_ = act2B;
+}
 
 bool NnV4::step(const In& in, Out& out)
 {
@@ -52,9 +63,9 @@ bool NnV4::step(const In& in, Out& out)
         for (int k = 0; k < kEmo; ++k) cat[H + k] /= sum;
     }
     float hid[H], act[kAct];
-    denseF(kWAct1, kBAct1, cat, H, H + kEmo, hid);
+    denseF(heads_set_ ? act1_w_ : kWAct1, heads_set_ ? act1_b_ : kBAct1, cat, H, H + kEmo, hid);
     for (float& v : hid) v = std::tanh(v);
-    denseF(kWAct2, kBAct2, hid, kAct, H, act);
+    denseF(heads_set_ ? act2_w_ : kWAct2, heads_set_ ? act2_b_ : kBAct2, hid, kAct, H, act);
     for (int k = 0; k < kEmo; ++k) raw[kEmoIdx[k]] = e[k];
     raw[kStrengthIdx] = e[kEmo];
     for (int k = 0; k < kAct; ++k) raw[kActIdx[k]] = act[k];

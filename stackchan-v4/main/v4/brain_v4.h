@@ -32,6 +32,9 @@ public:
     bool trained() const { return snn_.trained() && nn_.trained(); }
     bool nnValid() const { return nn_valid_; }
     SnnV4& analyzer() { return snn_; }
+    NnV4& network() { return nn_; }
+    // the own-state inputs (v4_spec.h Prev) of the main network's last decision: the diary keeps them (stage 6)
+    const std::array<float, v4::PV_COUNT>& lastPrev() const { return prev_; }
     uint32_t nnFaults() const { return nn_faults_; }
     void seed(uint32_t s) { rng_ = s ? s : 1; }
 
@@ -47,6 +50,7 @@ private:
     NnV4 nn_;
     SnnV4::Out snn_out_{};
     NnV4::Out nn_out_{};
+    std::array<float, v4::PV_COUNT> prev_{};
     bool nn_valid_ = false;
     uint32_t ticks_ = 0, nn_faults_ = 0, rng_ = 0x2545f491u;
     std::array<float, 3> pace_v_{}, pace_{};

@@ -168,19 +168,20 @@ and skips the frame otherwise, so it never blocks on the display.
 
 ## Flash partitions
 
-Platform B's layout (2026-10-11, `partitions.csv`), kept: changing it needs a cable flash. Brain v4 does not use the
-weights slots yet (stage 6, learning from its own life, may send new weights of the main network there).
+Platform B's layout (2026-10-11, `partitions.csv`), kept: changing it needs a cable flash. Brain v4 keeps what it
+learned from its life (stage 6) in the two weights slots.
 
 | Name | Offset | Size | Use |
 |---|---|---|---|
-| nvs | 0x9000 | 24 KB | Wi-Fi calibration, the head pad's sensitivity (`life` / `touch`); platform B's keys may remain (unused) |
+| nvs | 0x9000 | 24 KB | Wi-Fi calibration, `v4` (head pad sensitivity), `learned` (which learned blob is live / on trial); the earlier brains' namespaces are erased at boot |
 | otadata | 0xF000 | 8 KB | which app slot boots, and its trial state |
 | phy_init | 0x11000 | 4 KB | RF |
 | ota_0, ota_1 | 0x20000, 0x420000 | 4 MB each | the application (~2 MB); an update goes to the idle one and boots on trial: the bootloader returns to the other if it does not reach a healthy minute (`CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`) |
-| weights_a, weights_b | 0x820000, 0x9A0000 | 1.5 MB each | unused by brain v4 (platform B's nightly weights lived here) |
+| weights_a, weights_b | 0x820000, 0x9A0000 | 1.5 MB each | the learned blob (`main/net/learned_store.h`, ~32 KB): the live one and the previous / next one |
 
 `flash.sh` writes the bootloader, partition table, `otadata` (reset: `ota_0` boots) and the application into `ota_0`.
-`tools/robot/ota.py firmware` updates the application over Wi-Fi. All networks run on their compiled-in weights.
+`tools/robot/ota.py firmware` updates the application over Wi-Fi (with a reboot), `tools/robot/ota.py learned FILE`
+the learned blob (without one). Without a learned blob the networks run on their compiled-in weights.
 
 ## microSD
 

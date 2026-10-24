@@ -5,6 +5,8 @@ by lifelogd.py from the diary), the token from secrets/life_log_host.h.
   python3 tools/robot/ota.py status
   python3 tools/robot/ota.py firmware [build/stackchan_v4.bin]   new firmware, on trial after the reboot
   python3 tools/robot/ota.py touch 0..7                           the head pad's sensitivity (no reboot)
+  python3 tools/robot/ota.py learned FILE                         what the night sleep learned (tools/v4/sleep_v4.py):
+                                                                  switched in at once, no reboot, on trial for a minute
 
 After an upload it waits until the robot confirms the new firmware after a healthy minute; if the robot falls back to
 the old one instead (the bootloader's rollback), it says so and exits with 1.
@@ -60,6 +62,19 @@ def wait_status(cond, seconds, what):
     sys.exit(f"timed out waiting for {what}")
 
 
+def upload_learned(path):
+    body = open(path, "rb").read()
+    version = int.from_bytes(body[4:8], "little")
+    print(f"learned: version {version}, {len(body)} bytes -> {address()} ...", flush=True)
+    print("  " + request("PUT", "/learned", body, timeout=60).strip())
+    s = wait_status(lambda s: s.get("learned_version") == version, 30, "the switch")
+    print(f"  switched without a reboot (slot {s['learned_slot']}); on trial for a minute ...", flush=True)
+    s = wait_status(lambda s: not s["learned_trial"] or s["learned_version"] != version, 150, "the end of the trial")
+    if s["learned_version"] != version or s["learned_trial"]:
+        sys.exit(f"  the robot went back to the previous learned blob: {s}")
+    print(f"  confirmed: {s}")
+
+
 def upload(kind, path):
     before = status()
     body = open(path, "rb").read()
@@ -94,6 +109,8 @@ def main():
         print(json.dumps(status(), indent=1))
     elif cmd == "touch" and len(sys.argv) > 2 and sys.argv[2] in "01234567" and len(sys.argv[2]) == 1:
         print("  " + request("PUT", "/touch", sys.argv[2].encode()).strip(), "- level now", status()["touch_level"])
+    elif cmd == "learned" and len(sys.argv) > 2:
+        upload_learned(sys.argv[2])
     elif cmd == "firmware":
         upload("firmware", sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "build", "stackchan_v4.bin"))
     else:

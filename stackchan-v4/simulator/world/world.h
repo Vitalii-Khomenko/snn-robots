@@ -78,28 +78,6 @@ public:
     // --- gyroscope: the head's real angular rates, deg/s -----------------
     void gyro(float& pitch_dps, float& yaw_dps);
 
-    // --- ground truth for training the perception networks ---------------
-    // What the room really contains right now, independent of the sensors
-    // (tools/hybrid trains the Vision / Auditory NNs on it).
-    struct AudioTruth {
-        bool speech = false, clap = false, sharp = false, continuous = false, low = false, high = false,
-             tonal = false;
-        float direction = 0.0f;  // -1..1 (sin of the azimuth relative to the head, level weighted)
-        float level = 0.0f;      // loudest external source, 0..1 of its nominal level
-    };
-    AudioTruth audioTruth(uint64_t t_us) const;
-    struct VisionTruth {
-        bool valid = false;
-        float motion_l = 0, motion_c = 0, motion_r = 0, motion_up = 0, motion_down = 0;  // external change
-        float person = 0, face = 0, loom = 0, recede = 0;
-        float target_x = 0, target_y = 0, target_conf = 0, activity = 0;
-    };
-    // Compares the room as it is at `t_us` with how it was at the previous
-    // call, seen from the head's CURRENT pose (so ego-motion drops out).
-    VisionTruth visionTruth(uint64_t t_us);
-    // The nearest person's horizontal image position (-1..1) if one is in view.
-    bool personImageX(uint64_t t_us, float& x) const;
-
     // Human-readable world log line (prefixed with the virtual time).
     void note(const char* fmt, ...) __attribute__((format(printf, 2, 3)));
 
@@ -169,12 +147,6 @@ private:
     float bg_lp_[2] = {0, 0};
     float hiss_prev_ = 0.0f;
     double tone_phase_ = 0.0;
-    // visionTruth() bookkeeping: the dynamic state at the previous call
-    uint64_t truth_prev_us_ = 0;
-    bool truth_have_prev_ = false;
-    bool truth_prev_room_light_ = false;
-    std::vector<LampSpec> truth_prev_lamps_;
-    float personVisibility(const Person& p, uint64_t t_us, float& cx, float& cy, float& face) const;
     float thingAz(const Thing& t, uint64_t t_us) const;
     float thingEl(const Thing& t, uint64_t t_us) const;
     std::vector<Sound> sounds_;

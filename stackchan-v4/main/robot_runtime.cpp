@@ -13,6 +13,7 @@
 #include <esp_log.h>
 #include <esp_core_dump.h>
 #include <esp_ota_ops.h>
+#include <esp_partition.h>
 #include <esp_system.h>
 #include <esp_task_wdt.h>
 #include <esp_timer.h>
@@ -96,6 +97,8 @@ bool RobotRuntime::begin()
     }
 
     logBootReason();
+    forgetOldProject();
+    loadLearned();
     {
         const esp_partition_t* run = esp_ota_get_running_partition();
         esp_ota_img_states_t state = ESP_OTA_IMG_UNDEFINED;
@@ -148,7 +151,7 @@ bool RobotRuntime::begin()
     {
         nvs_handle_t h;
         uint8_t level = 3;
-        if (nvs_open("life", NVS_READONLY, &h) == ESP_OK) {
+        if (nvs_open("v4", NVS_READONLY, &h) == ESP_OK) {
             nvs_get_u8(h, "touch", &level);
             nvs_close(h);
         }
@@ -220,11 +223,11 @@ bool RobotRuntime::begin()
     } else if (!wifi_.begin()) {
         ESP_LOGE(kTag, "wifi begin failed");
     } else {
-        ota_.begin([this](char* buf, int size) { return formatStatus(buf, size); },
+        ota_.begin(learned_, [this](char* buf, int size) { return formatStatus(buf, size); },
                    [this](int level) {
                        if (!touch_.setSensitivity(level)) return false;
                        nvs_handle_t h;
-                       if (nvs_open("life", NVS_READWRITE, &h) == ESP_OK) {
+                       if (nvs_open("v4", NVS_READWRITE, &h) == ESP_OK) {
                            nvs_set_u8(h, "touch", static_cast<uint8_t>(level));
                            nvs_commit(h);
                            nvs_close(h);
@@ -382,7 +385,7 @@ void RobotRuntime::logStats(uint32_t now)
         const auto& ex = loop_.executor();
         ESP_LOGI(kTag, "v4: als=%u ir=%u ps=%u/%02x near=%.0f ch=%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f "
                  "snn=%s/%uus/rate%.3f val=%.2f aro=%.2f under=%.2f over=%.2f threat=%.2f nn=%s/faults%u drives=%d "
-                 "night=%d face=%s calls=%u nods=%u shakes=%u gestures=%u",
+                 "night=%d face=%s calls=%u nods=%u shakes=%u gestures=%u learned=%u%s",
                  static_cast<unsigned>(presence_.alsRaw()), static_cast<unsigned>(presence_.alsIrRaw()),
                  static_cast<unsigned>(presence_.lastRaw()), static_cast<unsigned>(presence_.psHigh()),
                  static_cast<double>(presence_.nearOverBaseline()), c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8],
@@ -392,7 +395,8 @@ void RobotRuntime::logStats(uint32_t now)
                  b.trained() ? "on" : "untrained", static_cast<unsigned>(b.nnFaults()), loop_.driving() ? 1 : 0,
                  loop_.night() ? 1 : 0, emotionName(static_cast<Emotion>(ex.shownEmotion())),
                  static_cast<unsigned>(ex.calls()), static_cast<unsigned>(ex.nods()), static_cast<unsigned>(ex.shakes()),
-                 static_cast<unsigned>(ex.gestures()));
+                 static_cast<unsigned>(ex.gestures()), static_cast<unsigned>(learned_.version()),
+                 learned_.onTrial() ? "(trial)" : "");
     }
     {
         // the rails of the black-screen power-offs (2026-10-22/23): lowest VBUS / VSYS over the last stats window
@@ -430,9 +434,14 @@ void RobotRuntime::logTick()
     *p++ = static_cast<float>(loop_.executor().shownEmotion());
     *p++ = loop_.saidThisTick() ? 1.0f : 0.0f;
     *p++ = loop_.gestureThisTick() ? 1.0f : 0.0f;
-    static_assert(v4::RAW_COUNT + v4::kSnnInputs + v4::SO_COUNT + v4::NO_COUNT + v4::BODY_COUNT == LifeLog::kValues,
+    p = std::copy(loop_.brain().lastPrev().begin(), loop_.brain().lastPrev().end(), p);
+    static_assert(v4::RAW_COUNT + v4::kSnnInputs + v4::SO_COUNT + v4::NO_COUNT + v4::BODY_COUNT + v4::PV_COUNT ==
+                      LifeLog::kValues,
                   "diary order: tools/v4/spec_v4.py DIARY");
-    life_.tick(tick, nowMs(), static_cast<uint16_t>((loop_.driving() ? 1 : 0) | (loop_.night() ? 2 : 0)), values);
+    // flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided this tick
+    life_.tick(tick, nowMs(),
+               static_cast<uint16_t>((loop_.driving() ? 1 : 0) | (loop_.night() ? 2 : 0) | (loop_.decidedThisTick() ? 4 : 0)),
+               values);
 }
 
 // Why the robot (re)started, into the diary: a freeze without a trace (2026-10-11) is what this is for. A panic or
@@ -480,6 +489,88 @@ void RobotRuntime::confirmFirmware(uint32_t now)
     }
 }
 
+// A clean start for brain v4 (2026-10-24): what the earlier brains left in flash is removed once - the NVS namespaces
+// of v3 / platform B ("life": mode and touch level, "assoc": the associative memory and the needs, "weights": the
+// weights slot) and their weights blobs (magic "SCW1") in weights_a / weights_b. Only the owner's head pad
+// sensitivity is carried over (into "v4"). Does nothing once it is all gone.
+void RobotRuntime::forgetOldProject()
+{
+    nvs_handle_t h;
+    if (nvs_open("life", NVS_READWRITE, &h) == ESP_OK) {
+        uint8_t level = 0;
+        if (nvs_get_u8(h, "touch", &level) == ESP_OK) {
+            nvs_handle_t v;
+            if (nvs_open("v4", NVS_READWRITE, &v) == ESP_OK) {
+                nvs_set_u8(v, "touch", level);
+                nvs_commit(v);
+                nvs_close(v);
+            }
+        }
+        nvs_close(h);
+    }
+    int removed = 0;
+    for (const char* ns : {"life", "assoc", "weights"}) {
+        if (nvs_open(ns, NVS_READWRITE, &h) != ESP_OK) continue;  // not there
+        nvs_erase_all(h);
+        nvs_commit(h);
+        nvs_close(h);
+        ESP_LOGI(kTag, "clean start: old NVS namespace '%s' erased", ns);
+        ++removed;
+    }
+    for (const char* label : {"weights_a", "weights_b"}) {
+        const esp_partition_t* part = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, label);
+        char magic[4] = {};
+        if (!part || esp_partition_read(part, 0, magic, sizeof(magic)) != ESP_OK || std::memcmp(magic, "SCW1", 4) != 0)
+            continue;
+        if (esp_partition_erase_range(part, 0, part->erase_size) == ESP_OK) {
+            ESP_LOGI(kTag, "clean start: platform B's weights blob in %s erased", label);
+            ++removed;
+        }
+    }
+    if (removed) ESP_LOGI(kTag, "clean start: %d leftovers of the earlier brains removed", removed);
+}
+
+// What the robot learned from its life (stage 6, net/learned_store.h): the blob in flash, or the innate networks.
+void RobotRuntime::loadLearned()
+{
+    if (!learned_.open()) return;
+    const int n = loop_.useLearned(learned_.view());
+    ESP_LOGI(kTag, "learned: version %u (%d arrays: %s%s)", static_cast<unsigned>(learned_.version()), n,
+             n >= 4 ? "action heads" : "innate heads", n % 4 == 1 ? ", zone shifts" : "");
+}
+
+// A new blob over Wi-Fi is switched in here, between two ticks, without a reboot, and watched for a minute: if the
+// main network fails on it (non-finite outputs), the robot goes back to the blob it had - also without a reboot (the
+// owner sleeps next to it when the night sleep sends one). After a clean minute it is confirmed.
+void RobotRuntime::superviseLearned(uint32_t now)
+{
+    const uint32_t faults = loop_.brain().nnFaults();
+    if (release_old_ms_ && now - release_old_ms_ >= 1000) {
+        learned_.releaseOld();
+        release_old_ms_ = 0;
+    }
+    if (learned_.takeSwitchRequest()) {
+        learned_.open();
+        loop_.useLearned(learned_.view());
+        release_old_ms_ = now | 1;
+        learned_trial_ms_ = now;
+        learned_faults_ = faults;
+        ESP_LOGI(kTag, "learned: switched to version %u (slot %c) without a reboot, on trial for a minute",
+                 static_cast<unsigned>(learned_.version()), learned_.slot());
+    }
+    if (!learned_.onTrial()) return;
+    if (faults > learned_faults_ + 3) {
+        ESP_LOGW(kTag, "learned: the main network fails on version %u (%u faults): back to the previous one",
+                 static_cast<unsigned>(learned_.version()), static_cast<unsigned>(faults - learned_faults_));
+        learned_.revert();
+        learned_.open();
+        loop_.useLearned(learned_.view());
+        release_old_ms_ = now | 1;
+        return;
+    }
+    if (now - learned_trial_ms_ >= 60000) learned_.confirm();
+}
+
 // GET /status of the update server (net/ota_server.h, tools/robot/ota.py). Runs on the server's task: only values
 // that are set once at boot or are single words.
 int RobotRuntime::formatStatus(char* buf, int size)
@@ -488,9 +579,11 @@ int RobotRuntime::formatStatus(char* buf, int size)
     esp_ota_img_states_t state = ESP_OTA_IMG_UNDEFINED;
     esp_ota_get_state_partition(run, &state);
     return std::snprintf(buf, static_cast<size_t>(size),
-                         "{\"firmware\":\"%s\",\"firmware_trial\":%s,\"brain\":\"v4\",\"uptime_s\":%u,\"diary_sent\":%u,"
+                         "{\"firmware\":\"%s\",\"firmware_trial\":%s,\"brain\":\"v4\",\"learned_version\":%u,"
+                         "\"learned_slot\":\"%c\",\"learned_trial\":%s,\"uptime_s\":%u,\"diary_sent\":%u,"
                          "\"diary_dropped\":%u,\"touch_level\":%d}\n",
                          run ? run->label : "?", state == ESP_OTA_IMG_PENDING_VERIFY ? "true" : "false",
+                         static_cast<unsigned>(learned_.version()), learned_.slot(), learned_.onTrial() ? "true" : "false",
                          static_cast<unsigned>(nowMs() / 1000), static_cast<unsigned>(life_.sent()),
                          static_cast<unsigned>(life_.dropped()), touch_.sensitivity());
 }
@@ -546,6 +639,7 @@ void RobotRuntime::loop()
             face_.recoverPanel(false);
         }
         confirmFirmware(now);
+        superviseLearned(now);
 
         const uint64_t loop_elapsed_us = static_cast<uint64_t>(esp_timer_get_time()) - loop_start_us;
         diagnostics_busy_us_ += loop_elapsed_us;
