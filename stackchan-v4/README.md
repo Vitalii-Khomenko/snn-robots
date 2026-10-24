@@ -7,6 +7,11 @@ still in this firmware.
 
 ## Brain v4
 
+![Brain v4](docs/BRAIN_V4_MAP.svg)
+
+Inside the two networks: [docs/NETWORKS_V4.svg](docs/NETWORKS_V4.svg). Both pictures are drawn from the code:
+`tools/v4/py ../v4_map.py`.
+
 ```
 sensors -> 13 sense channels 0..1 (code) -> spiking analyzer, 768 LIF (20 Hz) -> 32 numbers -> main network, GRU (10 Hz)
         -> emotion + voice + LED colour / pattern + head (gaze, nod "yes", shake "no", flinch, ...) -> executor (limits)
@@ -27,7 +32,7 @@ sensors -> 13 sense channels 0..1 (code) -> spiking analyzer, 768 LIF (20 Hz) ->
 ## Platform B (the base)
 
 Platform B of the StackChan brain: a robot that is free and **learns from its own life**. The same robot and the same
-perception, voice and body as `../stackchan-neuromorphic` (v3, kept as the way back: `ota.py mode brain`), with a
+perception, voice and body as the v3 hybrid brain (git tag `v3-neuromorphic`; still in the firmware: `ota.py mode brain`), with a
 learning loop around them:
 
 - **On the robot, every 50 ms:**

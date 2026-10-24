@@ -1,9 +1,0 @@
-# The user's room (2026-09-27): a white door and a lit kitchen to the right.
-# Checks that the brightest side does not capture the robot: it looks at
-# it, gets its fill (inhibition of return) and explores the other sides.
-duration 20:00
-clock 13:00
-seed 7
-room_light on
-window 70 5 40 50
-owner away

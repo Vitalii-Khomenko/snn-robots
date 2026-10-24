@@ -47,7 +47,7 @@ from models import AUDIO_OUT, VISION_OUT, AuditoryNet, VisionNet  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 MEDIA = os.path.join(ROOT, "data", "media")
-OLD = os.path.abspath(os.path.join(ROOT, "..", "stackchan-neuromorphic", "tools", "hybrid", "data"))
+OLD = os.path.join(HYB, "data")  # the recorded datasets (vision, audio; moved here from ../stackchan-neuromorphic 2026-10-24)
 LIVE = os.path.join(HYB, "data")
 DROP = 0.03
 SOUND_TRIES = 3

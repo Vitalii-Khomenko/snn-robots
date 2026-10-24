@@ -1,0 +1,390 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1490" width="2400" height="1490">
+<defs>
+<marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
+<marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
+<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
+<marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
+<marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
+<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
+<marker id="a26a6a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#26a6a6"/></marker>
+<marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
+<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
+<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
+<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
+<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
+<marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
+</defs>
+<rect width="2400" height="1490" fill="#0f1420"/>
+<text x="40" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="32" fill="#e6ebf5" font-weight="bold" text-anchor="start">StackChan, brain v4: a spiking stimulus analyzer and one decision network (mode v4)</text>
+<text x="40" y="82" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#9aa6bf" font-weight="normal" text-anchor="start">M5Stack CoreS3 / ESP32-S3  -  20 Hz tick (50 ms): channels and SNN every tick, the main network every 2nd tick  -  everything runs on the robot; the home PC records and trains</text>
+<rect x="1560" y="26" width="22" height="16" rx="3" fill="#d9534f"/>
+<text x="1592" y="39" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#9aa6bf" font-weight="normal" text-anchor="start">spiking network (int8)</text>
+<rect x="1830" y="26" width="22" height="16" rx="3" fill="#2f6fdd"/>
+<text x="1862" y="39" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#9aa6bf" font-weight="normal" text-anchor="start">trained network (float)</text>
+<rect x="2100" y="26" width="22" height="16" rx="3" fill="#3a9d6e"/>
+<text x="2132" y="39" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#9aa6bf" font-weight="normal" text-anchor="start">deterministic C++</text>
+<rect x="1560" y="54" width="22" height="16" rx="3" fill="#26a6a6"/>
+<text x="1592" y="67" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#9aa6bf" font-weight="normal" text-anchor="start">numbers passed on</text>
+<rect x="1830" y="54" width="22" height="16" rx="3" fill="#d9a441"/>
+<text x="1862" y="67" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#9aa6bf" font-weight="normal" text-anchor="start">body / actuators</text>
+<rect x="2100" y="54" width="22" height="16" rx="3" fill="#b06bd1"/>
+<text x="2132" y="67" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#9aa6bf" font-weight="normal" text-anchor="start">home PC</text>
+<text x="1560" y="100" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">dashed = feedback or future work</text>
+<rect x="40" y="130" width="290" height="88" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
+<rect x="40" y="130" width="290" height="30" rx="10" fill="#3a9d6e"/>
+<rect x="40" y="148" width="290" height="12" fill="#3a9d6e"/>
+<text x="52" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Microphones (2x ES7210)</text>
+<text x="52" y="182" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">24 kHz, loudness, onsets,</text>
+<text x="52" y="200" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">speech detector</text>
+<rect x="40" y="234" width="290" height="70" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
+<rect x="40" y="234" width="290" height="30" rx="10" fill="#3a9d6e"/>
+<rect x="40" y="252" width="290" height="12" fill="#3a9d6e"/>
+<text x="52" y="255" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Head touch pad</text>
+<text x="52" y="286" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">3 pads, strokes and holds</text>
+<rect x="40" y="320" width="290" height="70" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
+<rect x="40" y="320" width="290" height="30" rx="10" fill="#3a9d6e"/>
+<rect x="40" y="338" width="290" height="12" fill="#3a9d6e"/>
+<text x="52" y="341" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Touchscreen</text>
+<text x="52" y="372" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">taps on the face</text>
+<rect x="40" y="406" width="290" height="88" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
+<rect x="40" y="406" width="290" height="30" rx="10" fill="#3a9d6e"/>
+<rect x="40" y="424" width="290" height="12" fill="#3a9d6e"/>
+<text x="52" y="427" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">IMU BMI270</text>
+<text x="52" y="458" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">accelerometer jitter and lean</text>
+<text x="52" y="476" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">(masked while servos re-power)</text>
+<rect x="40" y="510" width="290" height="70" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
+<rect x="40" y="510" width="290" height="30" rx="10" fill="#3a9d6e"/>
+<rect x="40" y="528" width="290" height="12" fill="#3a9d6e"/>
+<text x="52" y="531" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">LTR-553</text>
+<text x="52" y="562" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">IR proximity + ambient light</text>
+<rect x="40" y="596" width="290" height="88" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
+<rect x="40" y="596" width="290" height="30" rx="10" fill="#3a9d6e"/>
+<rect x="40" y="614" width="290" height="12" fill="#3a9d6e"/>
+<text x="52" y="617" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Camera GC0308</text>
+<text x="52" y="648" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">160x120, motion grid</text>
+<text x="52" y="666" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ where it moves (x, y)</text>
+<rect x="40" y="700" width="290" height="88" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
+<rect x="40" y="700" width="290" height="30" rx="10" fill="#3a9d6e"/>
+<rect x="40" y="718" width="290" height="12" fill="#3a9d6e"/>
+<text x="52" y="721" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Battery, clock, timers</text>
+<text x="52" y="752" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">AXP2101, NTP time,</text>
+<text x="52" y="770" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">time since contact</text>
+<rect x="390" y="130" width="580" height="892" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
+<rect x="390" y="130" width="580" height="30" rx="10" fill="#3a9d6e"/>
+<rect x="390" y="148" width="580" height="12" fill="#3a9d6e"/>
+<text x="402" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#ffffff" font-weight="bold" text-anchor="start">Channel encoder: 13 channels, each a number 0..1</text>
+<text x="540" y="182" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">0</text>
+<text x="790" y="182" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="end">1</text>
+<text x="404" y="205" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start"> 1  loud</text>
+<rect x="540" y="192" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="540.0" y="192" width="37.5" height="16" rx="2" fill="#6c7a96"/>
+<rect x="577.5" y="192" width="75.00000000000001" height="16" rx="2" fill="#3a9d6e"/>
+<rect x="652.5" y="192" width="62.499999999999986" height="16" rx="2" fill="#d9a441"/>
+<rect x="715.0" y="192" width="37.50000000000001" height="16" rx="2" fill="#e8743b"/>
+<rect x="752.5" y="192" width="37.50000000000001" height="16" rx="2" fill="#d9534f"/>
+<text x="802" y="205" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">loudness, slow average (10 s)</text>
+<path d="M330,174.0 L360,174.0 L360,200 L388,200" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="259" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start"> 2  sharp</text>
+<rect x="540" y="246" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="565.0" y="246" width="62.49999999999999" height="16" rx="2" fill="#d9a441"/>
+<rect x="627.5" y="246" width="75.00000000000001" height="16" rx="2" fill="#e8743b"/>
+<rect x="702.5" y="246" width="87.5" height="16" rx="2" fill="#d9534f"/>
+<text x="802" y="259" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">loud peaks: claps, bangs</text>
+<path d="M330,174.0 L360,174.0 L360,254 L388,254" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="313" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start"> 3  voice</text>
+<rect x="540" y="300" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="540.0" y="300" width="12.5" height="16" rx="2" fill="#6c7a96"/>
+<rect x="552.5" y="300" width="137.49999999999997" height="16" rx="2" fill="#3a9d6e"/>
+<rect x="690.0" y="300" width="62.5" height="16" rx="2" fill="#d9a441"/>
+<rect x="752.5" y="300" width="37.50000000000001" height="16" rx="2" fill="#e8743b"/>
+<text x="802" y="313" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">share of speech (60 s)</text>
+<path d="M330,174.0 L360,174.0 L360,308 L388,308" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="367" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start"> 4  touch_head</text>
+<rect x="540" y="354" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="540.0" y="354" width="12.5" height="16" rx="2" fill="#6c7a96"/>
+<rect x="552.5" y="354" width="100.0" height="16" rx="2" fill="#3a9d6e"/>
+<rect x="652.5" y="354" width="62.499999999999986" height="16" rx="2" fill="#d9a441"/>
+<rect x="715.0" y="354" width="37.50000000000001" height="16" rx="2" fill="#e8743b"/>
+<rect x="752.5" y="354" width="37.50000000000001" height="16" rx="2" fill="#d9534f"/>
+<text x="802" y="367" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">strokes on the head pad</text>
+<path d="M330,269.0 L360,269.0 L360,362 L388,362" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="421" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start"> 5  touch_screen</text>
+<rect x="540" y="408" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="552.5" y="408" width="50.0" height="16" rx="2" fill="#d9a441"/>
+<rect x="602.5" y="408" width="37.50000000000001" height="16" rx="2" fill="#3a9d6e"/>
+<rect x="640.0" y="408" width="62.5" height="16" rx="2" fill="#e8743b"/>
+<rect x="702.5" y="408" width="87.5" height="16" rx="2" fill="#d9534f"/>
+<text x="802" y="421" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">taps / pokes on the face</text>
+<path d="M330,355.0 L360,355.0 L360,416 L388,416" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="475" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start"> 6  shake</text>
+<rect x="540" y="462" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="552.5" y="462" width="37.50000000000001" height="16" rx="2" fill="#d9a441"/>
+<rect x="590.0" y="462" width="200.0" height="16" rx="2" fill="#e8743b"/>
+<rect x="652.5" y="470.0" width="137.5" height="8.0" rx="2" fill="#d9534f"/>
+<text x="802" y="475" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">accelerometer jitter</text>
+<path d="M330,450.0 L360,450.0 L360,470 L388,470" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="529" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start"> 7  tilt</text>
+<rect x="540" y="516" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="540.0" y="516" width="30.0" height="16" rx="2" fill="#3a9d6e"/>
+<rect x="570.0" y="516" width="45.0" height="16" rx="2" fill="#d9a441"/>
+<rect x="615.0" y="516" width="175.0" height="16" rx="2" fill="#e8743b"/>
+<text x="802" y="529" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">lean from the learned upright</text>
+<path d="M330,450.0 L360,450.0 L360,524 L388,524" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="583" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start"> 8  near</text>
+<rect x="540" y="570" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="540.0" y="570" width="25.0" height="16" rx="2" fill="#6c7a96"/>
+<rect x="565.0" y="570" width="100.0" height="16" rx="2" fill="#3a9d6e"/>
+<rect x="665.0" y="570" width="75.00000000000001" height="16" rx="2" fill="#d9a441"/>
+<rect x="740.0" y="570" width="49.999999999999986" height="16" rx="2" fill="#e8743b"/>
+<text x="802" y="583" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">IR proximity (LTR-553)</text>
+<path d="M330,545.0 L360,545.0 L360,578 L388,578" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="637" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start"> 9  light</text>
+<rect x="540" y="624" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="565.0" y="624" width="125.0" height="16" rx="2" fill="#3a9d6e"/>
+<rect x="690.0" y="624" width="62.5" height="16" rx="2" fill="#d9a441"/>
+<rect x="752.5" y="624" width="37.50000000000001" height="16" rx="2" fill="#d9534f"/>
+<text x="802" y="637" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">ambient light, log scale</text>
+<path d="M330,545.0 L360,545.0 L360,632 L388,632" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="691" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">10  motion</text>
+<rect x="540" y="678" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="540.0" y="678" width="7.5" height="16" rx="2" fill="#6c7a96"/>
+<rect x="547.5" y="678" width="55.0" height="16" rx="2" fill="#d9a441"/>
+<rect x="602.5" y="678" width="75.00000000000001" height="16" rx="2" fill="#e8743b"/>
+<rect x="677.5" y="678" width="112.49999999999999" height="16" rx="2" fill="#d9534f"/>
+<text x="802" y="691" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">camera: share of moving cells</text>
+<path d="M330,640.0 L360,640.0 L360,686 L388,686" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="745" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">11  hunger</text>
+<rect x="540" y="732" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="540.0" y="732" width="125.0" height="16" rx="2" fill="#3a9d6e"/>
+<rect x="665.0" y="732" width="125.0" height="16" rx="2" fill="#e8743b"/>
+<text x="802" y="745" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">1 - battery</text>
+<path d="M330,744.0 L360,744.0 L360,740 L388,740" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="799" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">12  tired</text>
+<rect x="540" y="786" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="540.0" y="786" width="150.0" height="16" rx="2" fill="#3a9d6e"/>
+<text x="802" y="799" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">night ramp + low stamina</text>
+<path d="M330,744.0 L360,744.0 L360,794 L388,794" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<text x="404" y="853" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">13  lonely</text>
+<rect x="540" y="840" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="540.0" y="840" width="62.5" height="16" rx="2" fill="#3a9d6e"/>
+<rect x="602.5" y="840" width="187.5" height="16" rx="2" fill="#6c7a96"/>
+<text x="802" y="853" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">time without contact (40 min)</text>
+<path d="M330,744.0 L360,744.0 L360,848 L388,848" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
+<rect x="404" y="902" width="18" height="12" rx="2" fill="#6c7a96"/>
+<text x="428" y="913" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">boredom</text>
+<rect x="509" y="902" width="18" height="12" rx="2" fill="#3a9d6e"/>
+<text x="533" y="913" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">comfort</text>
+<rect x="614" y="902" width="18" height="12" rx="2" fill="#d9a441"/>
+<text x="638" y="913" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">interest</text>
+<rect x="719" y="902" width="18" height="12" rx="2" fill="#e8743b"/>
+<text x="743" y="913" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">anxiety</text>
+<rect x="824" y="902" width="18" height="12" rx="2" fill="#d9534f"/>
+<text x="848" y="913" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">anger</text>
+<text x="404" y="938" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ where: motion_x, motion_y (-1..1) for attention</text>
+<text x="404" y="958" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">soft zone borders (±0.03); innate table, may shift ±0.15 with experience</text>
+<text x="404" y="976" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">slow clocks (minutes, hours) stay in code: a spiking net cannot count them</text>
+<text x="404" y="994" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">on the robot and in the trainer: the same code (parity test, error 0)</text>
+<rect x="1010" y="130" width="390" height="892" rx="10" fill="#171e2e" stroke="#d9534f" stroke-width="2.5"/>
+<rect x="1010" y="130" width="390" height="30" rx="10" fill="#d9534f"/>
+<rect x="1010" y="148" width="390" height="12" fill="#d9534f"/>
+<text x="1022" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#ffffff" font-weight="bold" text-anchor="start">Spiking analyzer (SNN): 768 LIF neurons</text>
+<rect x="1026" y="174" width="358" height="68" rx="8" fill="#22192a" stroke="#d9534f" stroke-width="1.5"/>
+<text x="1038" y="196" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffb3ad" font-weight="bold" text-anchor="start">ENC 130</text>
+<text x="1038" y="216" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">8 Gaussian receptive fields per channel</text>
+<text x="1038" y="233" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ ON / OFF change cells</text>
+<rect x="1026" y="260" width="358" height="85" rx="8" fill="#22192a" stroke="#d9534f" stroke-width="1.5"/>
+<text x="1038" y="282" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffb3ad" font-weight="bold" text-anchor="start">ZONE 260</text>
+<text x="1038" y="302" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">13 channels x 5 zones x 4 neurons</text>
+<text x="1038" y="319" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">fixed innate wiring,</text>
+<text x="1038" y="336" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">habituation 1 / 8 / 30 / 90 s</text>
+<path d="M1205.0,242 L1205.0,258" stroke="#d9534f" stroke-width="1.8" fill="none" marker-end="url(#ad9534f)"/>
+<rect x="1026" y="363" width="358" height="68" rx="8" fill="#22192a" stroke="#d9534f" stroke-width="1.5"/>
+<text x="1038" y="385" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffb3ad" font-weight="bold" text-anchor="start">MIX 282</text>
+<text x="1038" y="405" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">recurrent, 80 % excitatory / 20 % inhib.</text>
+<text x="1038" y="422" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">context across channels</text>
+<path d="M1205.0,345 L1205.0,361" stroke="#d9534f" stroke-width="1.8" fill="none" marker-end="url(#ad9534f)"/>
+<rect x="1026" y="449" width="358" height="51" rx="8" fill="#22192a" stroke="#d9534f" stroke-width="1.5"/>
+<text x="1038" y="471" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffb3ad" font-weight="bold" text-anchor="start">ATT 96</text>
+<text x="1038" y="491" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">12 x 8 attention map: where to look</text>
+<path d="M1205.0,431 L1205.0,447" stroke="#d9534f" stroke-width="1.8" fill="none" marker-end="url(#ad9534f)"/>
+<rect x="1026" y="518" width="358" height="51" rx="8" fill="#22192a" stroke="#d9534f" stroke-width="1.5"/>
+<text x="1038" y="540" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffb3ad" font-weight="bold" text-anchor="start">READOUT 32</text>
+<text x="1038" y="560" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">leaky integrators, 0.15 .. 3 s</text>
+<path d="M1205.0,500 L1205.0,516" stroke="#d9534f" stroke-width="1.8" fill="none" marker-end="url(#ad9534f)"/>
+<text x="1026" y="593" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">2 substeps of 25 ms per tick, event-driven C++</text>
+<text x="1026" y="612" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">int8 weights per row: 236 KB (in PSRAM)</text>
+<text x="1026" y="631" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">3-5 ms per tick on the ESP32-S3</text>
+<text x="1026" y="650" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">· trained: surrogate gradients, TBPTT, int8 QAT</text>
+<text x="1026" y="669" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">· matches its teacher at 0.96-0.99 (correlation)</text>
+<path d="M970,576.0 L1008,576.0" stroke="#26a6a6" stroke-width="3" fill="none" marker-end="url(#a26a6a6)"/>
+<text x="990" y="550.0" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#26a6a6" font-weight="bold" text-anchor="middle">15</text>
+<text x="990" y="566.0" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#26a6a6" font-weight="normal" text-anchor="middle">nums</text>
+<rect x="1440" y="130" width="250" height="334" rx="10" fill="#171e2e" stroke="#26a6a6" stroke-width="2.5"/>
+<rect x="1440" y="130" width="250" height="30" rx="10" fill="#26a6a6"/>
+<rect x="1440" y="148" width="250" height="12" fill="#26a6a6"/>
+<text x="1452" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#ffffff" font-weight="bold" text-anchor="start">32 numbers to the NN</text>
+<text x="1454" y="182" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#8fe3e3" font-weight="bold" text-anchor="start">core affect 6</text>
+<text x="1454" y="200" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">valence, arousal, under-</text>
+<text x="1454" y="216" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">and over-stimulation,</text>
+<text x="1454" y="232" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">threat, surprise</text>
+<text x="1454" y="256" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#8fe3e3" font-weight="bold" text-anchor="start">salience 10</text>
+<text x="1454" y="274" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">how much each outer</text>
+<text x="1454" y="290" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">channel matters now</text>
+<text x="1454" y="314" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#8fe3e3" font-weight="bold" text-anchor="start">hedonic 10</text>
+<text x="1454" y="332" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">pleasant / unpleasant</text>
+<text x="1454" y="348" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">per outer channel</text>
+<text x="1454" y="372" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#8fe3e3" font-weight="bold" text-anchor="start">drives 3</text>
+<text x="1454" y="390" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">hunger, sleepiness,</text>
+<text x="1454" y="406" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">loneliness</text>
+<text x="1454" y="430" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#8fe3e3" font-weight="bold" text-anchor="start">attention 3</text>
+<text x="1454" y="448" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">x, y, strength</text>
+<path d="M1400,330 L1438,330" stroke="#26a6a6" stroke-width="3" fill="none" marker-end="url(#a26a6a6)"/>
+<rect x="1730" y="130" width="330" height="892" rx="10" fill="#171e2e" stroke="#2f6fdd" stroke-width="2.5"/>
+<rect x="1730" y="130" width="330" height="30" rx="10" fill="#2f6fdd"/>
+<rect x="1730" y="148" width="330" height="12" fill="#2f6fdd"/>
+<text x="1742" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#ffffff" font-weight="bold" text-anchor="start">Main network (the one decider)</text>
+<text x="1744" y="186" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">input 44 = 32 from the SNN + 12 own state</text>
+<text x="1744" y="204" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">runs at 10 Hz, float, 31 k parameters</text>
+<rect x="1746" y="226" width="298" height="51" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
+<text x="1758" y="248" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">GRU 64</text>
+<text x="1758" y="268" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">memory of the last seconds</text>
+<rect x="1746" y="295" width="298" height="51" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
+<text x="1758" y="317" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">Emotion head: 21 + strength</text>
+<text x="1758" y="337" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">picks the face / mood first</text>
+<path d="M1895.0,277 L1895.0,293" stroke="#2f6fdd" stroke-width="1.8" fill="none" marker-end="url(#a2f6fdd)"/>
+<rect x="1746" y="364" width="298" height="119" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
+<text x="1758" y="386" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">Action heads (hidden 64): 39</text>
+<text x="1758" y="406" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">voice 10: say, style, mood, register,</text>
+<text x="1758" y="423" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">         length, rate</text>
+<text x="1758" y="440" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">LEDs 15: colour, pattern, brightness, rate</text>
+<text x="1758" y="457" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">head 14: mode, gaze, gesture size,</text>
+<text x="1758" y="474" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">         speed, repeats</text>
+<path d="M1895.0,346 L1895.0,362" stroke="#2f6fdd" stroke-width="1.8" fill="none" marker-end="url(#a2f6fdd)"/>
+<text x="1744" y="507" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">own state (12):</text>
+<text x="1744" y="527" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">last mood, how long the face is shown,</text>
+<text x="1744" y="545" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">time since a sound / a gesture, head pose,</text>
+<text x="1744" y="563" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">LED level, was the touch answered,</text>
+<text x="1744" y="581" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">3 pacemakers (slow, fast, jitter): the</text>
+<text x="1744" y="599" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">randomness the network can see</text>
+<text x="1744" y="617" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">· trained: imitation of a teacher with</text>
+<text x="1744" y="635" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">· memory, then DAgger; agrees 0.90</text>
+<path d="M1690,297.0 L1728,297.0" stroke="#26a6a6" stroke-width="3" fill="none" marker-end="url(#a26a6a6)"/>
+<rect x="2090" y="130" width="280" height="310" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
+<rect x="2090" y="130" width="280" height="30" rx="10" fill="#3a9d6e"/>
+<rect x="2090" y="148" width="280" height="12" fill="#3a9d6e"/>
+<text x="2102" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Executor (safety in C++)</text>
+<text x="2102" y="182" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">takes the 61 outputs every 100 ms</text>
+<text x="2102" y="200" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">face shown &gt;= 1.5 s, confirmed 2 ticks</text>
+<text x="2102" y="218" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">voice budget: 5 calls / 10 s refill,</text>
+<text x="2102" y="236" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">  reactions may spend the last one</text>
+<text x="2102" y="254" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">night 21:45-06:00: silent,</text>
+<text x="2102" y="272" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">  LEDs &lt;= 6 %, no nods / shakes</text>
+<text x="2102" y="290" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">nod / shake at most every 4 s</text>
+<text x="2102" y="308" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">servo bus &lt;= 8 commands / s</text>
+<text x="2102" y="326" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">yaw ±100°, pitch -20..35°</text>
+<text x="2102" y="344" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">· the network decides WHAT,</text>
+<text x="2102" y="362" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">· the executor only HOW</text>
+<path d="M2060,280 L2088,280" stroke="#2f6fdd" stroke-width="3" fill="none" marker-end="url(#a2f6fdd)"/>
+<rect x="2090" y="460" width="280" height="88" rx="10" fill="#171e2e" stroke="#d9a441" stroke-width="2.5"/>
+<rect x="2090" y="460" width="280" height="30" rx="10" fill="#d9a441"/>
+<rect x="2090" y="478" width="280" height="12" fill="#d9a441"/>
+<text x="2102" y="481" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Display: the face</text>
+<text x="2102" y="512" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">21 emotions, smooth morph,</text>
+<text x="2102" y="530" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">eyes follow attention</text>
+<path d="M2110,430 L2110,458" stroke="#d9a441" stroke-width="1.6" fill="none" marker-end="url(#ad9a441)"/>
+<rect x="2090" y="562" width="280" height="88" rx="10" fill="#171e2e" stroke="#d9a441" stroke-width="2.5"/>
+<rect x="2090" y="562" width="280" height="30" rx="10" fill="#d9a441"/>
+<rect x="2090" y="580" width="280" height="12" fill="#d9a441"/>
+<text x="2102" y="583" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Speaker: droid babble</text>
+<text x="2102" y="614" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">child-like phrases, style and</text>
+<text x="2102" y="632" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">mood from the network</text>
+<path d="M2110,548 L2110,560" stroke="#d9a441" stroke-width="1.6" fill="none" marker-end="url(#ad9a441)"/>
+<rect x="2090" y="664" width="280" height="88" rx="10" fill="#171e2e" stroke="#d9a441" stroke-width="2.5"/>
+<rect x="2090" y="664" width="280" height="30" rx="10" fill="#d9a441"/>
+<rect x="2090" y="682" width="280" height="12" fill="#d9a441"/>
+<text x="2102" y="685" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">LED ring</text>
+<text x="2102" y="716" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">8 colours x 5 patterns</text>
+<text x="2102" y="734" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">steady breathe pulse flicker wave</text>
+<path d="M2110,650 L2110,662" stroke="#d9a441" stroke-width="1.6" fill="none" marker-end="url(#ad9a441)"/>
+<rect x="2090" y="766" width="280" height="88" rx="10" fill="#171e2e" stroke="#d9a441" stroke-width="2.5"/>
+<rect x="2090" y="766" width="280" height="30" rx="10" fill="#d9a441"/>
+<rect x="2090" y="784" width="280" height="12" fill="#d9a441"/>
+<text x="2102" y="787" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Head servos (yaw, pitch)</text>
+<text x="2102" y="818" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">look, scan, look up / down, doze,</text>
+<text x="2102" y="836" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">nod YES, shake NO, flinch</text>
+<path d="M2110,752 L2110,764" stroke="#d9a441" stroke-width="1.6" fill="none" marker-end="url(#ad9a441)"/>
+<path d="M2350,430 L2350,1010 L1895.0,1010 L1895.0,1026" stroke="#3a9d6e" stroke-width="2.2" fill="none" stroke-dasharray="7 5" marker-end="url(#a3a9d6e)"/>
+<text x="1750" y="1002" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#3a9d6e" font-weight="normal" text-anchor="start">what really happened -&gt; own state</text>
+<rect x="30" y="1060" width="2340" height="410" rx="14" fill="#140f1c" stroke="#b06bd1" stroke-width="2"/>
+<text x="50" y="1094" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="22" fill="#e2c4f2" font-weight="bold" text-anchor="start">Home PC (192.168.8.110): records every tick, trains, sends weights back</text>
+<rect x="50" y="1120" width="330" height="170" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
+<rect x="50" y="1120" width="330" height="30" rx="10" fill="#b06bd1"/>
+<rect x="50" y="1138" width="330" height="12" fill="#b06bd1"/>
+<text x="62" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Diary (UDP, 20 Hz)</text>
+<text x="62" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">13 channels + 2 where</text>
+<text x="62" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">32 SNN numbers</text>
+<text x="62" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">61 network outputs</text>
+<text x="62" y="1226" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">-&gt; lifelogd -&gt; data/life/&lt;day&gt;</text>
+<text x="62" y="1244" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ status lines (faces, calls, gestures)</text>
+<rect x="420" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
+<rect x="420" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
+<rect x="420" y="1138" width="300" height="12" fill="#b06bd1"/>
+<text x="432" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">0  Calibration</text>
+<text x="432" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">7 days of real diary:</text>
+<text x="432" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">where each channel sits,</text>
+<text x="432" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">which zones it visits</text>
+<rect x="740" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
+<rect x="740" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
+<rect x="740" y="1138" width="300" height="12" fill="#b06bd1"/>
+<text x="752" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">1  Teachers</text>
+<text x="752" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">innate appraisal -&gt; 32</text>
+<text x="752" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">behaviour teacher with</text>
+<text x="752" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">memory -&gt; 61</text>
+<path d="M720,1185 L738,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
+<rect x="1060" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
+<rect x="1060" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
+<rect x="1060" y="1138" width="300" height="12" fill="#b06bd1"/>
+<text x="1072" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">2  Train the SNN</text>
+<text x="1072" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">1400 synthetic + 400 real</text>
+<text x="1072" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">5-minute lives, surrogate</text>
+<text x="1072" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">gradients, int8 QAT</text>
+<path d="M1040,1185 L1058,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
+<rect x="1380" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
+<rect x="1380" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
+<rect x="1380" y="1138" width="300" height="12" fill="#b06bd1"/>
+<text x="1392" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">3  Train the NN</text>
+<text x="1392" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">imitation of the teacher,</text>
+<text x="1392" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">2 DAgger rounds: the net</text>
+<text x="1392" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">acts, the teacher corrects</text>
+<path d="M1360,1185 L1378,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
+<rect x="1700" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
+<rect x="1700" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
+<rect x="1700" y="1138" width="300" height="12" fill="#b06bd1"/>
+<text x="1712" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">4  Check</text>
+<text x="1712" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">export -&gt; C++, exact parity,</text>
+<text x="1712" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">simulator (digital twin):</text>
+<text x="1712" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">behaviour tests</text>
+<path d="M1680,1185 L1698,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
+<rect x="2020" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
+<rect x="2020" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
+<rect x="2020" y="1138" width="300" height="12" fill="#b06bd1"/>
+<text x="2032" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">5  OTA over Wi-Fi</text>
+<text x="2032" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">firmware / mode v4</text>
+<text x="2032" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">rollback: mode life</text>
+<text x="2032" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">(platform B)</text>
+<path d="M2000,1185 L2018,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
+<path d="M380,1185 L418,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
+<rect x="420" y="1280" width="1900" height="100" rx="10" fill="#1d1428" stroke="#b06bd1" stroke-width="1.5"/>
+<rect x="420" y="1280" width="1900" height="100" rx="10" fill="none" stroke="#b06bd1" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="440" y="1310" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#e2c4f2" font-weight="bold" text-anchor="start">6  Next: learning from its own life</text>
+<text x="440" y="1336" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">reward from the owner's reactions; nightly fine-tune of the action heads; zones shift with experience (±0.15, kept in NVS)</text>
+<text x="440" y="1360" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">the SNN stays the innate nervous system; the main network learns the habits</text>
+<text x="50" y="1340" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">teacher-free on the robot:</text>
+<text x="50" y="1360" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">the teachers exist only on the PC</text>
+<text x="50" y="1420" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#9aa6bf" font-weight="normal" text-anchor="start">Platform B (stackchan-life, mode life) and the v3 hybrid brain stay in the same firmware: ota.py mode life | brain | v4 switches without reflashing.</text>
+<text x="50" y="1448" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#9aa6bf" font-weight="normal" text-anchor="start">The simulator runs the real firmware code (channels, SNN, NN, executor) in a virtual room with scripted people, sounds, touches and light.</text>
+<path d="M450,1022 L450,1035 L185,1035 L185,1118" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
+<text x="195" y="1028" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#b06bd1" font-weight="normal" text-anchor="start">diary: channels, SNN, NN</text>
+<path d="M2220,1118 L2220,876" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
+<text x="2230" y="960" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#b06bd1" font-weight="normal" text-anchor="start">OTA</text>
+</svg>

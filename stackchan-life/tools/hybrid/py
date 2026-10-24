@@ -3,4 +3,4 @@
 # STACKCHAN_PY overrides the interpreter (e.g. a venv outside the project).
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$here"
-exec "${STACKCHAN_PY:-$here/../../../stackchan-neuromorphic/tools/vocal_decoder/.venv/bin/python}" "$@"
+exec "${STACKCHAN_PY:-$HOME/.venvs/stackchan/bin/python}" "$@"

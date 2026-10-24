@@ -1,7 +1,7 @@
 # stackchan-life
 
 Platform B of the StackChan brain: a robot that is free and **learns from its own life**. The same robot and the same
-perception, voice and body as `../stackchan-neuromorphic` (v3, kept as the way back: `ota.py mode brain`), with a
+perception, voice and body as the v3 hybrid brain (git tag `v3-neuromorphic`; still in the firmware: `ota.py mode brain`), with a
 learning loop around them:
 
 - **On the robot, every 50 ms:**

@@ -1,0 +1,364 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1500" width="2400" height="1500">
+<defs>
+<marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
+<marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
+<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
+<marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
+<marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
+<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
+<marker id="a26a6a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#26a6a6"/></marker>
+<marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
+<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
+<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
+<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
+<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
+<marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
+</defs>
+<rect width="2400" height="1500" fill="#0f1420"/>
+<text x="40" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="32" fill="#e6ebf5" font-weight="bold" text-anchor="start">Brain v4: inside the two networks</text>
+<text x="40" y="82" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#9aa6bf" font-weight="normal" text-anchor="start">left: how a channel's number becomes spikes and zone activity; right: what the main network chooses</text>
+<rect x="40" y="130" width="1120" height="560" rx="10" fill="#171e2e" stroke="#d9534f" stroke-width="2.5"/>
+<rect x="40" y="130" width="1120" height="30" rx="10" fill="#d9534f"/>
+<rect x="40" y="148" width="1120" height="12" fill="#d9534f"/>
+<text x="52" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#ffffff" font-weight="bold" text-anchor="start">One channel through the analyzer (example: touch_head)</text>
+<text x="60" y="194" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">value 0..1</text>
+<rect x="200" y="180" width="900" height="20" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
+<rect x="200.0" y="180" width="45.0" height="20" rx="2" fill="#6c7a96"/>
+<rect x="245.0" y="180" width="360.0" height="20" rx="2" fill="#3a9d6e"/>
+<rect x="605.0" y="180" width="224.99999999999994" height="20" rx="2" fill="#d9a441"/>
+<rect x="830.0" y="180" width="135.00000000000003" height="20" rx="2" fill="#e8743b"/>
+<rect x="965.0" y="180" width="135.00000000000003" height="20" rx="2" fill="#d9534f"/>
+<text x="200" y="218" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">0</text>
+<text x="425.0" y="218" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">0.25</text>
+<text x="650.0" y="218" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">0.5</text>
+<text x="875.0" y="218" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">0.75</text>
+<text x="1100.0" y="218" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">1</text>
+<text x="60" y="260" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">ENC: 8 Gaussian</text>
+<text x="60" y="278" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">receptive fields</text>
+<path d="M200.0,257.6 L215.0,250.2 L230.0,244.4 L245.0,240.8 L260.0,240.1 L275.0,242.3 L290.0,247.1 L305.0,253.8 L320.0,261.6 L335.0,269.6 L350.0,277.1 L365.0,283.6 L380.0,288.8 L395.0,292.7 L410.0,295.5 L425.0,297.4 L440.0,298.5 L455.0,299.2 L470.0,299.6 L485.0,299.8 L500.0,299.9 L515.0,300.0 L530.0,300.0 L545.0,300.0 L560.0,300.0 L575.0,300.0 L590.0,300.0 L605.0,300.0 L620.0,300.0 L635.0,300.0 L650.0,300.0 L665.0,300.0 L680.0,300.0 L695.0,300.0 L710.0,300.0 L725.0,300.0 L740.0,300.0 L755.0,300.0 L770.0,300.0 L785.0,300.0 L800.0,300.0 L815.0,300.0 L830.0,300.0 L845.0,300.0 L860.0,300.0 L875.0,300.0 L890.0,300.0 L905.0,300.0 L920.0,300.0 L935.0,300.0 L950.0,300.0 L965.0,300.0 L980.0,300.0 L995.0,300.0 L1010.0,300.0 L1025.0,300.0 L1040.0,300.0 L1055.0,300.0 L1070.0,300.0 L1085.0,300.0 L1100.0,300.0" stroke="#d9534f" stroke-width="1.8" fill="none" opacity="0.85"/>
+<path d="M200.0,297.4 L215.0,295.5 L230.0,292.7 L245.0,288.8 L260.0,283.6 L275.0,277.1 L290.0,269.6 L305.0,261.6 L320.0,253.8 L335.0,247.1 L350.0,242.3 L365.0,240.1 L380.0,240.8 L395.0,244.4 L410.0,250.2 L425.0,257.6 L440.0,265.6 L455.0,273.5 L470.0,280.5 L485.0,286.4 L500.0,290.9 L515.0,294.3 L530.0,296.5 L545.0,298.0 L560.0,298.9 L575.0,299.4 L590.0,299.7 L605.0,299.9 L620.0,299.9 L635.0,300.0 L650.0,300.0 L665.0,300.0 L680.0,300.0 L695.0,300.0 L710.0,300.0 L725.0,300.0 L740.0,300.0 L755.0,300.0 L770.0,300.0 L785.0,300.0 L800.0,300.0 L815.0,300.0 L830.0,300.0 L845.0,300.0 L860.0,300.0 L875.0,300.0 L890.0,300.0 L905.0,300.0 L920.0,300.0 L935.0,300.0 L950.0,300.0 L965.0,300.0 L980.0,300.0 L995.0,300.0 L1010.0,300.0 L1025.0,300.0 L1040.0,300.0 L1055.0,300.0 L1070.0,300.0 L1085.0,300.0 L1100.0,300.0" stroke="#d9534f" stroke-width="1.8" fill="none" opacity="0.85"/>
+<path d="M200.0,300.0 L215.0,300.0 L230.0,299.9 L245.0,299.9 L260.0,299.7 L275.0,299.4 L290.0,298.9 L305.0,298.0 L320.0,296.5 L335.0,294.3 L350.0,290.9 L365.0,286.4 L380.0,280.5 L395.0,273.5 L410.0,265.6 L425.0,257.6 L440.0,250.2 L455.0,244.4 L470.0,240.8 L485.0,240.1 L500.0,242.3 L515.0,247.1 L530.0,253.8 L545.0,261.6 L560.0,269.6 L575.0,277.1 L590.0,283.6 L605.0,288.8 L620.0,292.7 L635.0,295.5 L650.0,297.4 L665.0,298.5 L680.0,299.2 L695.0,299.6 L710.0,299.8 L725.0,299.9 L740.0,300.0 L755.0,300.0 L770.0,300.0 L785.0,300.0 L800.0,300.0 L815.0,300.0 L830.0,300.0 L845.0,300.0 L860.0,300.0 L875.0,300.0 L890.0,300.0 L905.0,300.0 L920.0,300.0 L935.0,300.0 L950.0,300.0 L965.0,300.0 L980.0,300.0 L995.0,300.0 L1010.0,300.0 L1025.0,300.0 L1040.0,300.0 L1055.0,300.0 L1070.0,300.0 L1085.0,300.0 L1100.0,300.0" stroke="#d9534f" stroke-width="1.8" fill="none" opacity="0.85"/>
+<path d="M200.0,300.0 L215.0,300.0 L230.0,300.0 L245.0,300.0 L260.0,300.0 L275.0,300.0 L290.0,300.0 L305.0,300.0 L320.0,300.0 L335.0,300.0 L350.0,299.9 L365.0,299.8 L380.0,299.6 L395.0,299.2 L410.0,298.5 L425.0,297.4 L440.0,295.5 L455.0,292.7 L470.0,288.8 L485.0,283.6 L500.0,277.1 L515.0,269.6 L530.0,261.6 L545.0,253.8 L560.0,247.1 L575.0,242.3 L590.0,240.1 L605.0,240.8 L620.0,244.4 L635.0,250.2 L650.0,257.6 L665.0,265.6 L680.0,273.5 L695.0,280.5 L710.0,286.4 L725.0,290.9 L740.0,294.3 L755.0,296.5 L770.0,298.0 L785.0,298.9 L800.0,299.4 L815.0,299.7 L830.0,299.9 L845.0,299.9 L860.0,300.0 L875.0,300.0 L890.0,300.0 L905.0,300.0 L920.0,300.0 L935.0,300.0 L950.0,300.0 L965.0,300.0 L980.0,300.0 L995.0,300.0 L1010.0,300.0 L1025.0,300.0 L1040.0,300.0 L1055.0,300.0 L1070.0,300.0 L1085.0,300.0 L1100.0,300.0" stroke="#d9534f" stroke-width="1.8" fill="none" opacity="0.85"/>
+<path d="M200.0,300.0 L215.0,300.0 L230.0,300.0 L245.0,300.0 L260.0,300.0 L275.0,300.0 L290.0,300.0 L305.0,300.0 L320.0,300.0 L335.0,300.0 L350.0,300.0 L365.0,300.0 L380.0,300.0 L395.0,300.0 L410.0,300.0 L425.0,300.0 L440.0,300.0 L455.0,299.9 L470.0,299.9 L485.0,299.7 L500.0,299.4 L515.0,298.9 L530.0,298.0 L545.0,296.5 L560.0,294.3 L575.0,290.9 L590.0,286.4 L605.0,280.5 L620.0,273.5 L635.0,265.6 L650.0,257.6 L665.0,250.2 L680.0,244.4 L695.0,240.8 L710.0,240.1 L725.0,242.3 L740.0,247.1 L755.0,253.8 L770.0,261.6 L785.0,269.6 L800.0,277.1 L815.0,283.6 L830.0,288.8 L845.0,292.7 L860.0,295.5 L875.0,297.4 L890.0,298.5 L905.0,299.2 L920.0,299.6 L935.0,299.8 L950.0,299.9 L965.0,300.0 L980.0,300.0 L995.0,300.0 L1010.0,300.0 L1025.0,300.0 L1040.0,300.0 L1055.0,300.0 L1070.0,300.0 L1085.0,300.0 L1100.0,300.0" stroke="#d9534f" stroke-width="1.8" fill="none" opacity="0.85"/>
+<path d="M200.0,300.0 L215.0,300.0 L230.0,300.0 L245.0,300.0 L260.0,300.0 L275.0,300.0 L290.0,300.0 L305.0,300.0 L320.0,300.0 L335.0,300.0 L350.0,300.0 L365.0,300.0 L380.0,300.0 L395.0,300.0 L410.0,300.0 L425.0,300.0 L440.0,300.0 L455.0,300.0 L470.0,300.0 L485.0,300.0 L500.0,300.0 L515.0,300.0 L530.0,300.0 L545.0,300.0 L560.0,300.0 L575.0,299.9 L590.0,299.8 L605.0,299.6 L620.0,299.2 L635.0,298.5 L650.0,297.4 L665.0,295.5 L680.0,292.7 L695.0,288.8 L710.0,283.6 L725.0,277.1 L740.0,269.6 L755.0,261.6 L770.0,253.8 L785.0,247.1 L800.0,242.3 L815.0,240.1 L830.0,240.8 L845.0,244.4 L860.0,250.2 L875.0,257.6 L890.0,265.6 L905.0,273.5 L920.0,280.5 L935.0,286.4 L950.0,290.9 L965.0,294.3 L980.0,296.5 L995.0,298.0 L1010.0,298.9 L1025.0,299.4 L1040.0,299.7 L1055.0,299.9 L1070.0,299.9 L1085.0,300.0 L1100.0,300.0" stroke="#d9534f" stroke-width="1.8" fill="none" opacity="0.85"/>
+<path d="M200.0,300.0 L215.0,300.0 L230.0,300.0 L245.0,300.0 L260.0,300.0 L275.0,300.0 L290.0,300.0 L305.0,300.0 L320.0,300.0 L335.0,300.0 L350.0,300.0 L365.0,300.0 L380.0,300.0 L395.0,300.0 L410.0,300.0 L425.0,300.0 L440.0,300.0 L455.0,300.0 L470.0,300.0 L485.0,300.0 L500.0,300.0 L515.0,300.0 L530.0,300.0 L545.0,300.0 L560.0,300.0 L575.0,300.0 L590.0,300.0 L605.0,300.0 L620.0,300.0 L635.0,300.0 L650.0,300.0 L665.0,300.0 L680.0,299.9 L695.0,299.9 L710.0,299.7 L725.0,299.4 L740.0,298.9 L755.0,298.0 L770.0,296.5 L785.0,294.3 L800.0,290.9 L815.0,286.4 L830.0,280.5 L845.0,273.5 L860.0,265.6 L875.0,257.6 L890.0,250.2 L905.0,244.4 L920.0,240.8 L935.0,240.1 L950.0,242.3 L965.0,247.1 L980.0,253.8 L995.0,261.6 L1010.0,269.6 L1025.0,277.1 L1040.0,283.6 L1055.0,288.8 L1070.0,292.7 L1085.0,295.5 L1100.0,297.4" stroke="#d9534f" stroke-width="1.8" fill="none" opacity="0.85"/>
+<path d="M200.0,300.0 L215.0,300.0 L230.0,300.0 L245.0,300.0 L260.0,300.0 L275.0,300.0 L290.0,300.0 L305.0,300.0 L320.0,300.0 L335.0,300.0 L350.0,300.0 L365.0,300.0 L380.0,300.0 L395.0,300.0 L410.0,300.0 L425.0,300.0 L440.0,300.0 L455.0,300.0 L470.0,300.0 L485.0,300.0 L500.0,300.0 L515.0,300.0 L530.0,300.0 L545.0,300.0 L560.0,300.0 L575.0,300.0 L590.0,300.0 L605.0,300.0 L620.0,300.0 L635.0,300.0 L650.0,300.0 L665.0,300.0 L680.0,300.0 L695.0,300.0 L710.0,300.0 L725.0,300.0 L740.0,300.0 L755.0,300.0 L770.0,300.0 L785.0,300.0 L800.0,299.9 L815.0,299.8 L830.0,299.6 L845.0,299.2 L860.0,298.5 L875.0,297.4 L890.0,295.5 L905.0,292.7 L920.0,288.8 L935.0,283.6 L950.0,277.1 L965.0,269.6 L980.0,261.6 L995.0,253.8 L1010.0,247.1 L1025.0,242.3 L1040.0,240.1 L1055.0,240.8 L1070.0,244.4 L1085.0,250.2 L1100.0,257.6" stroke="#d9534f" stroke-width="1.8" fill="none" opacity="0.85"/>
+<text x="200" y="326" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ ON cell (value rising) and OFF cell (falling): a touch onset fires at once</text>
+<text x="60" y="370" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">ZONE: 4 neurons</text>
+<text x="60" y="388" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">per zone</text>
+<rect x="200" y="356" width="170" height="120" rx="8" fill="#22192a" stroke="#6c7a96" stroke-width="1.5"/>
+<text x="210" y="378" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#6c7a96" font-weight="bold" text-anchor="start">boredom</text>
+<circle cx="224" cy="412" r="12" fill="#6c7a96" opacity="1.0"/>
+<text x="224" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">1s</text>
+<circle cx="262" cy="412" r="12" fill="#6c7a96" opacity="0.8"/>
+<text x="262" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">8s</text>
+<circle cx="300" cy="412" r="12" fill="#6c7a96" opacity="0.6"/>
+<text x="300" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">30s</text>
+<circle cx="338" cy="412" r="12" fill="#6c7a96" opacity="0.4"/>
+<text x="338" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">90s</text>
+<text x="210" y="464" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#e6ebf5" font-weight="normal" text-anchor="start">val -0.25  aro 0.05</text>
+<rect x="382" y="356" width="170" height="120" rx="8" fill="#22192a" stroke="#3a9d6e" stroke-width="1.5"/>
+<text x="392" y="378" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#3a9d6e" font-weight="bold" text-anchor="start">comfort</text>
+<circle cx="406" cy="412" r="12" fill="#3a9d6e" opacity="1.0"/>
+<text x="406" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">1s</text>
+<circle cx="444" cy="412" r="12" fill="#3a9d6e" opacity="0.8"/>
+<text x="444" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">8s</text>
+<circle cx="482" cy="412" r="12" fill="#3a9d6e" opacity="0.6"/>
+<text x="482" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">30s</text>
+<circle cx="520" cy="412" r="12" fill="#3a9d6e" opacity="0.4"/>
+<text x="520" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">90s</text>
+<text x="392" y="464" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#e6ebf5" font-weight="normal" text-anchor="start">val +0.60  aro 0.20</text>
+<rect x="564" y="356" width="170" height="120" rx="8" fill="#22192a" stroke="#d9a441" stroke-width="1.5"/>
+<text x="574" y="378" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#d9a441" font-weight="bold" text-anchor="start">interest</text>
+<circle cx="588" cy="412" r="12" fill="#d9a441" opacity="1.0"/>
+<text x="588" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">1s</text>
+<circle cx="626" cy="412" r="12" fill="#d9a441" opacity="0.8"/>
+<text x="626" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">8s</text>
+<circle cx="664" cy="412" r="12" fill="#d9a441" opacity="0.6"/>
+<text x="664" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">30s</text>
+<circle cx="702" cy="412" r="12" fill="#d9a441" opacity="0.4"/>
+<text x="702" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">90s</text>
+<text x="574" y="464" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#e6ebf5" font-weight="normal" text-anchor="start">val +0.45  aro 0.55</text>
+<rect x="746" y="356" width="170" height="120" rx="8" fill="#22192a" stroke="#e8743b" stroke-width="1.5"/>
+<text x="756" y="378" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e8743b" font-weight="bold" text-anchor="start">anxiety</text>
+<circle cx="770" cy="412" r="12" fill="#e8743b" opacity="1.0"/>
+<text x="770" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">1s</text>
+<circle cx="808" cy="412" r="12" fill="#e8743b" opacity="0.8"/>
+<text x="808" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">8s</text>
+<circle cx="846" cy="412" r="12" fill="#e8743b" opacity="0.6"/>
+<text x="846" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">30s</text>
+<circle cx="884" cy="412" r="12" fill="#e8743b" opacity="0.4"/>
+<text x="884" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">90s</text>
+<text x="756" y="464" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#e6ebf5" font-weight="normal" text-anchor="start">val -0.55  aro 0.75</text>
+<rect x="928" y="356" width="170" height="120" rx="8" fill="#22192a" stroke="#d9534f" stroke-width="1.5"/>
+<text x="938" y="378" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#d9534f" font-weight="bold" text-anchor="start">anger</text>
+<circle cx="952" cy="412" r="12" fill="#d9534f" opacity="1.0"/>
+<text x="952" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">1s</text>
+<circle cx="990" cy="412" r="12" fill="#d9534f" opacity="0.8"/>
+<text x="990" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">8s</text>
+<circle cx="1028" cy="412" r="12" fill="#d9534f" opacity="0.6"/>
+<text x="1028" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">30s</text>
+<circle cx="1066" cy="412" r="12" fill="#d9534f" opacity="0.4"/>
+<text x="1066" y="442" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="middle">90s</text>
+<text x="938" y="464" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#e6ebf5" font-weight="normal" text-anchor="start">val -0.90  aro 0.95</text>
+<text x="200" y="500" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">habituation: each neuron of a zone tires with its own time constant, so a steady stimulus fades (1 s .. 90 s) and a new one stands out</text>
+<text x="60" y="540" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">MIX 282</text>
+<text x="200" y="540" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">recurrent pool, 80 / 20 excitatory / inhibitory (Dale's law), 12 % connections: context - touch while it is loud, shake after a touch ...</text>
+<text x="60" y="566" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">ATT 96</text>
+<rect x="200" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="200" y="565" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="200" y="576" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="200" y="587" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="200" y="598" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="200" y="609" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="200" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="200" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="218" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="218" y="565" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="218" y="576" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="218" y="587" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="218" y="598" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="218" y="609" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="218" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="218" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="236" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="236" y="565" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="236" y="576" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="236" y="587" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="236" y="598" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="236" y="609" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="236" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="236" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="254" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="254" y="565" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="254" y="576" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="254" y="587" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="254" y="598" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="254" y="609" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="254" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="254" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="272" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="272" y="565" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="272" y="576" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="272" y="587" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="272" y="598" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="272" y="609" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="272" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="272" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="290" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="290" y="565" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="290" y="576" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="290" y="587" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="290" y="598" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="290" y="609" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="290" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="290" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="308" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="308" y="565" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="308" y="576" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="308" y="587" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="308" y="598" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="308" y="609" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="308" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="308" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="326" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="326" y="565" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="326" y="576" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="326" y="587" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="326" y="598" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="326" y="609" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="326" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="326" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="344" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="344" y="565" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="344" y="576" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="344" y="587" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="344" y="598" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="344" y="609" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="344" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="344" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="362" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="362" y="565" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="362" y="576" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="362" y="587" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="362" y="598" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="362" y="609" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="362" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="362" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="380" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="380" y="565" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="380" y="576" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="380" y="587" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="380" y="598" width="16" height="9" rx="1" fill="#d9534f"/>
+<rect x="380" y="609" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="380" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="380" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="398" y="554" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="398" y="565" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="398" y="576" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="398" y="587" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="398" y="598" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="398" y="609" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="398" y="620" width="16" height="9" rx="1" fill="#2a2030"/>
+<rect x="398" y="631" width="16" height="9" rx="1" fill="#2a2030"/>
+<text x="440" y="576" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">12 x 8 map; a bump where motion is seen, weighted by salience</text>
+<text x="440" y="596" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">-&gt; att_x, att_y, att_strength (the eyes and the head follow it)</text>
+<text x="60" y="672" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">READOUT</text>
+<text x="200" y="672" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">32 leaky integrators read all 768 neurons: smooth numbers for the main network</text>
+<rect x="1200" y="130" width="1160" height="560" rx="10" fill="#171e2e" stroke="#26a6a6" stroke-width="2.5"/>
+<rect x="1200" y="130" width="1160" height="30" rx="10" fill="#26a6a6"/>
+<rect x="1200" y="148" width="1160" height="12" fill="#26a6a6"/>
+<text x="1212" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#ffffff" font-weight="bold" text-anchor="start">The analyzer's 32 numbers</text>
+<text x="1224" y="192" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#8fe3e3" font-weight="bold" text-anchor="start">core affect</text>
+<text x="1224" y="220" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">valence</text>
+<text x="1224" y="242" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">arousal</text>
+<text x="1224" y="264" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">under</text>
+<text x="1224" y="286" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">over</text>
+<text x="1224" y="308" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">threat</text>
+<text x="1224" y="330" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">surprise</text>
+<text x="1509" y="192" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#8fe3e3" font-weight="bold" text-anchor="start">salience</text>
+<text x="1509" y="220" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sal_loud</text>
+<text x="1509" y="242" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sal_sharp</text>
+<text x="1509" y="264" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sal_voice</text>
+<text x="1509" y="286" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sal_touch_head</text>
+<text x="1509" y="308" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sal_touch_screen</text>
+<text x="1509" y="330" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sal_shake</text>
+<text x="1509" y="352" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sal_tilt</text>
+<text x="1509" y="374" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sal_near</text>
+<text x="1509" y="396" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sal_light</text>
+<text x="1509" y="418" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sal_motion</text>
+<text x="1794" y="192" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#8fe3e3" font-weight="bold" text-anchor="start">hedonic</text>
+<text x="1794" y="220" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">hed_loud</text>
+<text x="1794" y="242" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">hed_sharp</text>
+<text x="1794" y="264" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">hed_voice</text>
+<text x="1794" y="286" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">hed_touch_head</text>
+<text x="1794" y="308" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">hed_touch_screen</text>
+<text x="1794" y="330" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">hed_shake</text>
+<text x="1794" y="352" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">hed_tilt</text>
+<text x="1794" y="374" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">hed_near</text>
+<text x="1794" y="396" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">hed_light</text>
+<text x="1794" y="418" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">hed_motion</text>
+<text x="2079" y="192" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#8fe3e3" font-weight="bold" text-anchor="start">drives + attention</text>
+<text x="2079" y="220" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">hunger_n</text>
+<text x="2079" y="242" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sleepiness</text>
+<text x="2079" y="264" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">loneliness</text>
+<text x="2079" y="286" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">att_x</text>
+<text x="2079" y="308" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">att_y</text>
+<text x="2079" y="330" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">att_strength</text>
+<text x="1224" y="490" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">core affect: valence (pleasant .. unpleasant), arousal (calm .. excited),</text>
+<text x="1224" y="510" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">under / over (too little / too much happening: the inverted U of Wundt and Berlyne),</text>
+<text x="1224" y="530" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">threat, surprise. salience: how much a channel matters now; hedonic: is it nice.</text>
+<text x="1224" y="570" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">zone values that shape them:</text>
+<rect x="1224" y="588" width="18" height="12" rx="2" fill="#6c7a96"/>
+<text x="1250" y="599" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">boredom: val -0.25</text>
+<rect x="1444" y="588" width="18" height="12" rx="2" fill="#3a9d6e"/>
+<text x="1470" y="599" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">comfort: val +0.60</text>
+<rect x="1664" y="588" width="18" height="12" rx="2" fill="#d9a441"/>
+<text x="1690" y="599" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">interest: val +0.45</text>
+<rect x="1884" y="588" width="18" height="12" rx="2" fill="#e8743b"/>
+<text x="1910" y="599" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">anxiety: val -0.55</text>
+<rect x="2104" y="588" width="18" height="12" rx="2" fill="#d9534f"/>
+<text x="2130" y="599" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">anger: val -0.90</text>
+<text x="1224" y="640" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">the SNN gets only numbers and knows which channel each comes from; it does not choose emotions</text>
+<rect x="40" y="730" width="2320" height="730" rx="10" fill="#171e2e" stroke="#2f6fdd" stroke-width="2.5"/>
+<rect x="40" y="730" width="2320" height="30" rx="10" fill="#2f6fdd"/>
+<rect x="40" y="748" width="2320" height="12" fill="#2f6fdd"/>
+<text x="52" y="751" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#ffffff" font-weight="bold" text-anchor="start">Main network: one decider, 61 outputs</text>
+<rect x="60" y="780" width="260" height="271" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
+<text x="72" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">input 44</text>
+<text x="72" y="826" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">32 SNN numbers</text>
+<text x="72" y="843" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ prev_valence</text>
+<text x="72" y="860" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ prev_arousal</text>
+<text x="72" y="877" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ emo_age</text>
+<text x="72" y="894" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ since_sound</text>
+<text x="72" y="911" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ since_gesture</text>
+<text x="72" y="928" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ head_yaw</text>
+<text x="72" y="945" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ head_pitch</text>
+<text x="72" y="962" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ led_level</text>
+<text x="72" y="979" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ touch_answered</text>
+<text x="72" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ pace_fast</text>
+<text x="72" y="1013" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ pace_slow</text>
+<text x="72" y="1030" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ pace_jitter</text>
+<rect x="380" y="780" width="260" height="101" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
+<text x="392" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">GRU 64</text>
+<text x="392" y="826" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">gated recurrent unit:</text>
+<text x="392" y="843" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">remembers the last</text>
+<text x="392" y="860" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">seconds</text>
+<rect x="660" y="780" width="260" height="84" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
+<text x="672" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">emotion head</text>
+<text x="672" y="826" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">21 emotions (softmax)</text>
+<text x="672" y="843" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ strength</text>
+<rect x="960" y="780" width="260" height="101" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
+<text x="972" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">action hidden 64</text>
+<text x="972" y="826" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">sees the GRU state</text>
+<text x="972" y="843" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">and the chosen</text>
+<text x="972" y="860" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">emotion</text>
+<path d="M320,830 L378,830" stroke="#2f6fdd" stroke-width="2.2" fill="none" marker-end="url(#a2f6fdd)"/>
+<path d="M640,830 L658,830" stroke="#2f6fdd" stroke-width="2.2" fill="none" marker-end="url(#a2f6fdd)"/>
+<path d="M920,830 L958,830" stroke="#2f6fdd" stroke-width="2.2" fill="none" marker-end="url(#a2f6fdd)"/>
+<path d="M640,880 L940,880 L958,880" stroke="#2f6fdd" stroke-width="2.2" fill="none" stroke-dasharray="7 5" marker-end="url(#a2f6fdd)"/>
+<text x="380" y="910" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">30589 float parameters, 10 Hz</text>
+<text x="660" y="970" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#a9c6ff" font-weight="bold" text-anchor="start">emotions</text>
+<text x="660" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">normal</text>
+<text x="755" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">happy</text>
+<text x="850" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">very_happy</text>
+<text x="660" y="1016" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">laughing</text>
+<text x="755" y="1016" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">sad</text>
+<text x="850" y="1016" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">crying</text>
+<text x="660" y="1036" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">sleepy</text>
+<text x="755" y="1036" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">surprised</text>
+<text x="850" y="1036" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">angry</text>
+<text x="660" y="1056" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">annoyed</text>
+<text x="755" y="1056" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">love</text>
+<text x="850" y="1056" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">shy</text>
+<text x="660" y="1076" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">wink</text>
+<text x="755" y="1076" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">curious</text>
+<text x="850" y="1076" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">confused</text>
+<text x="660" y="1096" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">thinking</text>
+<text x="755" y="1096" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">bored</text>
+<text x="850" y="1096" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">scared</text>
+<text x="660" y="1116" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">dizzy</text>
+<text x="755" y="1116" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">cool</text>
+<text x="850" y="1116" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">sick</text>
+<rect x="1280" y="780" width="340" height="150" rx="8" fill="#16213a" stroke="#d9a441" stroke-width="1.5"/>
+<text x="1292" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#d9a441" font-weight="bold" text-anchor="start">voice: 10 outputs</text>
+<text x="1292" y="828" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">say (0..1)</text>
+<text x="1292" y="848" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">style: calm, ask, play, grumble</text>
+<text x="1292" y="868" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">mood: arousal, valence</text>
+<text x="1292" y="888" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">register, length, rate</text>
+<rect x="1640" y="780" width="340" height="150" rx="8" fill="#16213a" stroke="#d9a441" stroke-width="1.5"/>
+<text x="1652" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#d9a441" font-weight="bold" text-anchor="start">LEDs: 15 outputs</text>
+<text x="1652" y="828" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">colour: white, yellow, orange, red,</text>
+<text x="1652" y="848" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">  pink, violet, blue, cyan</text>
+<text x="1652" y="868" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">pattern: steady, breathe, pulse, flicker, wave</text>
+<text x="1652" y="888" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">brightness, rate</text>
+<rect x="2000" y="780" width="340" height="150" rx="8" fill="#16213a" stroke="#d9a441" stroke-width="1.5"/>
+<text x="2012" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#d9a441" font-weight="bold" text-anchor="start">head: 14 outputs</text>
+<text x="2012" y="828" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">mode: hold, look, scan, nod, shake,</text>
+<text x="2012" y="848" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">  flinch, look_down, look_up, doze</text>
+<text x="2012" y="868" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">gaze yaw / pitch (-1..1)</text>
+<text x="2012" y="888" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">gesture amplitude, speed, repeats</text>
+<path d="M1220,830 L1278,830" stroke="#2f6fdd" stroke-width="2.2" fill="none" marker-end="url(#a2f6fdd)"/>
+<text x="1280" y="970" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#d9a441" font-weight="bold" text-anchor="start">gesture library (the executor plays it on the network's wish)</text>
+<text x="1280" y="1000" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">nod = YES</text>
+<text x="1410" y="1000" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">pitch down / up, 5-12°, x1-3</text>
+<text x="1800" y="1000" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">shake = NO</text>
+<text x="1930" y="1000" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">yaw left / right, 5-14°, x1-3</text>
+<text x="1280" y="1024" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">flinch</text>
+<text x="1410" y="1024" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">head jerks back +12°, 0.6 s</text>
+<text x="1800" y="1024" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">look / scan</text>
+<text x="1930" y="1024" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">gaze x 60° yaw, 30° pitch</text>
+<text x="1280" y="1048" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">look down / up</text>
+<text x="1410" y="1048" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">-15° / +22° pitch</text>
+<text x="1800" y="1048" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">doze</text>
+<text x="1930" y="1048" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">head sinks -18°, slow</text>
+<rect x="60" y="1180" width="2280" height="250" rx="10" fill="#121a2c" stroke="#3a4660" stroke-width="1.5"/>
+<text x="80" y="1212" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" fill="#e6ebf5" font-weight="bold" text-anchor="start">How it was taught</text>
+<text x="80" y="1244" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">SNN: an innate appraisal (teacher_snn.py) turns channel histories into the 32 numbers; the SNN learns to reproduce them from its own spikes</text>
+<text x="80" y="1270" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      (surrogate gradients, TBPTT; the last 30 % of the epochs with int8 fake quantisation, as on the robot).</text>
+<text x="80" y="1296" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Data: 1400 synthetic 5-minute lives (quiet nights, play, being alone, rough handling) + 400 slices of the real diary.</text>
+<text x="80" y="1322" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">NN: a behaviour teacher with memory (teacher_nn.py) acts on the SNN's numbers and the network imitates it; then DAgger: the network acts, its own choices</text>
+<text x="80" y="1348" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      feed back into its inputs and the teacher labels the states it really visits. Emotion agreement acting alone: 0.90 (real lives 0.92).</text>
+<text x="80" y="1374" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Checks: C++ on the robot gives the same numbers as PyTorch (parity tests); simulator behaviour tests: every touch answered, petting is not annoying,</text>
+<text x="80" y="1400" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      pokes are, nights are silent, play shows many faces, a lonely robot talks, shakes and claps frighten.</text>
+</svg>

@@ -1,7 +1,0 @@
-# Midday alone on USB, lamp on, daylight: the case that used to end in
-# "exhausted but never resting" (stamina 0 all afternoon, no invitations).
-duration 1:30:00
-clock 12:00
-seed 6
-window 170 20 40 30
-lamp desk 100 12 on

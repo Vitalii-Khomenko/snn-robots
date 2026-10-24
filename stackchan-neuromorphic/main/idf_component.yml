@@ -1,8 +1,0 @@
-## IDF Component Manager Manifest File
-dependencies:
-  idf:
-    version: '>=4.1.0'
-  # Same M5Stack CoreS3 BSP our-stackchan-firmware v1 uses - pulls in the
-  # display/touch/camera/codec/LVGL stack the ported drivers here (audio,
-  # face, sensors) depend on transitively.
-  espressif/m5stack_core_s3: ^3.0.0

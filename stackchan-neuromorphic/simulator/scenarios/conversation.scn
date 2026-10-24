@@ -1,7 +1,0 @@
-# A conversation next to the robot: one quiet minute, then two minutes of talk (4 s of speech, 4 s pause, from the side).
-# Does the robot join in: more calls during the talk than in the quiet minute, mostly in the pauses?
-duration 3:30
-clock 14:00
-seed 6
-room_light on
-every 0:08 from 1:00 until 3:00 talk -35 4 0.7
