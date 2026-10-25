@@ -107,6 +107,16 @@ rotation (30-38 % between 08:00 and 11:00 the same day), dead windows 12 % (57-6
 hour in the morning), VBUS never under 4.74 V. Open: whether the head sinks under its own weight with the rail off
 (`servo_rail=ons/ms` in the `power:` line).
 
+**2026-10-25 evening, eased moves** (the owner, sitting next to it: "a short whizz of the motors every few seconds -
+it should move slowly and smoothly"): the diary showed 11 moves a minute, one every ~4.4 s, each ~14° in ~1.3 s, and an
+SCS servo given one destination and a time runs there at one constant speed - every move started and stopped with a
+jerk. A gaze turn that takes 0.8 s or more (`MotionEngine::kEasedMoves`) now follows half a cosine - from rest,
+fastest in the middle, to rest - with the asked speed at its peak, and goes to the servo as waypoints every ~0.45 s
+(2-8 per move, each with the time to reach it plus 60 ms so the servo glides on instead of stopping). The motion
+model follows the same curve. Gesture keyframes and other short moves stay single packets. Fewer moves come from the
+executor (ARCHITECTURE section 4: the wandering gaze keeps a place 5-11 s); the flinch is softer (8° at 90°/s, was
+12° at 160°/s).
+
 **Diagnosing a frozen head:** if the face lives but the head does not move,
 compare `cmd_travel` with `real_rotation` in `runtime: stats`. Commanded
 50° and real 0° means the servos ignore positions: suspect mode, packet rate

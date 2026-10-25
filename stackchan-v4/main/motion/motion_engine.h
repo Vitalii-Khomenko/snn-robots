@@ -20,6 +20,7 @@ public:
     // Move to (yaw, pitch) at up to `speed_deg_s` along the straight line,
     // with a smooth start and stop (trapezoid profile, full speed reached
     // after kRampS). Retargeting mid-move keeps the current speed: no jerk.
+    // A move that takes kEaseMinS or longer goes as an eased one instead (kEasedMoves).
     void moveTo(float yaw_deg, float pitch_deg, float speed_deg_s);
     bool isMoving() const {
         return !yaw_spring_.done() || !pitch_spring_.done() ||
@@ -156,6 +157,23 @@ private:
     static constexpr float kSpeedScale = 0.5f;  // moveTo() speeds are halved (2026-10-23); 1.0 = as asked
     float profile_speed_ = 0.0f;  // deg/s the moving target has right now
     static constexpr float kRampS = 0.25f;  // time to full speed (and to stop)
+    // Eased moves (2026-10-25, the owner: "a short whizz of the motors every few seconds, it should move slowly and
+    // smoothly"): the servo goes to one destination at one constant speed, so every move started and stopped with a
+    // jerk. A gaze turn now follows half a cosine, (1 - cos(pi t / T)) / 2 - from rest, fastest in the middle, to rest -
+    // `max_speed_` at its peak (T = pi/2 * distance / peak speed), and the servo gets it as kEaseStepS-long waypoints,
+    // each with the time to reach it. Short moves (gesture keyframes) stay single packets. false = the trapezoid only.
+    static constexpr bool kEasedMoves = true;
+    static constexpr float kEaseMinS = 0.8f, kEaseStepS = 0.45f;
+    static constexpr int kEaseMaxSteps = 8;
+    bool ease_ = false, ease_started_ = false;
+    float ease_from_[2] = {0, 0}, ease_to_[2] = {0, 0};
+    uint32_t ease_start_ms_ = 0, ease_ms_ = 0;
+    int ease_steps_ = 1, ease_sent_ = 0;
+    float easeAt(int axis, float tau) const
+    {
+        const float s = tau >= 1.0f ? 1.0f : 0.5f - 0.5f * std::cos(3.14159265f * std::max(tau, 0.0f));
+        return ease_from_[axis] + (ease_to_[axis] - ease_from_[axis]) * s;
+    }
     static constexpr float kTargetEpsilonDeg      = 0.1f;
 
     float stamina_ = 1.0f;

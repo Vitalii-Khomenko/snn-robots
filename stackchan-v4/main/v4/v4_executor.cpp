@@ -107,12 +107,13 @@ void V4Executor::applyLeds(const BrainV4& brain, bool night)
     led_.setPattern(kLedRgb[c][0], kLedRgb[c][1], kLedRgb[c][2], p, bright, o[NO_LED_RATE]);
 }
 
-bool V4Executor::command(float yaw, float pitch, float speed, uint32_t now, bool force)
+bool V4Executor::command(float yaw, float pitch, float speed, uint32_t now, bool force, uint32_t gap_ms,
+                         float dead_yaw_deg)
 {
     yaw = std::clamp(yaw, -kYawLimitDeg, kYawLimitDeg);
     pitch = std::clamp(pitch, kPitchMinDeg, kPitchMaxDeg);
-    if (!force && now - last_command_ms_ < kGazeGapMs) return false;
-    if (!force && sent_valid_ && std::fabs(yaw - sent_yaw_) < kGazeDeadYawDeg &&
+    if (!force && now - last_command_ms_ < gap_ms) return false;
+    if (!force && sent_valid_ && std::fabs(yaw - sent_yaw_) < dead_yaw_deg &&
         std::fabs(pitch - sent_pitch_) < kGazeDeadPitchDeg)
         return false;
     motion_.moveTo(yaw, pitch, std::clamp(speed, 8.0f, kMaxSpeedDegS));
@@ -160,7 +161,7 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
             base_yaw_ = sent_yaw_;
             base_pitch_ = sent_pitch_;
             // nod 5..12 deg, shake 5..14 deg; a half swing 0.45 .. 0.3 s; 1..3 repeats
-            gesture_amp_ = g == Gesture::Nod ? 5.0f + 7.0f * amp : g == Gesture::Shake ? 5.0f + 9.0f * amp : 12.0f;
+            gesture_amp_ = g == Gesture::Nod ? 5.0f + 7.0f * amp : g == Gesture::Shake ? 5.0f + 9.0f * amp : 8.0f;
             gesture_half_s_ = 0.45f - 0.15f * speed;
             gesture_reps_ = 1 + static_cast<int>(std::lround(std::clamp(reps, 0.0f, 1.0f) * 2.0f));
             last_gesture_ms_ = now;
@@ -178,7 +179,8 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
         const float t = static_cast<float>(now - gesture_start_ms_) * 0.001f;
         if (gesture_ == Gesture::Flinch) {
             if (gesture_step_ < 0) {
-                command(base_yaw_, base_pitch_ + gesture_amp_, 160.0f, now, true);  // the head jerks back
+                // the head starts back (12 deg at 160 deg/s until 2026-10-25: a jerk the owner heard as a whizz)
+                command(base_yaw_, base_pitch_ + gesture_amp_, 90.0f, now, true);
                 gesture_step_ = 0;
             } else if (gesture_step_ == 0 && t > 0.6f) {
                 command(base_yaw_, base_pitch_, 50.0f, now, true);
@@ -208,17 +210,35 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
     }
 
     // ---- where to look
-    const float move_speed = (night ? 8.0f : 18.0f) + 50.0f * speed;
-    const float gy = o[NO_GAZE_YAW] * BrainV4::kGazeYawDeg, gp = o[NO_GAZE_PITCH] * BrainV4::kGazePitchDeg;
+    // the peak speed of a gaze turn (eased: MotionEngine::kEasedMoves; halved there: 7 .. 20 deg/s)
+    const float move_speed = (night ? 8.0f : 14.0f) + 26.0f * speed;
+    const float gy = o[NO_GAZE_YAW] * BrainV4::kGazeYawDeg;
+    const float gp = o[NO_GAZE_PITCH] * BrainV4::kGazePitchDeg;
+    if (brain.snn()[SO_ATT_STRENGTH] > kAttLook) attended_ms_ = now, attended_ = true;
+    const bool wander = !attended_ || now - attended_ms_ > kWatchMs;
+    uint32_t gap = kGazeGapMs;
+    float dead = kGazeDeadYawDeg;
+    if (wander) {
+        gap = wander_hold_ms_;
+        dead = kWanderDeadDeg;
+    }
     // At night the head only sinks into the doze: a clap at 03:51 (2026-10-25) lifted it, the servos hung, and the
     // power cycle that freed them clicked next to the sleeping owner.
     if (night && mode != kHeadDoze) return;
+    bool moved = false;
     switch (mode) {
-        case kHeadLook: command(gy, 5.0f - gp, move_speed, now); break;
-        case kHeadScan: command(gy, 5.0f - gp, move_speed * 0.6f, now); break;
+        case kHeadLook: moved = command(gy, 5.0f - gp, move_speed, now, false, gap, dead); break;
+        case kHeadScan: moved = command(gy, 5.0f - gp, move_speed * 0.6f, now, false, gap, dead); break;
         case kHeadLookDown: command(sent_yaw_, -15.0f, 15.0f, now); break;
         case kHeadLookUp: command(sent_yaw_, 22.0f, 15.0f, now); break;
         case kHeadDoze: command(sent_yaw_ * 0.5f, -18.0f, 8.0f, now); break;
         default: break;  // hold
+    }
+    if (moved) {
+        // how long the new place is kept: shorter in a lively mood, and varied by where the gaze went (no random
+        // numbers: the simulator replays the same day the same way)
+        const float vary = std::fabs(std::fmod(o[NO_GAZE_YAW] * 7.31f + o[NO_GAZE_PITCH] * 3.17f, 1.0f));
+        const float k = std::clamp(0.6f * speed + 0.4f * vary, 0.0f, 1.0f);
+        wander_hold_ms_ = kWanderHoldMaxMs - static_cast<uint32_t>((kWanderHoldMaxMs - kWanderHoldMinMs) * k);
     }
 }

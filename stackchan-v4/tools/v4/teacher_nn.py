@@ -81,7 +81,9 @@ assert list(MANNER) == EMOTIONS
 # 2026-10-25 (the owner): the head stayed within ~15 deg of the centre (the network's gaze p99 0.37). The yaw amplitudes
 # are 1.4x wider and the wandering is shaped so it stays out at the sides (sign * sqrt): a look around the room, not a
 # wobble round the centre.
-GAZE_WIDE = 1.4
+# 2026-10-25 evening (the owner: "still always round the centre"): the robot's network gaze p5..p95 -0.36..0.45, its head
+# -21..24 deg - most moods' amplitudes 0.3..0.6 stayed small even 1.4x wider. 2.0x: most moods reach 0.6..1.0 (36..60 deg).
+GAZE_WIDE = 2.0
 # Something moving in view: the head turns to it. att_x is where in the picture (-1..1, the camera's ~62 deg wide), so
 # the direction is the head's own yaw plus half of it (gaze units: 1 = 60 deg).
 ATT_LOOK = 0.12

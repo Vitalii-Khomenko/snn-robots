@@ -62,6 +62,20 @@ void MotionEngine::moveTo(float yaw_deg, float pitch_deg, float speed_deg_s)
     applySpeedToSpring(pitch_spring_, 1000);
     commanded_yaw_target_   = yaw_deg;
     commanded_pitch_target_ = pitch_deg;
+    // an eased move starts from where the model is now (it starts moving once the servo rail is up: update())
+    const float ease_s = 1.5708f * std::hypot(yaw_deg - yaw_spring_.target, pitch_deg - pitch_spring_.target) / max_speed_;
+    ease_ = kEasedMoves && ease_s >= kEaseMinS;
+    if (ease_) {
+        ease_from_[0] = yaw_spring_.target;
+        ease_from_[1] = pitch_spring_.target;
+        ease_to_[0] = yaw_deg;
+        ease_to_[1] = pitch_deg;
+        ease_ms_ = static_cast<uint32_t>(ease_s * 1000.0f);
+        ease_steps_ = std::clamp(static_cast<int>(std::ceil(ease_s / kEaseStepS)), 2, kEaseMaxSteps);
+        ease_started_ = false;
+        ease_sent_ = 0;
+        profile_speed_ = 0.0f;
+    }
     // Re-assert torque at the start of a movement at most every few seconds.
     // SCS servos drop torque on their own (overload/overheat protection) and
     // then silently ignore position packets - seen on hardware 2026-09-27:
@@ -158,7 +172,16 @@ void MotionEngine::update()
     // acceleration (max speed / kRampS) and is capped by the braking
     // distance, so every move starts and ends softly. (It used to jump to
     // 75 deg/s at once: the head jerked.)
-    {
+    if (ease_) {
+        if (!ease_started_) {
+            ease_started_ = true;
+            ease_start_ms_ = now;
+        }
+        const float tau = static_cast<float>(now - ease_start_ms_) / static_cast<float>(ease_ms_);
+        yaw_spring_.target = easeAt(0, tau);
+        pitch_spring_.target = easeAt(1, tau);
+        if (tau >= 1.0f) ease_ = false;
+    } else {
         const float dy = commanded_yaw_target_ - yaw_spring_.target;
         const float dp = commanded_pitch_target_ - pitch_spring_.target;
         const float dist = std::hypot(dy, dp);
@@ -232,6 +255,28 @@ void MotionEngine::writeSparse(uint32_t now)
 {
     const float dest[2] = {commanded_yaw_target_, commanded_pitch_target_};
     const int zero[2] = {kYawZeroPos, kPitchZeroPos};
+    if (ease_) {
+        // an eased move: waypoint k at k/steps of its time, to the point the cosine reaches at (k+1)/steps (a little
+        // more time than the step, so the servo glides on to the next one instead of stopping); an axis that does not
+        // move (a pure turn) gets nothing, the rail switch-on (force_write_) sends both
+        const uint32_t step_ms = ease_ms_ / static_cast<uint32_t>(ease_steps_);
+        if (ease_sent_ >= ease_steps_ || now - ease_start_ms_ < static_cast<uint32_t>(ease_sent_) * step_ms) return;
+        const float tau = static_cast<float>(ease_sent_ + 1) / static_cast<float>(ease_steps_);
+        const float way[2] = {easeAt(0, tau), easeAt(1, tau)};
+        bool send[2];
+        for (int i = 0; i < 2; ++i) {
+            const int r = std::clamp(zero[i] + static_cast<int>(way[i] * kRawPerDeg), 0, 1000);
+            send[i] = force_write_ || r != last_sent_raw_[i];
+            if (send[i]) last_sent_raw_[i] = r, unlatched_[i] = true;
+        }
+        force_write_ = false;
+        ++ease_sent_;
+        const uint16_t time_ms = static_cast<uint16_t>(std::min<uint32_t>(step_ms + 60, 4000));
+        arrive_ms_ = ease_start_ms_ + static_cast<uint32_t>(ease_sent_) * step_ms + 60;
+        if (send[0] || send[1]) writeServos(send[0], send[1], way[0], way[1], time_ms);
+        last_packet_ms_ = now;
+        return;
+    }
     int raw[2];
     for (int i = 0; i < 2; ++i) raw[i] = std::clamp(zero[i] + static_cast<int>(dest[i] * kRawPerDeg), 0, 1000);
     const bool settled = !isMoving();

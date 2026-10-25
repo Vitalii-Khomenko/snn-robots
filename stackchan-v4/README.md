@@ -109,6 +109,9 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   [HARDWARE](docs/HARDWARE.md#servos).
 - Looking round the room (2026-10-25): wider head turns (beyond 15-40°) and a turn towards something moving in view,
   see ARCHITECTURE section 3.
+- A calm head (2026-10-25 evening, the owner: "a whizz of the motors every few seconds"): with nothing to attend to
+  the gaze keeps a place 5-11 s and turns only for >= 20°, and every longer turn starts and stops softly (half a
+  cosine, sent as waypoints) - 4 moves a minute instead of 8-11, see [HARDWARE](docs/HARDWARE.md#servos).
 - Seeking (2026-10-25): the motion sense is three times stronger and quicker, and the camera's brightest spot reaches
   the brain - a light that is NEW in its place in the room draws the head to it, then it gets used to it; after a look
   the head keeps watching that place ~10 s (simulator: at a lamp switched on beside it 56 % of the time, 36 % with

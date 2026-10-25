@@ -40,6 +40,14 @@ public:
     // packets a minute and the servos hung within a minute of every power cycle: one move per 4 s, >= 12 / 8 deg.
     static constexpr uint32_t kGazeGapMs = 4000;
     static constexpr float kGazeDeadYawDeg = 12.0f, kGazeDeadPitchDeg = 8.0f;
+    // Wandering gaze (2026-10-25 evening, the owner: "the head is always round the centre, and a short whizz of the
+    // motors every few seconds"): the network's gaze drifted within ~+-0.45 (+-27 deg) and every 4 s a 14 deg step went
+    // out - 11 moves a minute. With nothing holding its attention (the attention below kAttLook for kWatchMs) the head
+    // now keeps a place for kWanderHoldMs (shorter in a lively mood) and turns only for >= kWanderDeadDeg; what it
+    // attends to is looked at as before. (Wider is the network's own gaze, teacher_nn.py GAZE_WIDE: spreading it here
+    // 2x ran away - the network follows its own head yaw - and the head stayed at -95 deg in the simulator.)
+    static constexpr uint32_t kWanderHoldMinMs = 5000, kWanderHoldMaxMs = 11000, kWatchMs = 10000;
+    static constexpr float kWanderDeadDeg = 20.0f, kAttLook = 0.12f;
     static constexpr uint32_t kGestureGapMs = 4000;    // nod / shake at most every 4 s
     static constexpr float kMaxSpeedDegS = 110.0f;
 
@@ -49,7 +57,8 @@ private:
     void applyVoice(const BrainV4& brain, bool night, uint32_t now, BrainV4::Executed& done);
     void applyLeds(const BrainV4& brain, bool night);
     void applyHead(const BrainV4& brain, bool night, uint32_t now, BrainV4::Executed& done);
-    bool command(float yaw, float pitch, float speed, uint32_t now, bool force = false);
+    bool command(float yaw, float pitch, float speed, uint32_t now, bool force = false, uint32_t gap_ms = kGazeGapMs,
+                 float dead_yaw_deg = kGazeDeadYawDeg);
 
     FaceEngine& face_;
     LedEngine& led_;
@@ -74,4 +83,7 @@ private:
     bool sent_valid_ = false;
     int prev_mode_ = 0;
     int head_cand_ = 0, head_cand_ticks_ = 0, head_mode_ = 0;  // the head mode, debounced
+    uint32_t attended_ms_ = 0;  // when the attention last held something (kAttLook)
+    uint32_t wander_hold_ms_ = kWanderHoldMinMs;  // how long the wandering gaze keeps its present place
+    bool attended_ = false;
 };
