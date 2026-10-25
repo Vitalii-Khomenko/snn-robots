@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1490" width="2400" height="1490">
 <defs>
 <marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
-<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
-<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
-<marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
 <marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
-<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
-<marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
-<marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
-<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
+<marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
 <marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
+<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
+<marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
 <marker id="a26a6a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#26a6a6"/></marker>
-<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
+<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
+<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
+<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
 <marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
+<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
+<marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
 </defs>
 <rect width="2400" height="1490" fill="#0f1420"/>
 <text x="40" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="32" fill="#e6ebf5" font-weight="bold" text-anchor="start">StackChan, brain v4: a spiking stimulus analyzer and one decision network</text>
@@ -278,7 +278,7 @@
 <text x="2102" y="218" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">voice budget: 5 tokens, 1 per 10 s;</text>
 <text x="2102" y="236" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">  reactions may spend the last one</text>
 <text x="2102" y="254" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">night 21:45-06:00: silent,</text>
-<text x="2102" y="272" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">  LEDs &lt;= 6 %, no nods / shakes</text>
+<text x="2102" y="272" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">  LEDs &lt;= 6 %, head only dozes</text>
 <text x="2102" y="290" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">nod / shake at most every 4 s</text>
 <text x="2102" y="308" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">servo bus &lt;= 8 commands / s</text>
 <text x="2102" y="326" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">yaw ±100°, pitch -20..35°</text>
@@ -296,8 +296,8 @@
 <rect x="2090" y="562" width="280" height="30" rx="10" fill="#d9a441"/>
 <rect x="2090" y="580" width="280" height="12" fill="#d9a441"/>
 <text x="2102" y="583" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Speaker: droid babble</text>
-<text x="2102" y="614" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">child-like phrases, style and</text>
-<text x="2102" y="632" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">mood from the network</text>
+<text x="2102" y="614" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">phrases with the network's mood;</text>
+<text x="2102" y="632" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">volume 0-10: button on the screen</text>
 <path d="M2110,548 L2110,560" stroke="#d9a441" stroke-width="1.6" fill="none" marker-end="url(#ad9a441)"/>
 <rect x="2090" y="664" width="280" height="88" rx="10" fill="#171e2e" stroke="#d9a441" stroke-width="2.5"/>
 <rect x="2090" y="664" width="280" height="30" rx="10" fill="#d9a441"/>
