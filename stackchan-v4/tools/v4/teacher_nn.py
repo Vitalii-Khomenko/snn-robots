@@ -47,6 +47,63 @@ MIN_SHOW = {"surprised": 1.2}
 DEFAULT_MIN_SHOW = 1.5
 
 
+# How the head moves in each mood by day (2026-10-25, the owner: in an angry or sad mood the head did not move at all -
+# every emotion moves, each in its own way): the head mode, the yaw amplitude, the pitch centre and amplitude
+# (gaze pitch > 0 is down), how much of the wandering follows the fast pacemaker (~3 s; the rest the slow one, ~60 s)
+# and how much the jitter (~0.5 s), and where to: "wander" around, "away" from whoever it attends to (cross, shy).
+# The gaze is a function of the pacemakers the network sees, so the network can learn it exactly; the executor turns
+# it into a move at most every 2.5 s and only for a visible change.
+MANNER = {
+    #              mode    yaw   pitch  p.amp  fast  jitter  kind
+    "normal":     ("scan", 0.45, 0.00, 0.15, 0.6, 0.0, "wander"),   # calm looking around
+    "happy":      ("scan", 0.45, -0.15, 0.20, 0.8, 0.1, "wander"),  # lively, a little up
+    "very_happy": ("look", 0.55, -0.25, 0.25, 0.9, 0.2, "wander"),
+    "laughing":   ("look", 0.35, -0.30, 0.45, 0.7, 0.4, "wander"),  # bobbing with the laugh
+    "sad":        ("scan", 0.30, 0.65, 0.10, 0.4, 0.0, "wander"),   # the head hangs, sways slowly
+    "crying":     ("scan", 0.35, 0.75, 0.15, 0.6, 0.1, "wander"),
+    "sleepy":     ("scan", 0.20, 0.55, 0.20, 0.3, 0.0, "wander"),   # nodding off by day
+    "surprised":  ("look", 0.60, -0.35, 0.15, 0.8, 0.3, "wander"),  # quick looks, up
+    "angry":      ("look", 0.70, 0.15, 0.10, 0.8, 0.2, "away"),     # turns away, abrupt
+    "annoyed":    ("scan", 0.55, 0.10, 0.10, 0.7, 0.1, "away"),
+    "love":       ("scan", 0.25, -0.20, 0.15, 0.6, 0.0, "wander"),  # a gentle sway
+    "shy":        ("scan", 0.45, 0.50, 0.15, 0.6, 0.0, "away"),     # looks away and down
+    "wink":       ("look", 0.40, -0.10, 0.15, 0.8, 0.1, "wander"),
+    "curious":    ("look", 0.75, -0.10, 0.30, 0.9, 0.1, "wander"),  # wide, inquisitive
+    "confused":   ("look", 0.50, 0.00, 0.25, 0.6, 0.4, "wander"),   # this way, that way
+    "thinking":   ("scan", 0.40, -0.45, 0.15, 0.5, 0.0, "wander"),  # up and aside
+    "bored":      ("scan", 0.85, 0.20, 0.15, 0.3, 0.0, "wander"),   # a slow wide wander
+    "scared":     ("look", 0.60, -0.10, 0.15, 0.6, 0.4, "wander"),  # nervous glances
+    "dizzy":      ("scan", 0.50, 0.00, 0.35, 0.5, 0.5, "wander"),   # wobbling
+    "cool":       ("scan", 0.50, 0.00, 0.08, 0.4, 0.0, "wander"),   # a slow cool sweep
+    "sick":       ("scan", 0.25, 0.60, 0.10, 0.3, 0.0, "wander"),
+}
+assert list(MANNER) == EMOTIONS
+
+
+def manner(emo, s, pace):
+    """-> (head mode, gaze) of the mood's own head motion (MANNER). Someone in view: the head stays on them and moves
+    a little around them - unless the mood turns away from them."""
+    mode, amp, pc, pamp, fast, jit, kind = MANNER[emo]
+    pf, ps, pj = pace
+    amp *= 0.7 + 0.3 * (ps + 1) / 2  # the slow pacemaker varies how wide
+    wy = float(np.clip(fast * pf + (1 - fast) * ps + jit * pj, -1, 1))
+    wp = float(np.clip(0.6 * ps - 0.4 * pf + jit * pj, -1, 1))
+    pitch = pc + pamp * wp
+    att, ax, ay = s[S["att_strength"]], s[S["att_x"]], s[S["att_y"]]
+    if kind == "away":
+        if att > 0.15 and abs(ax) > 0.05:
+            side = -1.0 if ax > 0 else 1.0  # the other way from them
+        else:
+            side = 1.0 if wy >= 0 else -1.0
+        yaw = side * amp * (0.6 + 0.4 * abs(wy))
+    elif att > 0.2:
+        yaw = ax * 0.5 + 0.35 * amp * wy
+        pitch = ay * 0.4 + 0.35 * (pitch - pc) + 0.5 * pc
+    else:
+        yaw = amp * wy
+    return mode, (float(np.clip(yaw, -1, 1)), float(np.clip(pitch, -1, 1)))
+
+
 def pick(options, u):
     """Deterministic choice from a pacemaker value u in [-1, 1] (the network sees u)."""
     k = int((np.clip(u, -0.999, 0.999) + 1) / 2 * len(options))
@@ -70,8 +127,6 @@ class Teacher:
         self.prev_sur = 0.0
         self.prev_over = 0.0
         self.prev_threat = 0.0
-        self.scan_target = (0.0, 0.0)
-        self.since_scan = 0.0
         self.head = (0.0, 0.0)
         self.led_level = 0.3
         self.gesture = None          # (mode, ticks left)
@@ -245,17 +300,10 @@ class Teacher:
                 mode = "look_down"
             elif emo == "thinking" and self.emo_age < 3:
                 mode = "look_up"
+            elif not night:
+                mode, gaze = manner(emo, s, pace)
             elif att > 0.2:
                 mode, gaze = "look", (float(np.clip(s[S["att_x"]] * 0.5, -1, 1)), float(np.clip(s[S["att_y"]] * 0.4, -1, 1)))
-            elif not night and self.since_scan > 5.0 and pace[1] > -0.3 and emo in ("bored", "curious", "normal",
-                                                                                   "thinking", "cool", "happy", "wink",
-                                                                                   "very_happy"):
-                self.scan_target = (float(np.clip(pace[1] * 0.9 + pace[2] * 0.3, -1, 1)),
-                                    float(np.clip(pace[2] * 0.3, -0.5, 0.5)))
-                self.since_scan = 0.0
-                mode, gaze = "scan", self.scan_target
-            elif self.since_scan < 2.0:
-                mode, gaze = "scan", self.scan_target
         y[O["head_" + mode]] = 1.0
         y[O["gaze_yaw"]], y[O["gaze_pitch"]] = gaze
         amp = {"nod": 0.4 + 0.5 * aro, "shake": 0.35 + 0.6 * aro if emo != "sad" else 0.3}.get(mode, 0.5)
@@ -289,7 +337,6 @@ class Teacher:
         if mode in ("look", "scan"):
             self.head = (0.7 * self.head[0] + 0.3 * float(y[O["gaze_yaw"]]),
                          0.7 * self.head[1] + 0.3 * float(y[O["gaze_pitch"]]))
-        self.since_scan += DT
         self.touch_age += DT
         if self.touch_age > 3.0:
             self.touch_open = False

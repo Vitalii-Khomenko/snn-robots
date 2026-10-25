@@ -87,6 +87,11 @@ watchdog did not act. Now the commanded degrees the gyro has not confirmed also 
 against `real_rotation`: a power cycle after which the head turns at once was a real stall; many cycles with the head
 turning fine in between would be the false ones of 2026-10-03 (below).
 
+**2026-10-25, every mood moving:** with a head motion for every emotion and gaze moves every 2.5 s the robot sent
+50-120 packets a minute; right after the boot the servos hung again 12 s after each power cycle, the series rule
+then waited 1-2 minutes and the head stood still. The executor now sends a gaze move at most every 4 s and only for
+>= 12° yaw / 8° pitch (simulator: 7-11 moves a minute instead of 12-18).
+
 **Diagnosing a frozen head:** if the face lives but the head does not move,
 compare `cmd_travel` with `real_rotation` in `runtime: stats`. Commanded
 50° and real 0° means the servos ignore positions: suspect mode, packet rate

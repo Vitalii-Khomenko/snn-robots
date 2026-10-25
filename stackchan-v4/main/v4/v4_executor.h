@@ -36,8 +36,10 @@ public:
     // Gaze moves (look, scan, look up / down, doze): at most one every 2.5 s, and only for a visible change. The servos
     // hang more often the more packets they get (docs/HARDWARE.md); with every small gaze correction sent, the lively
     // network of 2026-10-24 sent 45-80 packets a minute, the servos hung 60-100 times an hour and the head barely moved.
-    static constexpr uint32_t kGazeGapMs = 2500;
-    static constexpr float kGazeDeadYawDeg = 8.0f, kGazeDeadPitchDeg = 5.0f;
+    // 2026-10-25: every mood moves its head now (teacher_nn.py MANNER) and at 2.5 s / 8 deg the robot sent 50-120
+    // packets a minute and the servos hung within a minute of every power cycle: one move per 4 s, >= 12 / 8 deg.
+    static constexpr uint32_t kGazeGapMs = 4000;
+    static constexpr float kGazeDeadYawDeg = 12.0f, kGazeDeadPitchDeg = 8.0f;
     static constexpr uint32_t kGestureGapMs = 4000;    // nod / shake at most every 4 s
     static constexpr float kMaxSpeedDegS = 110.0f;
 

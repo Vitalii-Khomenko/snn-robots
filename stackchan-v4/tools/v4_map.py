@@ -246,7 +246,7 @@ def brain_map():
     body = [("Display: the face", [f"{N_EMO} pixel-art faces (airwitech", "style), eyes follow attention"]),
             ("Speaker: droid babble", ["phrases with the network's mood;", "volume 0-10: button on the screen"]),
             ("LED ring", [f"{len(S.LED_COLORS)} colours x {len(S.LED_PATTERNS)} patterns", "steady breathe pulse flicker wave"]),
-            ("Head servos (yaw, pitch)", ["look, scan, look up / down, doze,", "nod YES, shake NO, flinch"])]
+            ("Head servos (yaw, pitch)", ["each mood its own head motion;", "nod YES, shake NO, flinch, doze"])]
     yy = 460
     for title, lines in body:
         s.box(xx, yy, xw, 88, C["out"], title, lines, tsize=15)

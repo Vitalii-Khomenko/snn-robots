@@ -93,8 +93,17 @@ input 44 = 32 SNN numbers + 12 own state -> GRU 64 -> emotion head: 21 emotions 
 - Float, ~31 k parameters, runs every second tick (10 Hz), the first 5 s after a boot only settle the SNN.
 - Trained by imitation of a behaviour teacher with memory (`tools/v4/teacher_nn.py`) on the SNN's outputs, then two
   rounds of DAgger (the network acts, its choices feed back into its own inputs, the teacher labels what it really
-  visits). Emotion agreement with the teacher when acting alone: 0.91 (real days 0.95). The head modes are
+  visits). Emotion agreement with the teacher when acting alone: 0.91 (real days 0.94). The head modes are
   class-weighted in training (rare ones count more: without it the network looked around 8x less than its teacher).
+- **Every mood moves its head** (2026-10-25, the owner: angry or upset it did not move its head at all). By day the
+  teacher gives each emotion its own manner (`teacher_nn.py MANNER`): calm looking around (normal), lively glances a
+  little up (happy, wink), bobbing (laughing), a hanging head that sways slowly (sad, crying, sick), nodding off
+  (sleepy), quick looks up (surprised), turning away from whoever it attends to (angry abruptly, annoyed slowly, shy
+  away and down), a gentle sway (love), wide inquisitive looks (curious), this way and that (confused), up and aside
+  (thinking), a slow wide wander (bored), nervous glances (scared), wobbling (dizzy), a slow sweep (cool). The gaze is
+  a function of the three pacemakers the network sees (how wide, how fast, how jittery per mood), so the network
+  learns it exactly and no two minutes look the same; with someone in view the head stays on them and moves around
+  them. The network acting alone: hold 50 % -> 2.5 % of the time.
 
 ## 4. The executor
 
@@ -106,7 +115,7 @@ The network decides **what**; `V4Executor` decides only **how**, inside fixed ru
 | head mode | the chosen mode, debounced | a mode counts once the network has kept it for two decisions (a one-decision wish - a flinch at a touch's very start - is ignored) |
 | voice | the droid babble (BabbleNet + synth) with the network's style and mood | call budget 5 tokens, 1 per 10 s (a reaction may spend the last one); **silent 21:45-06:00** and for the first 2 min of a boot without clock |
 | LEDs | colour, pattern, brightness, rate | brightness <= 6 % at night |
-| head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +12° | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; gaze moves at most every 2.5 s and only for >= 8° yaw / 5° pitch (the servos hang more often the more packets they get); at night the head only sinks into the doze (no look / scan); gesture keyframes <= 8 commands/s; yaw ±100°, pitch -20..35° |
+| head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +12° | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; gaze moves at most every 4 s and only for >= 12° yaw / 8° pitch (the servos hang more often the more packets they get; 2.5 s / 8° until 2026-10-25); at night the head only sinks into the doze (no look / scan); gesture keyframes <= 8 commands/s; yaw ±100°, pitch -20..35° |
 
 What really happened (shown face, said, gestured, head pose, LED level) goes back into the network's own state.
 

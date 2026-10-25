@@ -100,6 +100,8 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
 - The proximity sensor works (a hand at the face: up to ~1100 counts, 2026-10-24).
 - The first night of stage 6 (2026-10-25 03:30): the heads stayed (KL 0.058 over the 0.05 gate), the sharp-sound zone
   moved +0.01 (habituated); the blob went live without a reboot.
+- Every mood moves its head in its own way (2026-10-25): turning away when cross, a hanging swaying head when sad,
+  bobbing when laughing, wide looks when curious, ... (ARCHITECTURE section 3).
 - Twice as tolerant (2026-10-25): every input needs about twice the stimulus to alarm or anger it (claps, bangs,
   pokes, shaking, motion, light), see ARCHITECTURE section 1.
 - A speaker button on the screen (2026-10-25): the volume 0-10 is set on the fly, beeps at the new level and is kept
