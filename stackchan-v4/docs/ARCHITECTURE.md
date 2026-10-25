@@ -5,7 +5,7 @@ evaluates every stimulus at once, and a brain that decides what to do about it. 
 
 | Part | Where | Rate | Job |
 |---|---|---|---|
-| Channel encoder | `main/v4/channel_encoder.*` | 20 Hz | every sense -> one number 0..1 (13 channels) + "where" (2) |
+| Channel encoder | `main/v4/channel_encoder.*` | 20 Hz | every sense -> one number 0..1 (13 channels) + "where" (5) |
 | Spiking analyzer (SNN) | `main/v4/snn_v4.*` | 20 Hz | instant, innate evaluation: 32 numbers (feeling, salience, needs, attention) |
 | Main network (NN) | `main/v4/nn_v4.*` | 10 Hz | the one decider: an emotion and every action |
 | Executor | `main/v4/v4_executor.*` | 20 Hz | the "muscles": how to show it, inside safety rules |
@@ -41,11 +41,12 @@ simulator 25 s of pokes every 0.8 s no longer anger it; the first annoyed face c
 | 7 | tilt | lean from the learned upright (the head's own pitch excluded) | comfort, interest, anxiety |
 | 8 | near | IR proximity over its baseline (600 counts = full) | boredom, comfort, interest, anxiety |
 | 9 | light | ambient light, log scale (20000 counts = full) | comfort, interest, anger |
-| 10 | motion | share of the picture that moves (head's own turn removed), 5 s average | boredom, interest, anxiety, anger |
+| 10 | motion | share of the picture that moves (head's own turn removed) x3, rising in 0.5 s, falling in 4 s (a 5 s average x1.5 until 2026-10-25: a person moving about read ~0.01) | boredom, interest, anxiety, anger |
 | 11 | hunger | 1 - battery | comfort, anxiety |
 | 12 | tired | 0.75 x the night ramp (21:00-21:45 up, 06:00-06:45 down) + 0.25 x (1 - servo stamina) | comfort |
 | 13 | lonely | 1 - exp(-t / 40 min) since the last contact (touch, speech, near; motion caps it at 5 min) | comfort, boredom |
 | - | motion_x, motion_y | where the motion is (-1..1) | for attention |
+| - | light_x, light_y, light_spot | the picture's brightest spot (a lamp, a window; -1..1) and how NEW it is (0..1): its excess over how bright that place in the room has looked (13 directions 15° apart from head yaw + place in the picture, learned in ~8 s of frames, forgotten in 15 min), less what was already looked at (habituation over 3 min) - 2026-10-25 | for attention |
 
 Slow clocks (minutes, hours) are computed in code, not by the SNN: a spiking network cannot count minutes (v3's lesson,
 2026-10-03). `tools/v4/channels.py` is the same encoder for training; a parity test keeps them identical (error 0).
@@ -60,14 +61,15 @@ Slow clocks (minutes, hours) are computed in code, not by the SNN: a spiking net
 | ENC | 130 | per channel 8 Gaussian receptive fields over 0..1 + an ON and an OFF cell (a value that jumps fires at once) |
 | ZONE | 260 | 13 channels x 5 zones x 4 neurons, fixed innate wiring from the zone table; the 4 neurons of a zone tire with time constants 1 / 8 / 30 / 90 s (habituation: a steady stimulus fades, a new one stands out) |
 | MIX | 282 | recurrent pool, 80 % excitatory / 20 % inhibitory (Dale's law), 12 % connectivity: context across channels |
-| ATT | 96 | 12 x 8 attention map: a bump where motion is, weighted by salience |
+| ATT | 96 | 12 x 8 attention map: a bump where motion is and one where a new bright spot is, weighted by salience |
 
 A readout of 32 leaky integrators (0.15 .. 3 s) reads all 768 neurons:
 
 - **core affect (6):** valence, arousal, under-stimulation, over-stimulation, threat, surprise
 - **salience (10)** and **hedonic value (10)** of each outer channel (1-10)
 - **drives (3):** hunger, sleepiness, loneliness
-- **attention (3):** x, y, strength
+- **attention (3):** x, y, strength - the most salient thing with a place: movement in view, a touch, someone at
+  the face, a new bright spot (2026-10-25)
 
 It is trained to embody an innate appraisal (`tools/v4/teacher_snn.py`, built from the zone table: zone valence and
 arousal, salience per zone, jumps as news, habituation) with surrogate gradients and truncated backpropagation through
@@ -111,8 +113,15 @@ input 44 = 32 SNN numbers + 12 own state -> GRU 64 -> emotion head: 21 emotions 
   direction is the head's own yaw plus half the picture position (the camera is ~62° wide; it used to be taken as
   an absolute direction, wrong whenever the head was turned), and a moving thing makes it curious. A light coming
   on (light salience > 0.12, pleasant) makes it curious too: a wide look round, since one light sensor has no
-  direction. Open: the motion sense is weak (a person walking across the room at 2.5 m gives attention ~0.03 in the
-  simulator), and a light direction needs the camera (where the bright part of the picture is).
+  direction from the light sensor alone - the camera's bright spot gives it (below).
+- **Seeking** (2026-10-25, second step): the motion sense is three times stronger and quicker (channel table), and
+  the camera's brightest spot reaches the analyzer (light_x / light_y / light_spot): a lamp switched on in view or a
+  window coming into view is new and draws attention, the head turns to it, and the interest fades as it gets used to
+  it. Something new and strong in view (attention > 0.25) makes the robot curious. Novelty is kept per place in the
+  room, not for the picture as a whole: with one memory a lamp switched on to the side read "old" right after the
+  head had seen a white cup. After a look at something (attention > 0.12) the head keeps watching that place for
+  ~10 s, with small moves round it: someone who walked and then stood still vanishes from the motion sense in a few
+  seconds, and the head used to wander off.
 
 ## 4. The executor
 
@@ -163,12 +172,14 @@ are not touch_screen events for the brain; a tap on the face above the open bar 
 ## 6. The diary
 
 Every tick goes to the home PC over UDP (`main/net/life_log.*`, kind 3 datagrams, four ticks each, float16), with
-every log line. Columns (`spec_v4.DIARY`, 147): the 22 raw readings the channels are made from, the 15 channel values
+every log line. Columns (`spec_v4.DIARY`, 154): the 26 raw readings the channels are made from, the 18 channel values
 (after the zone shift: what the analyzer saw), the 32 SNN numbers, the 61 network outputs, what the body did (head
 yaw / pitch, shown face, said, gestured) and the main network's 12 own-state inputs of its last decision. With the raw
 readings any day can be re-encoded after a change of the channels; with the own state every decision can be replayed
 exactly on the PC (stage 6). Flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided
-this tick. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it (also the first 135-column layout).
+this tick. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it (also the older layouts by column name: 135
+values until 2026-10-24 14:30, 147 until the camera's bright spot and the head yaw as a raw reading came in on 2026-10-25; missing columns are
+NaN).
 
 Every 5 s the robot logs three lines: `stats:` (CPU, memory, timing, servos, sensors, voice, diary counters), `v4:`
 (raw light / proximity, the 13 channels, the SNN's mood, the network's state, face, calls, gestures) and `power:`

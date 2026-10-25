@@ -31,6 +31,11 @@ def random_raw(T, rng):
     r["frame_ok"] = (np.arange(T) % 3 == 0) * 1.0
     r["motion_frac"] = np.clip(rng.normal(0.05, 0.05, T), 0, 1)
     r["motion_x"], r["motion_y"] = rng.uniform(-1, 1, T), rng.uniform(-1, 1, T)
+    # a bright spot that comes and goes (the head turning to a lamp) and moves
+    seen = ((np.arange(T) // 700) % 3 != 0) * 1.0
+    r["light_str"] = seen * np.clip(0.6 + 0.3 * np.sin(np.arange(T) / 900), 0, 1)
+    r["light_x"], r["light_y"] = seen * np.sin(np.arange(T) / 400), seen * 0.3
+    r["head_yaw"] = 50 * np.sin(np.arange(T) / 1300)  # the head looking round: the spot's place in the room moves
     r["battery"] = np.linspace(1, 0.3, T)
     r["stamina"] = np.ones(T) * 0.8
     r["hour"] = (20.5 + np.arange(T) * 0.05 / 3600 * 30) % 24

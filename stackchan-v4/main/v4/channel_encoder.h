@@ -25,6 +25,8 @@ public:
         bool alsOk = false;
         float motionFrac = 0, motionX = 0, motionY = 0;  // the picture's own movement and its centre
         bool frameOk = false;            // a fresh usable frame this tick (not blind, not during our own motion)
+        float lightX = 0, lightY = 0, lightStr = 0;  // the picture's brightest spot (-1..1) and its excess (0..1)
+        float headYaw = 0;               // where the head points, degrees (MotionEngine): places the spot in the room
         float battery = 1, stamina = 1, hour = 12;
         bool clockOk = false;
     };
@@ -47,7 +49,20 @@ public:
                            kTiltAcceptS = 600.0f;
     static constexpr float kNearFull = 600.0f, kNearTau = 1.0f;
     static constexpr float kLightFull = 20000.0f, kLightTau = 2.0f;
-    static constexpr float kMotionGain = 1.5f, kMotionTau = 5.0f, kMotionHoldDecay = 2.0f;
+    // The motion sense (2026-10-25, the owner: nothing in the room interested it): a person moving shows in a few
+    // frames only (2026-10-24 evening: 3 % of the frames, median share 0.015, p90 0.135), and a 5 s mean x1.5 kept
+    // the channel at ~0.01 (attention ~0.03). Now x3, rising in 0.5 s and falling in 4 s: someone moving about reads
+    // 0.05-0.25 (interest), p99.9 of a day ~0.25.
+    static constexpr float kMotionGain = 3.0f, kMotionTau = 0.5f, kMotionFallTau = 4.0f, kMotionHoldDecay = 2.0f;
+    // The bright spot (a lamp, a window; VisionFrontEnd::findLight): how NEW it is - its excess over how bright that
+    // place in the room has looked (kSpotPlaces directions kSpotPlaceDeg apart, head yaw + the spot's place in the
+    // picture; learned over kSpotSlowTau while in view, forgotten over kSpotForgetTau), less what was already looked
+    // at (habituation over kSpotHabTau). One memory for the whole picture (until 2026-10-25 evening) made a lamp
+    // switched on elsewhere read old after a white cup; every new view now reads a little new, so the habituation
+    // rate went 0.005 -> 0.001 (it saturated and cut a lamp to 0.3).
+    static constexpr float kSpotSlowTau = 8.0f, kSpotNovGain = 2.0f, kSpotHabTau = 180.0f, kSpotHabRate = 0.001f,
+                           kSpotHabCut = 0.7f, kSpotCamHalfDeg = 30.0f, kSpotPlaceDeg = 15.0f, kSpotForgetTau = 900.0f;
+    static constexpr int kSpotPlaces = 13;  // -90 .. +90 deg
     static constexpr float kLonelyTau = 2400.0f, kLonelyMotionCap = 300.0f, kLonelyStart = 600.0f;
     static constexpr float kContactSpeech = 0.5f, kContactNear = 0.3f, kContactMotion = 0.1f;
 
@@ -57,4 +72,6 @@ private:
     double loud_ = 0, sharp_ = 0, voice_ = 0, head_ = 0, screen_ = 0, shake_ = 0;
     double n_ = 0, p0_ = 0, r0_ = 0, steady_ = 0, tilt_ = 0;
     double near_ = 0, light_ = 0, motion_ = 0, lonely_t_ = kLonelyStart, mx_ = 0, my_ = 0;
+    double lx_ = 0, ly_ = 0, spot_ = 0, spot_hab_ = 0;
+    std::array<double, kSpotPlaces> place_{};  // how bright each direction of the room has looked
 };

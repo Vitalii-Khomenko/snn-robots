@@ -189,10 +189,20 @@ esp_err_t i2c_master_bus_add_device(i2c_master_bus_handle_t, const i2c_device_co
 esp_err_t i2c_master_transmit(i2c_master_dev_handle_t, const uint8_t*, size_t, int) { return ESP_OK; }
 
 esp_err_t i2c_master_transmit_receive(i2c_master_dev_handle_t dev, const uint8_t* tx, size_t, uint8_t* rx,
-                                      size_t, int)
+                                      size_t rx_len, int)
 {
     World& w = world();
     const uint8_t reg = tx[0];
+    if (dev->addr == 0x23 && reg == 0x88 && rx_len == 4) {
+        // the ALS data as one burst (PresenceEngine::readAlsData, 2026-10-24): CH1 (IR) lo/hi, CH0 lo/hi; the room's
+        // IR share taken as a quarter
+        const uint16_t ch0 = w.alsRaw(), ch1 = static_cast<uint16_t>(ch0 / 4);
+        rx[0] = ch1 & 0xff;
+        rx[1] = ch1 >> 8;
+        rx[2] = ch0 & 0xff;
+        rx[3] = ch0 >> 8;
+        return ESP_OK;
+    }
     if (dev->addr == 0x23) {  // LTR-553 ALS/PS: low byte latches a 16-bit sample
         switch (reg) {
             case 0x86: *rx = 0x92; break;

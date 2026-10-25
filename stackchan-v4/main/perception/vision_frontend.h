@@ -51,7 +51,10 @@ public:
 private:
     static constexpr int kSampleW = kWidth * 2, kSampleH = kHeight * 2, kSampleCount = kSampleW * kSampleH;
     static constexpr int kBlock = 8, kGridW = kSampleW / kBlock, kGridH = kSampleH / kBlock;
-    static constexpr int kLightMinExcess = 25, kLightFull = 60;
+    // The brightest block over the frame mean (exposure aims at ~118): a lamp or a window glares to 255 (+137), a
+    // white sheet reads ~+90..110. 25 / 60 until 2026-10-25 read any white thing as a full light (brain v4 looks
+    // for a NEW light, a cup must not be one).
+    static constexpr int kLightMinExcess = 60, kLightFull = 130;
     static constexpr int kMaxShift = 3;
     static constexpr float kMotionCellThr = 0.25f;  // |compensated difference| of a moving cell (12 grey levels)
     void findLight(Frame& out) const;

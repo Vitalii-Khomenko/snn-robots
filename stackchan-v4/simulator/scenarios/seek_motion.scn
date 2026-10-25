@@ -1,0 +1,16 @@
+# 2026-10-25 (the owner: nothing in the room interests it): someone walks about the room, now on one side, now on the
+# other, sometimes outside the picture: a few seconds' walk at ~1 m/s, then standing a while. The head should find
+# them and keep turning to where they went.
+duration 5:00
+clock 15:00
+seed 5
+room_light on
+owner away
+at 0:20 person alex enter 50 2.5
+at 0:25 person alex walk 65 3
+at 1:00 person alex walk -10 5
+at 1:30 person alex walk -55 4
+at 2:00 person alex walk -40 2
+at 2:45 person alex walk 30 6
+at 3:20 person alex walk 55 3
+at 4:10 person alex leave

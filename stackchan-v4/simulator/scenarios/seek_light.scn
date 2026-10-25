@@ -1,0 +1,11 @@
+# 2026-10-25 (the owner: a bright light does not interest it): a lamp beside the desk on the left, outside the
+# picture while the head looks ahead (the camera sees +-30 deg), is switched on. The robot should look round, find it
+# and turn to it - then lose interest again (habituation). With the lamp left off it looks there ~40 % of the time,
+# by chance.
+duration 4:00
+clock 18:00
+seed 9
+room_light on
+owner away
+lamp floor -55 5 off brightness 8 radius 6
+at 1:00 lamp floor on

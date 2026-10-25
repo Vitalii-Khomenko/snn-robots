@@ -118,6 +118,7 @@ private:
 
     // the camera's last frame (~7 fps): motion share and centre
     float motion_[3] = {0, 0, 0};
+    float light_spot_[3] = {0, 0, 0};  // the camera's brightest spot: x, y, strength
     bool frame_ok_ = false, frame_this_tick_ = false;
     // touches
     float head_ev_ = 0.0f, screen_ev_ = 0.0f;

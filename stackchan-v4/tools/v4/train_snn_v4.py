@@ -165,7 +165,7 @@ def train(epochs):
 
 
 if __name__ == "__main__":
-    assert len(SNN_IN) == len(CHANNELS) + 2
+    assert len(SNN_IN) == len(CHANNELS) + 5
     if sys.argv[1] == "data":
         build()
     else:

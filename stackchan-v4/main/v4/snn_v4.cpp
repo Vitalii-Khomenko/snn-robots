@@ -74,14 +74,21 @@ bool SnnV4::tick(const In& in, Out& out)
     has_prev_ = true;
     float bump[kAtt];
     {
+        // a bump where the movement is, and one where a new bright spot is (2026-10-25)
+        constexpr int w = v4::CH_COUNT;
         const float amp = std::clamp(in[v4::CH_MOTION] * 4.0f, 0.0f, 1.0f) * kBumpGain;
-        const float mx = in[v4::kSnnInputs - 2], my = in[v4::kSnnInputs - 1];
+        const float mx = in[w + v4::WH_MOTION_X], my = in[w + v4::WH_MOTION_Y];
+        const float lamp = std::clamp(in[w + v4::WH_LIGHT_SPOT], 0.0f, 1.0f) * kBumpGain;
+        const float lx = in[w + v4::WH_LIGHT_X], ly = in[w + v4::WH_LIGHT_Y];
+        auto g = [](float gx, float gy, float cx, float cy) {
+            return std::exp(-((gx - cx) * (gx - cx) / (2.0f * kBumpSx * kBumpSx) +
+                              (gy - cy) * (gy - cy) / (2.0f * kBumpSy * kBumpSy)));
+        };
         for (int y = 0; y < kMapH; ++y)
             for (int x = 0; x < kMapW; ++x) {
                 const float gx = (static_cast<float>(x) + 0.5f) / kMapW * 2.0f - 1.0f;
                 const float gy = (static_cast<float>(y) + 0.5f) / kMapH * 2.0f - 1.0f;
-                bump[y * kMapW + x] = amp * std::exp(-((gx - mx) * (gx - mx) / (2.0f * kBumpSx * kBumpSx) +
-                                                       (gy - my) * (gy - my) / (2.0f * kBumpSy * kBumpSy)));
+                bump[y * kMapW + x] = amp * g(gx, gy, mx, my) + lamp * g(gx, gy, lx, ly);
             }
     }
 

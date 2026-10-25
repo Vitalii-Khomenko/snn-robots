@@ -17,7 +17,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from spec_v4 import CHANNELS, SNN_IN, SNN_OUT, SNN_SIGNED, ZONE_TABLE, ZONES, membership
+from spec_v4 import CHANNELS, SNN_IN, SNN_OUT, SNN_SIGNED, WHERE, ZONE_TABLE, ZONES, membership
 
 NC = len(CHANNELS)
 N_GRF = 8
@@ -144,20 +144,26 @@ class SnnV4(nn.Module):
                     v_att=z(N_ATT), ro=z(NOUT), prev=None)
 
     def encode(self, x, prev):
-        """x [B, 15] -> constant input currents of ENC [B, 130] and the attention bump [B, 96] for this tick."""
+        """x [B, 18] -> constant input currents of ENC [B, 130] and the attention bump [B, 96] for this tick."""
         ch = x[:, :NC]
         grf = GRF_GAIN * torch.exp(-(ch[:, :, None] - self.grf_c) ** 2 / (2 * GRF_SIGMA ** 2))  # [B, NC, 8]
         d = ch - (prev if prev is not None else ch)
         onoff = torch.stack([torch.relu(d), torch.relu(-d)], -1) * ONOFF_GAIN                 # [B, NC, 2]
         i_enc = torch.cat([grf.reshape(len(x), -1), onoff.reshape(len(x), -1)], 1)
-        mx, my = x[:, NC], x[:, NC + 1]
+        # a bump where the movement is, and one where a new bright spot is (2026-10-25)
+        mx, my = x[:, NC + WHERE.index("motion_x")], x[:, NC + WHERE.index("motion_y")]
+        lx, ly = x[:, NC + WHERE.index("light_x")], x[:, NC + WHERE.index("light_y")]
         amp = (ch[:, CHANNELS.index("motion")] * 4.0).clamp(0, 1) * BUMP_GAIN
-        bump = amp[:, None] * torch.exp(-((self.map_x - mx[:, None]) ** 2 / (2 * BUMP_SX ** 2) +
-                                          (self.map_y - my[:, None]) ** 2 / (2 * BUMP_SY ** 2)))
+        lamp = x[:, NC + WHERE.index("light_spot")].clamp(0, 1) * BUMP_GAIN
+
+        def g(cx, cy):
+            return torch.exp(-((self.map_x - cx[:, None]) ** 2 / (2 * BUMP_SX ** 2) +
+                               (self.map_y - cy[:, None]) ** 2 / (2 * BUMP_SY ** 2)))
+        bump = amp[:, None] * g(mx, my) + lamp[:, None] * g(lx, ly)
         return i_enc, bump
 
     def step(self, x, st):
-        """One 50 ms tick. x [B, 15]. Returns out [B, 32] and spike counts per layer (for the rate penalty)."""
+        """One 50 ms tick. x [B, 18]. Returns out [B, 32] and spike counts per layer (for the rate penalty)."""
         i_enc, bump = self.encode(x, st["prev"])
         st["prev"] = x[:, :NC].detach() if not torch.is_grad_enabled() else x[:, :NC]
         w_in, w_rec, w_att, w_ro = self.W("in"), self.W("rec"), self.W("att"), self.W("ro")
@@ -187,7 +193,7 @@ class SnnV4(nn.Module):
         return out, rate
 
     def forward(self, X, st):
-        """X [B, T, 15] -> Y [B, T, 32], mean rates per layer [4]."""
+        """X [B, T, 18] -> Y [B, T, 32], mean rates per layer [4]."""
         outs, rates = [], []
         for t in range(X.shape[1]):
             o, r = self.step(X[:, t], st)

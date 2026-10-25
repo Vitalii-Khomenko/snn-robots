@@ -465,7 +465,8 @@ void RobotRuntime::logTick()
     const float raw[] = {r.energy, r.speech, r.sharpEv, r.headEv, r.headHold, r.screenEv, r.accelSd, r.imuPitch,
                          r.imuRoll, r.imuOk ? 1.0f : 0.0f, r.nearRaw, r.nearOk ? 1.0f : 0.0f, r.als,
                          r.alsOk ? 1.0f : 0.0f, r.motionFrac, r.motionX, r.motionY, r.frameOk ? 1.0f : 0.0f,
-                         r.battery, r.stamina, r.hour, r.clockOk ? 1.0f : 0.0f};
+                         r.battery, r.stamina, r.hour, r.clockOk ? 1.0f : 0.0f, r.lightX, r.lightY, r.lightStr,
+                         r.headYaw};
     static_assert(sizeof(raw) / sizeof(float) == v4::RAW_COUNT, "diary order: tools/v4/spec_v4.py RAW");
     float* p = std::copy(std::begin(raw), std::end(raw), values);
     p = std::copy(loop_.channels().begin(), loop_.channels().end(), p);

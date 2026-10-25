@@ -20,6 +20,7 @@ public:
     struct VisionFrame {
         bool blind = false;                                        // too dark to see anything
         float motionFrac = 0.0f, motionX = 0.0f, motionY = 0.0f;  // share of the picture that moves, its centre
+        float lightX = 0.0f, lightY = 0.0f, lightStrength = 0.0f;  // the brightest spot (-1..1) and its excess (0..1)
     };
 
     bool begin();

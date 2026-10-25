@@ -65,6 +65,9 @@ void BrainLoop::vision(const CameraEngine::VisionFrame& f, uint32_t now)
     motion_[0] = f.motionFrac;
     motion_[1] = f.motionX;
     motion_[2] = f.motionY;
+    light_spot_[0] = f.lightX;
+    light_spot_[1] = f.lightY;
+    light_spot_[2] = f.lightStrength;
     frame_this_tick_ = true;
 }
 
@@ -176,6 +179,11 @@ void BrainLoop::updateChannels(uint32_t now, float sharpEv, const Env& env)
     r.motionFrac = motion_[0];
     r.motionX = motion_[1];
     r.motionY = motion_[2];
+    r.lightX = light_spot_[0];
+    r.lightY = light_spot_[1];
+    r.lightStr = light_spot_[2];
+    float pitch_now = 0.0f;
+    e_.motion.getCurrentDeg(r.headYaw, pitch_now);
     r.battery = e_.power.batteryLevel01();
     r.stamina = e_.motion.staminaLevel();
     r.hour = env.hour;

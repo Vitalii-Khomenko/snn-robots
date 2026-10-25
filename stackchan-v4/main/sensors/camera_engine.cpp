@@ -83,6 +83,9 @@ void CameraEngine::taskLoop()
                 result.motionFrac = frame_.motionFrac;
                 result.motionX = frame_.motionX;
                 result.motionY = frame_.motionY;
+                result.lightX = frame_.lightX;
+                result.lightY = frame_.lightY;
+                result.lightStrength = frame_.lightStrength;
                 front_us_.store(static_cast<uint32_t>(esp_timer_get_time() - t0));
                 portENTER_CRITICAL(&lock_);
                 published_ = result;

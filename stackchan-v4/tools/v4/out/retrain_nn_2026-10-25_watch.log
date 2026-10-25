@@ -1,0 +1,201 @@
+0
+25
+50
+75
+100
+125
+150
+175
+200
+225
+250
+275
+300
+325
+350
+375
+400
+425
+450
+475
+500
+525
+550
+575
+600
+625
+650
+675
+700
+725
+750
+775
+800
+825
+850
+875
+900
+925
+950
+975
+1000
+1025
+1050
+1075
+1100
+1125
+1150
+1175
+1200
+1225
+1250
+1275
+1300
+1325
+1350
+1375
+1400
+1425
+1450
+1475
+1500
+1525
+1550
+1575
+1600
+1625
+1650
+1675
+1700
+1725
+1750
+1775
+SNN outputs (1800, 3000, 32)
+imitation labels (1740, 3000, 44) in 331s
+  epoch 1/25 val 4.697 emotion acc 0.420 3s
+  epoch 2/25 val 3.081 emotion acc 0.690 3s
+  epoch 3/25 val 2.284 emotion acc 0.815 3s
+  epoch 4/25 val 1.851 emotion acc 0.867 3s
+  epoch 5/25 val 1.554 emotion acc 0.908 3s
+  epoch 6/25 val 1.311 emotion acc 0.922 3s
+  epoch 7/25 val 1.173 emotion acc 0.928 3s
+  epoch 8/25 val 1.069 emotion acc 0.936 3s
+  epoch 9/25 val 1.004 emotion acc 0.939 3s
+  epoch 10/25 val 0.934 emotion acc 0.944 3s
+  epoch 11/25 val 0.869 emotion acc 0.949 3s
+  epoch 12/25 val 0.819 emotion acc 0.951 3s
+  epoch 13/25 val 0.769 emotion acc 0.951 3s
+  epoch 14/25 val 0.726 emotion acc 0.954 3s
+  epoch 15/25 val 0.711 emotion acc 0.954 3s
+  epoch 16/25 val 0.680 emotion acc 0.957 3s
+  epoch 17/25 val 0.662 emotion acc 0.958 3s
+  epoch 18/25 val 0.647 emotion acc 0.959 3s
+  epoch 19/25 val 0.639 emotion acc 0.959 3s
+  epoch 20/25 val 0.631 emotion acc 0.959 3s
+  epoch 21/25 val 0.627 emotion acc 0.959 3s
+  epoch 22/25 val 0.623 emotion acc 0.960 3s
+  epoch 23/25 val 0.621 emotion acc 0.960 3s
+  epoch 24/25 val 0.620 emotion acc 0.960 3s
+  epoch 25/25 val 0.620 emotion acc 0.960 3s
+DAgger round 1: (600, 3000, 44) labelled in 152s
+  epoch 1/15 val 0.908 emotion acc 0.945 4s
+  epoch 2/15 val 0.773 emotion acc 0.953 4s
+  epoch 3/15 val 0.696 emotion acc 0.954 4s
+  epoch 4/15 val 0.676 emotion acc 0.954 4s
+  epoch 5/15 val 0.648 emotion acc 0.956 4s
+  epoch 6/15 val 0.640 emotion acc 0.958 4s
+  epoch 7/15 val 0.619 emotion acc 0.957 4s
+  epoch 8/15 val 0.604 emotion acc 0.959 4s
+  epoch 9/15 val 0.581 emotion acc 0.960 4s
+  epoch 10/15 val 0.567 emotion acc 0.961 4s
+  epoch 11/15 val 0.554 emotion acc 0.962 4s
+  epoch 12/15 val 0.547 emotion acc 0.962 4s
+  epoch 13/15 val 0.545 emotion acc 0.962 4s
+  epoch 14/15 val 0.542 emotion acc 0.963 4s
+  epoch 15/15 val 0.540 emotion acc 0.963 4s
+DAgger round 2: (600, 3000, 44) labelled in 153s
+  epoch 1/15 val 0.666 emotion acc 0.956 5s
+  epoch 2/15 val 0.675 emotion acc 0.953 5s
+  epoch 3/15 val 0.597 emotion acc 0.959 5s
+  epoch 4/15 val 0.613 emotion acc 0.955 4s
+  epoch 5/15 val 0.611 emotion acc 0.959 4s
+  epoch 6/15 val 0.556 emotion acc 0.963 4s
+  epoch 7/15 val 0.572 emotion acc 0.959 4s
+  epoch 8/15 val 0.523 emotion acc 0.964 4s
+  epoch 9/15 val 0.531 emotion acc 0.963 4s
+  epoch 10/15 val 0.510 emotion acc 0.966 4s
+  epoch 11/15 val 0.507 emotion acc 0.965 4s
+  epoch 12/15 val 0.493 emotion acc 0.966 4s
+  epoch 13/15 val 0.494 emotion acc 0.966 5s
+  epoch 14/15 val 0.488 emotion acc 0.967 4s
+  epoch 15/15 val 0.486 emotion acc 0.967 4s
+head mode weights: hold 1.70, look 0.88, scan 0.66, nod 2.25, shake 2.86, flinch 1.00, look_down 2.90, look_up 1.36, doze 0.74
+imitation
+  epoch 1/25 val 4.697 emotion acc 0.420 3s
+  epoch 2/25 val 3.081 emotion acc 0.690 3s
+  epoch 3/25 val 2.284 emotion acc 0.815 3s
+  epoch 4/25 val 1.851 emotion acc 0.867 3s
+  epoch 5/25 val 1.554 emotion acc 0.908 3s
+  epoch 6/25 val 1.311 emotion acc 0.922 3s
+  epoch 7/25 val 1.173 emotion acc 0.928 3s
+  epoch 8/25 val 1.069 emotion acc 0.936 3s
+  epoch 9/25 val 1.004 emotion acc 0.939 3s
+  epoch 10/25 val 0.934 emotion acc 0.944 3s
+  epoch 11/25 val 0.869 emotion acc 0.949 3s
+  epoch 12/25 val 0.819 emotion acc 0.951 3s
+  epoch 13/25 val 0.769 emotion acc 0.951 3s
+  epoch 14/25 val 0.726 emotion acc 0.954 3s
+  epoch 15/25 val 0.711 emotion acc 0.954 3s
+  epoch 16/25 val 0.680 emotion acc 0.957 3s
+  epoch 17/25 val 0.662 emotion acc 0.958 3s
+  epoch 18/25 val 0.647 emotion acc 0.959 3s
+  epoch 19/25 val 0.639 emotion acc 0.959 3s
+  epoch 20/25 val 0.631 emotion acc 0.959 3s
+  epoch 21/25 val 0.627 emotion acc 0.959 3s
+  epoch 22/25 val 0.623 emotion acc 0.960 3s
+  epoch 23/25 val 0.621 emotion acc 0.960 3s
+  epoch 24/25 val 0.620 emotion acc 0.960 3s
+  epoch 25/25 val 0.620 emotion acc 0.960 3s
+DAgger round 1
+  epoch 1/15 val 0.908 emotion acc 0.945 4s
+  epoch 2/15 val 0.773 emotion acc 0.953 4s
+  epoch 3/15 val 0.696 emotion acc 0.954 4s
+  epoch 4/15 val 0.676 emotion acc 0.954 4s
+  epoch 5/15 val 0.648 emotion acc 0.956 4s
+  epoch 6/15 val 0.640 emotion acc 0.958 4s
+  epoch 7/15 val 0.619 emotion acc 0.957 4s
+  epoch 8/15 val 0.604 emotion acc 0.959 4s
+  epoch 9/15 val 0.581 emotion acc 0.960 4s
+  epoch 10/15 val 0.567 emotion acc 0.961 4s
+  epoch 11/15 val 0.554 emotion acc 0.962 4s
+  epoch 12/15 val 0.547 emotion acc 0.962 4s
+  epoch 13/15 val 0.545 emotion acc 0.962 4s
+  epoch 14/15 val 0.542 emotion acc 0.963 4s
+  epoch 15/15 val 0.540 emotion acc 0.963 4s
+DAgger round 2
+  epoch 1/15 val 0.666 emotion acc 0.956 5s
+  epoch 2/15 val 0.675 emotion acc 0.953 5s
+  epoch 3/15 val 0.597 emotion acc 0.959 5s
+  epoch 4/15 val 0.613 emotion acc 0.955 4s
+  epoch 5/15 val 0.611 emotion acc 0.959 4s
+  epoch 6/15 val 0.556 emotion acc 0.963 4s
+  epoch 7/15 val 0.572 emotion acc 0.959 4s
+  epoch 8/15 val 0.523 emotion acc 0.964 4s
+  epoch 9/15 val 0.531 emotion acc 0.963 4s
+  epoch 10/15 val 0.510 emotion acc 0.966 4s
+  epoch 11/15 val 0.507 emotion acc 0.965 4s
+  epoch 12/15 val 0.493 emotion acc 0.966 4s
+  epoch 13/15 val 0.494 emotion acc 0.966 5s
+  epoch 14/15 val 0.488 emotion acc 0.967 4s
+  epoch 15/15 val 0.486 emotion acc 0.967 4s
+
+held-out lives, the network acting alone:
+calls/h 194, emotion agreement with the teacher 0.902
+emotions: sleepy 37.6%, bored 11.4%, thinking 8.8%, normal 8.2%, curious 6.5%, cool 4.9%, surprised 4.4%, angry 3.8%, scared 3.5%, wink 2.9%, happy 2.8%, annoyed 1.6%, love 1.2%, laughing 0.7%, shy 0.6%, very_happy 0.4%, dizzy 0.4%, confused 0.4%, sad 0.0%
+head: scan 40.6%, doze 31.2%, look 19.1%, look_up 4.4%, hold 1.9%, flinch 1.3%, nod 0.7%, look_down 0.3%, shake 0.3%
+
+real diary lives only:
+calls/h 186, emotion agreement with the teacher 0.874
+emotions: normal 23.6%, cool 19.0%, wink 14.8%, happy 12.2%, sleepy 11.1%, thinking 7.9%, curious 4.9%, surprised 3.1%, scared 1.5%, love 1.1%, angry 0.5%, laughing 0.2%, annoyed 0.1%, shy 0.1%, dizzy 0.0%, very_happy 0.0%
+head: scan 59.9%, look 24.0%, doze 11.2%, look_up 3.8%, flinch 0.6%, nod 0.5%, look_down 0.0%, shake 0.0%
+

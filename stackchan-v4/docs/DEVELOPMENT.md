@@ -41,7 +41,7 @@ sensor engines) in a simulated room with scripted people, sounds, touches, light
 simulator/build.sh                                   # g++, no ESP-IDF needed
 simulator/run.sh simulator/scenarios/petting.scn [--minutes N] [--seed N] [--echo] [--voice-wav F] [--learned F] [--v4-dump F]
 # -> simulator/out/<scenario>/log.txt (the robot's log), trace.csv (10 Hz: head, face, channels, mood), summary.txt
-tools/v4/py behavior_test_v4.py                      # 8 scenarios in parallel, ~25 s
+tools/v4/py behavior_test_v4.py                      # 10 scenarios in parallel, ~30 s
 ```
 
 | Behaviour test | Scenario | Checks |
@@ -54,12 +54,15 @@ tools/v4/py behavior_test_v4.py                      # 8 scenarios in parallel, 
 | day_alone | an empty room by day | babbles 40..600 calls/h, moods change |
 | learn_rough | shaken, picked up | frightened (scared / dizzy / surprised / flinch) |
 | hearing | claps and bangs | startled |
+| seek_motion | someone walks about the room (a few seconds at ~1 m/s, then stands), often outside the picture | report only: the share of the time the head points within 25° of them (the simulated walker is a low-contrast figure, found as often as by chance: 0.37 over 5 seeds, the same with nobody there; the robot's diary judges the motion sense) |
+| seek_light | a lamp switched on beside the desk (-55°), outside the picture | the head finds it within 60 s and points at it >= 50 % of the time (5 seeds: 74 %, the lamp left off 42 %) |
 
 **Time.** Firmware tasks (main loop, microphone, camera, voice) run on a virtual RTOS (`simulator/core/vrtos`): each
 in its own thread but strictly one at a time, and time advances only when all wait. The same scenario and seed always
 give the same result. A brain tick costs modelled CPU time (`--brain-cost`, default 4 ms). A 10 min scenario takes
 ~5 s. The simulator's IMU mounting matches the real head (pitch rotates gravity); its servos are quieter than the
-real ones (do not tune servo-noise filters in the simulator).
+real ones (do not tune servo-noise filters in the simulator). The light sensor answers the firmware's 4-byte burst read
+(since 2026-10-25; from 2026-10-24 the simulated light channel had read 0, a dark room, in every scenario).
 
 **Scenario format.** A `*.scn` file describes the room and the events. `#` starts a comment. Times are `s`, `m:ss` or
 `h:mm:ss` since power-on. Azimuth `+` is to the robot's right (like head yaw), elevation `+` is up.

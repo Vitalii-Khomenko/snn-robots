@@ -64,8 +64,19 @@ def make_raw(rng, T, busy=None, hour0=None, rich=None):
     lamp_on = rng.random() < (0.1 if dark_hours else 0.7)
     base_light = (10 ** rng.uniform(2.0, 3.5)) if lamp_on else (10 ** rng.uniform(-0.3, 1.2))
     light = np.full(T, base_light) * np.exp(_ou(rng, T, 120.0, 0.15))
+    # the brightest spot in the picture (a lamp, a window, the TV), in view now and then as the head turns
+    lstr, lx, ly = np.zeros(T), np.zeros(T), np.zeros(T)
+    if rng.random() < (0.6 if lamp_on or not dark_hours else 0.1):
+        for s, e in _segments(rng, T, 60, (2, 40)):
+            lstr[s:e] = rng.uniform(0.1, 1.0)
+            lx[s:e], ly[s:e] = rng.uniform(-0.9, 0.9), rng.uniform(-0.8, 0.4)
     for s, e in _segments(rng, T, 0.6 * busy, (20, 900)):  # lamps switched on / off, curtains
-        light[s:e] *= 10 ** rng.uniform(-1.5, 1.5)
+        k = 10 ** rng.uniform(-1.5, 1.5)
+        light[s:e] *= k
+        if k > 3 and rng.random() < 0.5:  # the lamp is in view: a new bright spot with the light
+            d = min(e, s + SEC(rng.uniform(5, 60)))
+            lstr[s:d] = rng.uniform(0.5, 1.0)
+            lx[s:d], ly[s:d] = rng.uniform(-0.9, 0.9), rng.uniform(-0.8, 0.4)
     for s, e in _segments(rng, T, 0.15 * rich, (2, 20)):  # a torch in the face
         light[s:e] = 10 ** rng.uniform(3.8, 4.6)
     r["als"] = np.clip(light, 0, 65535)
@@ -93,8 +104,11 @@ def make_raw(rng, T, busy=None, hour0=None, rich=None):
     for s, e in _segments(rng, T, 25 * busy + 2, (2, 40)):
         if not present[s]:
             continue
-        frac = rng.uniform(0.02, 0.3) * (1 + busy * 0.3)
-        motion[s:e] = np.maximum(motion[s:e], frac * np.clip(1 + _ou(rng, e - s, 1.0, 0.4), 0.2, 2))
+        # a person moving shows in some frames only (2026-10-24 evening: 3 % of the frames, median share 0.015,
+        # p90 0.135): it was a steady 0.02-0.3 here
+        frac = rng.uniform(0.01, 0.15) * (1 + busy * 0.3)
+        seen = rng.random(e - s) < rng.uniform(0.1, 0.6)
+        motion[s:e] = np.maximum(motion[s:e], seen * frac * np.clip(1 + _ou(rng, e - s, 1.0, 0.4), 0.2, 2))
         mx[s:e] = np.clip(walk_x[s:e], -1, 1)
         my[s:e] = rng.uniform(-0.3, 0.5)
     for s, e in _segments(rng, T, 2 * busy * rich, (2, 10)):  # waving / flailing in front of the camera
@@ -232,12 +246,13 @@ def make_raw(rng, T, busy=None, hour0=None, rich=None):
              head_hold=head_hold, screen_ev=screen, accel_sd=accel, imu_pitch=np.clip(imu_pitch, -1, 1),
              imu_roll=np.clip(imu_roll, -1, 1), imu_ok=np.ones(T), near_raw=np.clip(near, 0, 2047),
              near_ok=np.ones(T), motion_frac=np.clip(motion, 0, 1), motion_x=np.clip(mx, -1, 1),
-             motion_y=np.clip(my, -1, 1), frame_ok=frame.astype(float))
+             motion_y=np.clip(my, -1, 1), frame_ok=frame.astype(float),
+             light_x=lx, light_y=ly, light_str=np.where(r["als"] < 2, 0.0, lstr))
     return r
 
 
 def make_channels(rng, T, **kw):
-    """-> [T, 15] channels; the encoder starts warm (tilt baseline known, like a robot that has been up a while)."""
+    """-> [T, 18] channels; the encoder starts warm (tilt baseline known, like a robot that has been up a while)."""
     warm = SEC(70)
     raw = make_raw(rng, T + warm, **kw)
     X = encode(raw)

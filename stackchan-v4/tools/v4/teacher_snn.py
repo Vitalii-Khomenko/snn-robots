@@ -128,12 +128,13 @@ def _teach(X, M, ZV, ZA, ZS, JG, OW, out, st):
         bored = (M[t, 0, 0] + M[t, 2, 0] + M[t, 3, 0] + M[t, 7, 0] + M[t, 9, 0]) / 5.0
         u_now = _clip((0.8 * lonely + 0.3 * bored * np.sqrt(lonely)) * (1.0 - 0.7 * sleep_s) - 0.6 * ssum / 10.0)
         under += (u_now - under) * (1.0 - np.exp(-DT / 5.0))
-        # attention: the most salient source with a place (movement in view, a touch, someone at the face)
-        cand_s = (sal[9] * (1.0 if x[9] > 0.02 else 0.3), sal[3], sal[4], sal[7] * 0.8)
-        cand_x = (x[13], 0.0, 0.0, 0.0)
-        cand_y = (x[14], -0.7, 0.0, -0.1)
+        # attention: the most salient source with a place (movement in view, a touch, someone at the face, a new bright
+        # spot in view - a lamp switched on, a window coming into view: the encoder's light_spot, 2026-10-25)
+        cand_s = (sal[9] * (1.0 if x[9] > 0.02 else 0.3), sal[3], sal[4], sal[7] * 0.8, x[17] * 0.8)
+        cand_x = (x[13], 0.0, 0.0, 0.0, x[15])
+        cand_y = (x[14], -0.7, 0.0, -0.1, x[16])
         best = 0
-        for k in range(4):
+        for k in range(5):
             if cand_s[k] > cand_s[best]:
                 best = k
         tx, ty, ts = cand_x[best], cand_y[best], cand_s[best]

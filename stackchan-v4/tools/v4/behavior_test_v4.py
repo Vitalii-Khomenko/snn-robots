@@ -33,7 +33,63 @@ def run(name, minutes):
         cells = [c.strip() for c in line.split("|")]
         if len(cells) > 3 and cells[0].isdigit():
             moves += int(cells[3])
-    return ev, minutes, moves
+    return ev, minutes, moves, out
+
+
+def _clock(s):
+    m, sec = s.split(":")
+    return int(m) * 60 + float(sec)
+
+
+def scene_targets(name):
+    """Where the scenario's person and lamps are over time: [(t0, t1, az)] while present / on (lamp: after it was
+    switched on)."""
+    person, lamps, out = None, {}, {"person": [], "lamp": []}
+    for line in open(os.path.join(SCN, name + ".scn")):
+        w = line.split()
+        if len(w) >= 4 and w[0] == "lamp":
+            lamps[w[1]] = float(w[2])
+        if len(w) < 5 or w[0] != "at":
+            continue
+        t = _clock(w[1])
+        if w[2] == "person" and w[4] == "enter":
+            person = (t, float(w[5]))
+        elif w[2] == "person" and w[4] == "walk" and person:
+            t1 = t + float(w[6])
+            out["person"].append((person[0], t, person[1], person[1]))
+            out["person"].append((t, t1, person[1], float(w[5])))
+            person = (t1, float(w[5]))
+        elif w[2] == "person" and w[4] == "leave" and person:
+            out["person"].append((person[0], t, person[1], person[1]))
+            person = None
+        elif w[2] == "lamp" and w[4] == "on":
+            out["lamp"].append((t, 1e9, lamps[w[3]], lamps[w[3]]))
+    return out
+
+
+def seek_metrics(name, out):
+    """How well the head finds the scenario's person / lamp: the share of the time it points within 25 deg of them
+    (the camera sees +-31 deg), and how soon after the lamp came on it first looked there."""
+    import csv
+    rows = [(float(r["t_s"]), float(r["head_yaw"])) for r in csv.DictReader(open(os.path.join(out, "trace.csv")))]
+    tg = scene_targets(name)
+    res = {}
+    for kind, segs in tg.items():
+        near = total = 0
+        first = None
+        for t, yaw in rows:
+            for t0, t1, a0, a1 in segs:
+                if t0 <= t < t1:
+                    az = a0 + (a1 - a0) * min(1.0, (t - t0) / max(t1 - t0, 1e-6)) if t1 < 1e8 else a0
+                    total += 1
+                    if abs(yaw - az) < 25.0:
+                        near += 1
+                        if first is None:
+                            first = t - t0
+        if segs:
+            res[f"on_{kind}"] = near / total if total else 0.0
+            res[f"{kind}_found_s"] = first
+    return res
 
 
 def metrics(ev, minutes, moves=0):
@@ -81,13 +137,22 @@ CASES = [
                        ("moves_per_min", 3, 60, "looks around by itself (owner 2026-10-24: the head hardly moved)")]),
     ("learn_rough", 7, [("frightened", 1, 500, "being shaken frightens it (scared / dizzy / surprised / flinch)")]),
     ("hearing", 4, [("frightened", 1, 500, "claps and bangs startle it")]),
+    # 2026-10-25, the owner: nothing in the room interested it, not movement, not a bright light
+    # report only: the simulated walker is a 0.44 m figure as bright as the walls, it moves ~1/8 of what the robot's
+    # camera saw of a real person (2026-10-24: frame share p90 0.135); over 5 seeds it is found as often as by chance
+    # (0.37 / 0.37, 2026-10-25). The robot's diary is the test of the motion sense.
+    ("seek_motion", 5, [("on_person", 0.0, 1.01, "report: how much of the time the head points at someone walking about")]),
+    ("seek_light", 4, [("lamp_found_s", 0, 60, "a lamp switched on outside the picture: looks round and finds it within a minute"),
+                       ("on_lamp", 0.5, 1.01, "and keeps going back to it (the lamp left off: ~0.4 by chance)")]),
 ]
 
 
 def check(case):
     name, minutes, checks = case
-    ev, minutes, moves = run(name, minutes)
-    return name, metrics(ev, minutes, moves), checks
+    ev, minutes, moves, out = run(name, minutes)
+    m = metrics(ev, minutes, moves)
+    m.update(seek_metrics(name, out))
+    return name, m, checks
 
 
 if __name__ == "__main__":

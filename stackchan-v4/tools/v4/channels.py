@@ -19,6 +19,7 @@ Raw inputs (dict of float32 arrays [T], missing ones default to 0):
   motion_frac share of the picture that moved by itself (head motion searched out), 0..1
   motion_x, motion_y    centre of that movement, -1..1
   frame_ok    1 in a tick with a fresh, usable camera frame (not blind, not during our own motion)
+  light_x, light_y, light_str   the picture's brightest spot (-1..1) and its excess over the frame (0..1)
   battery     0..1, stamina 0..1 (the servos' tiredness), hour 0..24, clock_ok 1 when the clock is synced
 """
 import numpy as np
@@ -36,7 +37,9 @@ SHAKE_FLOOR, SHAKE_FULL, SHAKE_DECAY = 0.03, 0.8, 3.0
 TILT_FIT_TAU, TILT_TAU, TILT_WARM, TILT_ROLL_BAND, TILT_ACCEPT_S = 1800.0, 0.5, 1200.0, 0.18, 600.0
 NEAR_FULL, NEAR_TAU = 600.0, 1.0
 LIGHT_FULL, LIGHT_TAU = 20000.0, 2.0
-MOTION_GAIN, MOTION_TAU, MOTION_HOLD_DECAY = 1.5, 5.0, 2.0
+MOTION_GAIN, MOTION_TAU, MOTION_FALL_TAU, MOTION_HOLD_DECAY = 3.0, 0.5, 4.0, 2.0  # 1.5, 5 s mean until 2026-10-25
+SPOT_SLOW_TAU, SPOT_NOV_GAIN, SPOT_HAB_TAU, SPOT_HAB_RATE, SPOT_HAB_CUT = 8.0, 2.0, 180.0, 0.001, 0.7
+SPOT_CAM_HALF_DEG, SPOT_PLACE_DEG, SPOT_FORGET_TAU, SPOT_PLACES = 30.0, 15.0, 900.0, 13  # novelty per room direction
 LONELY_TAU, LONELY_MOTION_CAP, LONELY_START = 2400.0, 300.0, 600.0
 CONTACT_SPEECH, CONTACT_NEAR, CONTACT_MOTION = 0.5, 0.3, 0.1
 
@@ -63,7 +66,7 @@ def _clamp(x, lo=0.0, hi=1.0):
 
 @njit(cache=True)
 def _encode(R, out, state):
-    """R [T, len(RAW)], out [T, 15]. state [17] carries the filters between calls (zeros = fresh boot)."""
+    """R [T, len(RAW)], out [T, 18]. state [STATE_N] carries the filters between calls (zeros = fresh boot)."""
     a_loud = 1.0 - np.exp(-DT / LOUD_TAU)
     a_voice = 1.0 - np.exp(-DT / VOICE_TAU)
     k_sharp = np.exp(-DT / SHARP_TAU)
@@ -74,6 +77,10 @@ def _encode(R, out, state):
     a_near = 1.0 - np.exp(-DT / NEAR_TAU)
     a_light = 1.0 - np.exp(-DT / LIGHT_TAU)
     a_motion = 1.0 - np.exp(-DT / MOTION_TAU)
+    a_mfall = 1.0 - np.exp(-DT / MOTION_FALL_TAU)
+    a_spot = 1.0 - np.exp(-DT / SPOT_SLOW_TAU)
+    k_spot_hab = np.exp(-DT / SPOT_HAB_TAU)
+    k_forget = np.exp(-DT / SPOT_FORGET_TAU)
     k_mhold = np.exp(-DT / MOTION_HOLD_DECAY)
     loud, sharp, voice, head, screen, shake = state[0], state[1], state[2], state[3], state[4], state[5]
     # tilt: what upright reads (p0, r0), learned while upright and still
@@ -81,6 +88,8 @@ def _encode(R, out, state):
     near, light, motion = state[11], state[12], state[13]
     lonely_t = state[14]
     mx, my = state[15], state[16]
+    lx, ly, spot, spot_hab = state[17], state[18], state[19], state[20]
+    place = state[21:21 + SPOT_PLACES]  # a view: updated in place
     for t in range(R.shape[0]):
         energy, speech, sharp_ev = R[t, 0], R[t, 1], R[t, 2]
         head_ev, head_hold, screen_ev = R[t, 3], R[t, 4], R[t, 5]
@@ -88,6 +97,7 @@ def _encode(R, out, state):
         near_raw, near_ok, als, als_ok = R[t, 10], R[t, 11], R[t, 12], R[t, 13]
         mfrac, mxr, myr, frame_ok = R[t, 14], R[t, 15], R[t, 16], R[t, 17]
         battery, stamina, hour, clock_ok = R[t, 18], R[t, 19], R[t, 20], R[t, 21]
+        lxr, lyr, lstr, head_yaw = R[t, 22], R[t, 23], R[t, 24], R[t, 25]
 
         loud += (energy - loud) * a_loud
         sharp = sharp * k_sharp + (0.0 if sharp_ev <= 0 else 1.0 + 5.0 * _clamp((sharp_ev - 1.0) / 0.5))
@@ -117,14 +127,35 @@ def _encode(R, out, state):
         if als_ok > 0:
             light += (_clamp(np.log10(1.0 + max(als, 0.0)) / np.log10(1.0 + LIGHT_FULL)) - light) * a_light
         if frame_ok > 0:
-            motion += (_clamp(mfrac * MOTION_GAIN) - motion) * a_motion
+            target = _clamp(mfrac * MOTION_GAIN)
+            motion += (target - motion) * (a_motion if target > motion else a_mfall)
             if mfrac > 0.01:
                 mx, my = mxr, myr
+            s = _clamp(lstr)
+            nov = 0.0
+            if s > 0:
+                lx, ly = lxr, lyr
+                p = _clamp((head_yaw + lxr * SPOT_CAM_HALF_DEG + 90.0) / SPOT_PLACE_DEG, 0.0, SPOT_PLACES - 1.0)
+                i = min(int(p), SPOT_PLACES - 2)
+                w = p - i
+                known = place[i] * (1.0 - w) + place[i + 1] * w
+                nov = max(0.0, s - known)
+                step = (s - known) * a_spot  # both by the same step: the read value learns at a_spot
+                place[i] += step
+                place[i + 1] += step
+            spot = _clamp(SPOT_NOV_GAIN * nov) * (1.0 - SPOT_HAB_CUT * spot_hab)
         else:
             motion *= 1.0 - (1.0 - k_mhold) * 0.25  # no usable frame: fade slowly, do not jump to 0
+            spot *= 1.0 - (1.0 - k_mhold) * 0.25
+        spot_hab = _clamp(spot_hab * k_spot_hab + spot * SPOT_HAB_RATE)
+        for k in range(SPOT_PLACES):
+            place[k] *= k_forget
         if motion < 0.02:
             mx *= 0.98
             my *= 0.98
+        if spot < 0.02:
+            lx *= 0.98
+            ly *= 0.98
 
         hunger = _clamp(1.0 - battery)
         tired = _clamp(0.75 * (_night_ramp(hour) if clock_ok > 0 else 0.0) + 0.25 * (1.0 - stamina))
@@ -150,19 +181,26 @@ def _encode(R, out, state):
         out[t, 12] = lonely
         out[t, 13] = mx
         out[t, 14] = my
+        out[t, 15] = lx
+        out[t, 16] = ly
+        out[t, 17] = spot
     state[0], state[1], state[2], state[3], state[4], state[5] = loud, sharp, voice, head, screen, shake
     state[6], state[7], state[8], state[9], state[10] = n, p0, r0, steady, tilt
     state[11], state[12], state[13], state[14], state[15], state[16] = near, light, motion, lonely_t, mx, my
+    state[17], state[18], state[19], state[20] = lx, ly, spot, spot_hab
+
+
+STATE_N = 21 + SPOT_PLACES
 
 
 def new_state():
-    s = np.zeros(17, np.float64)
+    s = np.zeros(STATE_N, np.float64)
     s[14] = LONELY_START
     return s
 
 
 def encode(raw, state=None):
-    """raw: dict name -> [T] array. -> [T, len(SNN_IN)] float32 (13 channels + motion_x, motion_y)."""
+    """raw: dict name -> [T] array. -> [T, len(SNN_IN)] float32 (13 channels + the "where" values)."""
     T = len(next(iter(raw.values())))
     R = np.zeros((T, len(RAW)), np.float64)
     for i, n in enumerate(RAW):
@@ -174,5 +212,5 @@ def encode(raw, state=None):
         R[:, RAW.index("stamina")] = 1.0
     out = np.zeros((T, len(SNN_IN)), np.float64)
     _encode(R, out, new_state() if state is None else state)
-    assert out.shape[1] == len(CHANNELS) + 2
+    assert out.shape[1] == len(CHANNELS) + 5
     return out.astype(np.float32)

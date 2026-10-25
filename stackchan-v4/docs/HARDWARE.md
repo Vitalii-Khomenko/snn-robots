@@ -19,7 +19,7 @@ PY32 IO expander that switches servo power, LEDs (12 RGB565 LEDs, written as one
 | Touch | Si12T head pad; LCD touch via LVGL `LV_EVENT_PRESSED` (an atomic flag, handled in the main loop) |
 | Proximity / light | LTR-553 |
 | Power | AXP2101 (battery level, charging direction; "USB present but not charging" cannot be told apart) |
-| Camera | GC0308, QQVGA RGB565, ~7 fps (143 ms per frame), one frame buffer (a one-off `cam_hal: FB-SIZE: 30720 != 38400` warning at start-up is harmless); the task runs the vision front end (~3 ms per frame: brain v4's motion sense) on core 1 at priority 2, below the microphone |
+| Camera | GC0308, QQVGA RGB565, ~7 fps (143 ms per frame), one frame buffer (a one-off `cam_hal: FB-SIZE: 30720 != 38400` warning at start-up is harmless); the task runs the vision front end (~3 ms per frame: brain v4's motion sense and the brightest spot) on core 1 at priority 2, below the microphone |
 
 ## Servos
 
@@ -159,9 +159,11 @@ The gyro serves the servo watchdog (real rotation vs commanded travel).
 GC0308 at QQVGA, one frame buffer, capture task on core 1 at priority 2, ~7 fps.
 Exposure, white balance and gain are locked after a short warm-up so the
 vision front end does not see global brightness drift. The task is paced from the start of the previous frame
-(7.0 fps). Brain v4 uses only the motion sense: the share of the picture that moves after the head's own turn is
-searched out, and its centre (the "where" values for attention). A frame taken while the head itself moves is not
-used. Dark frames (luminance spread < 3.5 levels) are "blind". No frame leaves the robot.
+(7.0 fps). Brain v4 uses the motion sense - the share of the picture that moves after the head's own turn is
+searched out, and its centre (the "where" values for attention) - and, since 2026-10-25, the brightest spot (8x8-sample
+blocks over the frame mean, from 60 levels brighter, full at 130: a lamp or a window glares to 255 over a mean of ~118,
+a white sheet reads ~+90..110; `VisionFrontEnd::findLight`): where it is and how strong. A frame taken while the head
+itself moves is not used. Dark frames (luminance spread < 3.5 levels) are "blind". No frame leaves the robot.
 
 ## Display
 

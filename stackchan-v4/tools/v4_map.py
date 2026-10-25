@@ -122,7 +122,7 @@ def brain_map():
             ("Touchscreen", ["taps on the face"], ["touch_screen"]),
             ("IMU BMI270", ["accelerometer jitter and lean", "(masked while servos re-power)"], ["shake", "tilt"]),
             ("LTR-553", ["IR proximity + ambient light"], ["near", "light"]),
-            ("Camera GC0308", ["160x120, motion grid", "+ where it moves (x, y)"], ["motion"]),
+            ("Camera GC0308", ["160x120, motion grid + brightest spot", "+ where (x, y)"], ["motion"]),
             ("Battery, clock, timers", ["AXP2101, NTP time,", "time since contact"], ["hunger", "tired", "lonely"])]
     y, ys = 130, {}
     for title, lines, chans in sens:
@@ -149,7 +149,7 @@ def brain_map():
     for i, z in enumerate(S.ZONES):
         s.rect(ex + 14 + i * 105, ly, 18, 12, ZC[z], rx=2)
         s.text(ex + 38 + i * 105, ly + 11, z, 12, C["dim"])
-    s.text(ex + 14, ly + 36, "+ where: motion_x, motion_y (-1..1) for attention", 13)
+    s.text(ex + 14, ly + 36, "+ where: motion x/y, new bright spot x/y/novelty, for attention", 13)
     s.text(ex + 14, ly + 56, f"soft zone borders (±{S.EDGE}); innate table, may shift ±{S.SHIFT_MAX} with experience;", 12, C["dim"])
     s.text(ex + 14, ly + 74, "innate tolerance: alarm only at ~2x the stimulus", 12, C["dim"])
     s.text(ex + 14, ly + 92, "slow clocks (minutes, hours) stay in code: a spiking net cannot count them", 12, C["dim"])
@@ -345,7 +345,7 @@ def networks():
         for j in range(8):
             g = math.exp(-((i - 7.5) ** 2 / 6 + (j - 3) ** 2 / 3))
             s.rect(x0 + 160 + i * 18, y0 + 424 + j * 11, 16, 9, C["snn"] if g > 0.15 else "#2a2030", rx=1)
-    s.text(x0 + 400, y0 + 446, "12 x 8 map; a bump where motion is seen, weighted by salience", 12)
+    s.text(x0 + 400, y0 + 446, "12 x 8 map; a bump where motion / a new bright spot is seen", 12)
     s.text(x0 + 400, y0 + 466, "-> att_x, att_y, att_strength (the eyes and the head follow it)", 12, C["dim"])
     s.text(x0 + 20, y0 + 542, "READOUT", 14, weight="bold")
     s.text(x0 + 160, y0 + 542, f"{len(S.SNN_OUT)} leaky integrators read all {N_SNN} neurons: smooth numbers for the "

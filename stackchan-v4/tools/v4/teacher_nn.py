@@ -86,6 +86,10 @@ GAZE_WIDE = 1.4
 # the direction is the head's own yaw plus half of it (gaze units: 1 = 60 deg).
 ATT_LOOK = 0.12
 CAM_HALF = 0.5
+# ... and keeps watching that place a while after it stopped (2026-10-25 evening: someone who walked and then stood still
+# vanished from the motion sense in 1-4 s and the head wandered off; the simulator's walker was found less than by
+# chance). The network has the memory for it (its own head yaw + the GRU).
+WATCH_S = 10.0
 
 
 def seen_yaw(head_yaw, ax):
@@ -93,9 +97,10 @@ def seen_yaw(head_yaw, ax):
     return float(np.clip(head_yaw + ax * CAM_HALF, -1, 1))
 
 
-def manner(emo, s, pace, head_yaw=0.0):
+def manner(emo, s, pace, head_yaw=0.0, watch=None):
     """-> (head mode, gaze) of the mood's own head motion (MANNER). Someone in view: the head stays on them and moves
-    a little around them - unless the mood turns away from them."""
+    a little around them - unless the mood turns away from them. watch: (yaw, pitch) of where something was seen
+    lately, the head stays round there."""
     mode, amp, pc, pamp, fast, jit, kind = MANNER[emo]
     pf, ps, pj = pace
     amp = min(1.0, amp * GAZE_WIDE) * (0.7 + 0.3 * (ps + 1) / 2)  # the slow pacemaker varies how wide
@@ -113,6 +118,9 @@ def manner(emo, s, pace, head_yaw=0.0):
     elif att > ATT_LOOK:
         yaw = seen_yaw(head_yaw, ax) + 0.2 * amp * wy
         pitch = ay * 0.4 + 0.35 * (pitch - pc) + 0.5 * pc
+    elif watch is not None:
+        yaw = watch[0] + 0.2 * amp * wy
+        pitch = watch[1] + 0.35 * (pitch - pc) + 0.5 * pc
     else:
         yaw = amp * wy
     return mode, (float(np.clip(yaw, -1, 1)), float(np.clip(pitch, -1, 1)))
@@ -142,6 +150,7 @@ class Teacher:
         self.prev_over = 0.0
         self.prev_threat = 0.0
         self.head = (0.0, 0.0)
+        self.watch, self.watch_t = (0.0, 0.0), 0.0  # where something was seen in view, s left to keep watching it
         self.led_level = 0.3
         self.gesture = None          # (mode, ticks left)
         self.speak_ticks = 0
@@ -201,6 +210,8 @@ class Teacher:
             return pick(["happy", "curious", "thinking", "cool", "very_happy"], ps), False
         if motion > 0.1 and s[S["att_strength"]] > ATT_LOOK:
             return pick(["curious", "curious", "thinking", "surprised"], ps), False
+        if s[S["att_strength"]] > 0.25:  # something new in view to look at (a new bright spot: the camera, 2026-10-25)
+            return pick(["curious", "curious", "surprised", "thinking"], ps), False
         if s[S["sal_light"]] > 0.12 and s[S["hed_light"]] > 0.5:  # real days: p99.9 0.07 (habituated)
             # a light came on or the sun came out: no direction to it (one light sensor), so a wide curious look round
             return pick(["curious", "surprised", "curious", "happy"], ps), False
@@ -282,6 +293,11 @@ class Teacher:
         mode = "hold"
         gaze = self.head
         att = s[S["att_strength"]]
+        if att > ATT_LOOK and not night:
+            self.watch = (seen_yaw(self.head[0], s[S["att_x"]]), float(np.clip(s[S["att_y"]] * 0.4, -1, 1)))
+            self.watch_t = WATCH_S
+        else:
+            self.watch_t = max(0.0, self.watch_t - DT)
         if self.gesture is not None:
             mode, left = self.gesture
             self.gesture = (mode, left - 1) if left > 1 else None
@@ -318,7 +334,7 @@ class Teacher:
             elif emo == "thinking" and self.emo_age < 3:
                 mode = "look_up"
             elif not night:
-                mode, gaze = manner(emo, s, pace, self.head[0])
+                mode, gaze = manner(emo, s, pace, self.head[0], self.watch if self.watch_t > 0 else None)
             elif att > 0.2:
                 mode, gaze = "look", (seen_yaw(self.head[0], s[S["att_x"]]), float(np.clip(s[S["att_y"]] * 0.4, -1, 1)))
         y[O["head_" + mode]] = 1.0

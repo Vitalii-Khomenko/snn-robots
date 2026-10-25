@@ -28,8 +28,15 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 LIFE = os.path.join(ROOT, "data", "life")
 HEADER = struct.Struct("<4sBBHII")  # magic, kind, n, n_values, boot id, datagram seq
 KIND_LINE, KIND_V4 = 2, 3
-# the v4 layout grew: 135 values (2026-10-24, until 14:30) had no pv_* columns; missing columns read as NaN
-KNOWN_LAYOUTS = (len(DIARY) - 12, len(DIARY))
+# The v4 layout grew; older layouts are read by column name, missing columns as NaN:
+#   135 values (2026-10-24, until 14:30): no pv_* columns
+#   147 values (until 2026-10-25 evening): no camera bright spot (raw_light_*, ch_light_*, raw_head_yaw)
+_NEW_LIGHT = {"raw_light_x", "raw_light_y", "raw_light_str", "raw_head_yaw", "ch_light_x", "ch_light_y", "ch_light_spot"}
+_L147 = [n for n in DIARY if n not in _NEW_LIGHT]
+_L135 = [n for n in _L147 if not n.startswith("pv_")]
+LAYOUTS = {len(DIARY): DIARY, len(_L147): _L147, len(_L135): _L135}
+KNOWN_LAYOUTS = tuple(LAYOUTS)
+_INDEX = {n: i for i, n in enumerate(DIARY)}
 FLAG_DRIVES, FLAG_NIGHT, FLAG_DECIDED = 1, 2, 4
 
 
@@ -87,8 +94,10 @@ def load(day, hours=None, root=None):
             recv.append(np.full(n, t))
             flags.append(r["flags"])
             vals = r["v"].astype(np.float32)
-            if nv < len(DIARY):
-                vals = np.concatenate([vals, np.full((n, len(DIARY) - nv), np.nan, np.float32)], axis=1)
+            if nv != len(DIARY):
+                full = np.full((n, len(DIARY)), np.nan, np.float32)
+                full[:, [_INDEX[c] for c in LAYOUTS[nv]]] = vals
+                vals = full
             values.append(vals)
         elif kind == KIND_LINE:
             (m,) = struct.unpack_from("<I", d, HEADER.size)
