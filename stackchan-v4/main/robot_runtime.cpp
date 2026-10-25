@@ -340,8 +340,12 @@ void RobotRuntime::superviseServos(uint32_t now)
              "accel %.2f,%.2f,%.2f", why, py32, vm_out, static_cast<double>(gx), static_cast<double>(gy),
              static_cast<double>(gz), imu_.gyroRepeats(), static_cast<double>(ax), static_cast<double>(ay),
              static_cast<double>(az));
-    power::enableServoPower();  // VM EN off 500 ms, on
-    motion_.resyncAfterPowerCycle();
+    if (MotionEngine::kGatedPower) {
+        motion_.cutPower();  // off now; the next move switches it on again (MotionEngine::railReady)
+    } else {
+        power::enableServoPower();  // VM EN off 500 ms, on
+        motion_.resyncAfterPowerCycle();
+    }
     last_repower_ms_ = nowMs();
     loop_.servoRepowered(last_repower_ms_);  // the head's jolt is not a shake
     stalled_windows_ = 0;
@@ -352,7 +356,8 @@ void RobotRuntime::superviseServos(uint32_t now)
     repower_times_[1] = repower_times_[2];
     repower_times_[2] = last_repower_ms_;
     blocked_logged_ = false;
-    panel_recover_ms_ = last_repower_ms_ + 1000;  // when the rail has settled
+    // when the rail has settled (gated moves switch the rail at every move: the once-a-minute refresh is enough)
+    if (!MotionEngine::kGatedPower) panel_recover_ms_ = last_repower_ms_ + 1000;
 }
 
 void RobotRuntime::logStats(uint32_t now)
@@ -434,9 +439,13 @@ void RobotRuntime::logStats(uint32_t now)
     }
     {
         // the rails of the black-screen power-offs (2026-10-22/23): lowest VBUS / VSYS over the last stats window
+        // and the servo rail of the power-gated moves: switch-ons in the window, ms on
         const auto r = power_status_.takeRails();
-        ESP_LOGI(kTag, "power: vbus_min=%umV vsys_min=%umV vbat=%umV pmu_die=%.0fC pmu_status=0x%02x", r.vbus_min, r.vsys_min,
-                 r.vbat, static_cast<double>(r.die_c), r.status);
+        uint32_t rail_ons = 0, rail_ms = 0;
+        motion_.takeRailStats(rail_ons, rail_ms);
+        ESP_LOGI(kTag, "power: vbus_min=%umV vsys_min=%umV vbat=%umV pmu_die=%.0fC pmu_status=0x%02x servo_rail=%u/%ums",
+                 r.vbus_min, r.vsys_min, r.vbat, static_cast<double>(r.die_c), r.status, static_cast<unsigned>(rail_ons),
+                 static_cast<unsigned>(rail_ms));
     }
     last_travel_deg_ = motion_.travelledDeg();
     diagnostics_window_start_us_ = now_us;

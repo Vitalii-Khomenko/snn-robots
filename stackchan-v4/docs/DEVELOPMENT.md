@@ -150,7 +150,7 @@ send the innate blob, the next nights start from the new network.
 | `v4: gesture: nod (yes) amp 9 deg x2` | nod, shake, flinch |
 | `runtime: stats: busy=... internal_min=... tick_us=... cam_fps=... servo_repowers=... diary=sent/dropped` | every 5 s: the machine |
 | `runtime: v4: als=.. ps=.. ch=13 values snn=on/3246us val= aro= ... drives=1 night=0 face= calls= nods= shakes=` | every 5 s: the brain |
-| `runtime: power: vbus_min=... vsys_min=...` | every 5 s: the power rails |
+| `runtime: power: vbus_min=... vsys_min=... servo_rail=ons/ms` | every 5 s: the power rails; the servo rail's switch-ons and ms on (power-gated moves) |
 | `runtime: loop_us (servos face leds+pad imu+mic sensors brain diary supervise, mean/max): ...` | every 5 s: where the main loop's time goes, per stage, us |
 | `runtime: servo rail power cycle (...)` | the servo watchdog acted (HARDWARE.md) |
 | `runtime: speaker volume 5/10 (codec 76)` | the owner set the volume on the screen (the status JSON: `volume`) |

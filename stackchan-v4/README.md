@@ -104,6 +104,9 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   bobbing when laughing, wide looks when curious, ... (ARCHITECTURE section 3).
 - Twice as tolerant (2026-10-25): every input needs about twice the stimulus to alarm or anger it (claps, bangs,
   pokes, shaking, motion, light), see ARCHITECTURE section 1.
+- The servos are powered only while the head moves (2026-10-25): a hung servo costs one move, not a dead head; the
+  gyro confirmed 85 % of the commanded rotation in the first 11 minutes (30-38 % the same morning), see
+  [HARDWARE](docs/HARDWARE.md#servos).
 - A speaker button on the screen (2026-10-25): the volume 0-10 is set on the fly, beeps at the new level and is kept
   across reboots.
 

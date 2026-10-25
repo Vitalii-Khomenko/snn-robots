@@ -35,6 +35,10 @@ m5::PY32IOExpander_Class* getBodyIoExpander();
 // full power cycle. Safe to call more than once.
 bool enableServoPower();
 
+// VM EN on or off at once, without waiting (MotionEngine's power-gated moves). enableServoPower() must have run
+// first (it sets the pin up as an output).
+bool setServoPower(bool on);
+
 // Diagnostics for the servo watchdog: the PY32 expander's firmware version
 // (read over I2C; -1 = no answer, a different value after a stall = the
 // chip reset), its VM EN output latch and the pin's actual level (1 = on).

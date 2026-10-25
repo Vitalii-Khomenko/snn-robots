@@ -143,7 +143,8 @@ are not touch_screen events for the brain; a tap on the face above the open bar 
 
 - **Own motion:** the servos click up to 32k into the microphone: loud / onset events are dropped while the head moves
   and 700 ms after (the servo glides on after the motion model has arrived); camera frames taken while the head turns are not used; the servos' own share is taken off the
-  shake channel; the IMU is ignored for 3 s after a servo power cycle.
+  shake channel; the IMU is ignored for 3 s after a servo power cycle. The servo rail is on only while the head moves
+  (HARDWARE.md); its switching on or off (400 ms) counts as own motion too.
 - **Own voice:** the microphone is muted while the voice plays; the ear is told when the robot itself speaks.
 - **Head pad phantoms:** a touch during a fast move counts only if it is held (level 3 >= 120 ms, level 2 >= 250 ms);
   more than 8 touches in 10 minutes with nobody heard, moving or near in those 10 minutes are pad noise.

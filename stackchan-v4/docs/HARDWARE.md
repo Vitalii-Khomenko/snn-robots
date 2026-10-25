@@ -92,6 +92,19 @@ turning fine in between would be the false ones of 2026-10-03 (below).
 then waited 1-2 minutes and the head stood still. The executor now sends a gaze move at most every 4 s and only for
 >= 12° yaw / 8° pitch (simulator: 7-11 moves a minute instead of 12-18).
 
+**2026-10-25, power-gated moves** (the owner's idea, `MotionEngine::kGatedPower`): the servo rail (VM EN) is on
+only while the head moves. A move switches it on and waits 200 ms for the servos to start (`kRailBootMs`; the
+position-mode limits, torque and both positions go out again); the rail goes off 600 ms after the servo should have
+arrived (`kRailHoldMs`) and stays off at least 300 ms (`kRailMinOffMs`). Gesture keyframes come closer together than
+that, so a nod or shake keeps the rail on. A hung servo now costs one move instead of a dead head until the watchdog
+notices (and, in a series, minutes of waiting), and a still head draws no current. The watchdog in this mode just
+switches the rail off (the next move switches it on); the screen is not re-initialised after it. The rail switching
+counts as own motion for the microphone, the shake channel and the head pad (`railSwitching`, 400 ms). First 11
+minutes (12:53-13:04): 8 switch-ons a minute, the rail on 30 % of the time, the gyro saw 85 % of the commanded
+rotation (30-38 % between 08:00 and 11:00 the same day), dead windows 12 % (57-66 %), no watchdog power cycle (~55 an
+hour in the morning), VBUS never under 4.74 V. Open: whether the head sinks under its own weight with the rail off
+(`servo_rail=ons/ms` in the `power:` line).
+
 **Diagnosing a frozen head:** if the face lives but the head does not move,
 compare `cmd_travel` with `real_rotation` in `runtime: stats`. Commanded
 50° and real 0° means the servos ignore positions: suspect mode, packet rate

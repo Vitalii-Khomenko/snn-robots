@@ -8,6 +8,9 @@
 #include <esp_timer.h>
 #include <esp_rom_sys.h>
 
+#include "../core/ms_clock.h"
+#include "../power/power_rails.h"
+
 namespace {
 constexpr const char* kTag = "motion";
 
@@ -149,6 +152,7 @@ void MotionEngine::update()
     float dt          = (last_update_ms_ == 0) ? 0.02f : (now - last_update_ms_) / 1000.0f;
     dt                 = std::min(dt, 0.25f);
     last_update_ms_    = now;
+    if (kGatedPower && !railReady(now)) return;  // the move waits for the servos to start
 
     // Motion profile: the spring's target walks along the straight line to
     // the commanded pose; its speed ramps up and down with a fixed
@@ -252,6 +256,7 @@ void MotionEngine::writeSparse(uint32_t now)
         float t = dist / max_speed_ + (profile_speed_ < 0.5f * max_speed_ ? kRampS : 0.0f);
         time_ms = static_cast<uint16_t>(std::clamp(t * 1000.0f, static_cast<float>(kServoGoalTimeMs), 4000.0f));
     }
+    arrive_ms_ = now + time_ms;
     writeServos(send[0], send[1], dest[0], dest[1], time_ms);
     for (int i = 0; i < 2; ++i) {
         if (!send[i]) continue;
@@ -259,4 +264,41 @@ void MotionEngine::writeSparse(uint32_t now)
         unlatched_[i] = !latch && !settled;
     }
     last_packet_ms_ = now;
+}
+
+// kGatedPower: true when the servos can take packets (or there is nothing to send). The rail comes on for a move and
+// the move waits kRailBootMs; it goes off kRailHoldMs after the model settled and the servo should have arrived.
+bool MotionEngine::railReady(uint32_t now)
+{
+    const bool busy = isMoving() || unlatched_[0] || unlatched_[1] || force_write_;
+    if (rail_on_) {
+        if (busy) rail_idle_ms_ = now;
+        else if (now - rail_idle_ms_ >= kRailHoldMs && msReached(now, arrive_ms_ + kRailHoldMs)) setRail(false, now);
+        return !rail_on_ || now - rail_change_ms_ >= kRailBootMs;
+    }
+    if (!busy) return true;  // settled and nothing new: writeSparse() sends nothing
+    if (now - rail_change_ms_ < kRailMinOffMs) return false;
+    setRail(true, now);
+    return false;
+}
+
+void MotionEngine::setRail(bool on, uint32_t now)
+{
+    if (!power::setServoPower(on)) return;
+    if (rail_on_) rail_on_ms_ += now - rail_count_ms_;
+    rail_count_ms_ = now;
+    rail_on_ = on;
+    rail_change_ms_ = now;
+    if (on) {
+        ++rail_ons_;
+        rail_idle_ms_ = now;
+        resyncAfterPowerCycle();  // position mode, torque and both positions again
+    }
+}
+
+void MotionEngine::cutPower()
+{
+    const uint32_t now = static_cast<uint32_t>(esp_timer_get_time() / 1000);
+    if (rail_on_) setRail(false, now);
+    unlatched_[0] = unlatched_[1] = false;
 }

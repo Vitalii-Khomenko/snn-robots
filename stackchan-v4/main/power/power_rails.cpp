@@ -127,6 +127,14 @@ bool enableServoPower()
     return true;
 }
 
+bool setServoPower(bool on)
+{
+    m5::PY32IOExpander_Class* io_expander = getBodyIoExpander();
+    if (!io_expander) return false;
+    io_expander->digitalWrite(0, on);  // VM EN
+    return true;
+}
+
 void readServoPowerState(int& version, int& vmOut, int& vmPin)
 {
     version = vmOut = vmPin = -1;

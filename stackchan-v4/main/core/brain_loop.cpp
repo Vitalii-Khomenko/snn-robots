@@ -72,7 +72,8 @@ void BrainLoop::coupleMotion(uint32_t now)
 {
     // Motion phase for the microphone's own-noise measurement: servo clicks are expected at the start and the stop of
     // every movement.
-    const bool moving = e_.motion.isMoving();
+    // (the servo rail switching on or off clicks and jolts too: MotionEngine::kGatedPower)
+    const bool moving = e_.motion.isMoving() || e_.motion.railSwitching(now);
     if (moving != was_moving_) {
         was_moving_ = moving;
         motion_edge_ms_ = now;
@@ -157,7 +158,7 @@ void BrainLoop::updateChannels(uint32_t now, float sharpEv, const Env& env)
         for (float a : accel_) q += (a - m) * (a - m);
         const float sd = accel_n_ >= accel_.size() ? std::sqrt(q / accel_.size()) : 0.0f;
         // our own servos shake the head a little too: their share is taken off while they move
-        r.accelSd = e_.motion.isMoving() ? std::max(0.0f, sd - 0.15f) : sd;
+        r.accelSd = e_.motion.isMoving() || e_.motion.railSwitching(now) ? std::max(0.0f, sd - 0.15f) : sd;
     }
     const bool imu_masked = msWithin(now, imu_mask_until_ms_);
     if (imu_masked) r.accelSd = 0.0f;

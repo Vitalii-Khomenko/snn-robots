@@ -1,5 +1,6 @@
 #pragma once
 #include <SCSCL.h>
+#include <esp_timer.h>
 #include "spring.h"
 
 // Smooth head motion over the SCS servo bus. Same bus parameters and servo
@@ -65,7 +66,25 @@ public:
     float travelledDeg() const { return travelled_deg_; }
     // True while the head moves faster than a slow drift (saccades, nods).
     // The touch pad's servo coupling (phantom touches) comes from these.
-    bool isMovingFast(uint32_t nowMs) const { return nowMs - last_moved_ms_ < 300; }
+    // (The servo rail switching on or off jolts the head a little too: kGatedPower.)
+    bool isMovingFast(uint32_t nowMs) const { return nowMs - last_moved_ms_ < 300 || railSwitching(nowMs); }
+
+    // Power-gated moves (kGatedPower): the servo rail was switched on or off within the last 400 ms (the servos
+    // take hold or let go: a click in the microphone, a small jolt in the IMU and the head pad).
+    bool railSwitching(uint32_t nowMs) const { return kGatedPower && nowMs - rail_change_ms_ < 400; }
+    bool railOn() const { return rail_on_; }
+    // The servo watchdog in gated mode: the rail off now (it comes on again, after kRailMinOffMs, for the next move).
+    void cutPower();
+    // Rail switch-ons and the ms the rail was on since the last call (diagnostics).
+    void takeRailStats(uint32_t& ons, uint32_t& onMs)
+    {
+        const uint32_t now = static_cast<uint32_t>(esp_timer_get_time() / 1000);
+        if (rail_on_) rail_on_ms_ += now - rail_count_ms_;
+        rail_count_ms_ = now;
+        ons = rail_ons_;
+        onMs = rail_on_ms_;
+        rail_ons_ = rail_on_ms_ = 0;
+    }
 
     // +-128 degrees: the limit the official StackChan firmware uses for
     // this yaw servo (hal_servo.cpp angleLimit -1280..1280 in 0.1 deg).
@@ -76,7 +95,19 @@ public:
     static constexpr float kPitchMinDeg = -30.0f;
     static constexpr float kPitchMaxDeg = 60.0f;
 
+    // Power-gated moves (2026-10-25, the owner's idea): the servo rail (VM EN) is on only while the head moves. A
+    // hung servo (docs/HARDWARE.md: ~1.5 moves in 100, both servos at once, only a power cycle helps) then costs one
+    // move instead of a dead head until the watchdog sees it; and a still head draws no current. The move waits
+    // kRailBootMs for the servos to start, the rail goes off kRailHoldMs after the servo should have arrived, and stays
+    // off at least kRailMinOffMs (long enough for a hung servo to reset). false = the rail always on, as before.
+    static constexpr bool kGatedPower = true;
+    static constexpr uint32_t kRailBootMs = 200;
+    static constexpr uint32_t kRailHoldMs = 600;
+    static constexpr uint32_t kRailMinOffMs = 300;
+
 private:
+    bool railReady(uint32_t now);
+    void setRail(bool on, uint32_t now);
     void writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_deg, uint16_t time_ms);
     void writeSparse(uint32_t now);
 
@@ -105,6 +136,11 @@ private:
     int last_sent_raw_[2] = {-1, -1};       // yaw, pitch: the last destination sent
     bool unlatched_[2] = {false, false};    // a move went out; resend its end once it has settled
     uint32_t last_packet_ms_ = 0;
+    uint32_t arrive_ms_ = 0;  // when the servo should have reached the last destination sent
+    // the rail (kGatedPower); power::enableServoPower() leaves it on at boot
+    bool rail_on_ = true;
+    uint32_t rail_change_ms_ = 0, rail_idle_ms_ = 0;
+    uint32_t rail_ons_ = 0, rail_on_ms_ = 0, rail_count_ms_ = 0;
 
     // A gesture can request a large jump in one call. Keep that command as a
     // destination and slew the spring's target in small increments in update().
