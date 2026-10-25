@@ -312,4 +312,23 @@ void dissolve(const PixelGrid& from, const PixelGrid& to, float t, PixelGrid& ou
         }
 }
 
+void drawVolume(PixelGrid& g, int level, bool panel)
+{
+    if (!panel) {
+        static const char* const kIcon[4] = {"..#..", "###.#", "###.#", "..#.."};  // cols 1..5, rows 19..22: no face there
+        for (int r = 0; r < 4; ++r)
+            for (int c = 0; c < 5; ++c)
+                if (kIcon[r][c] == '#' && !(c == 4 && level == 0)) g.put(1 + c, 19 + r, level ? kMuted : kCoral);
+        return;
+    }
+    for (int r = kMouthTop; r < kPixRows; ++r)  // the bar takes the mouth's place
+        for (int c = 0; c < kPixCols; ++c) g.px[r][c] = 0;
+    for (int c = 1; c <= 3; ++c) g.put(c, 21, kPaper);  // minus
+    for (int c = 28; c <= 30; ++c) g.put(c, 21, kPaper);  // plus
+    g.put(29, 20, kPaper);
+    g.put(29, 22, kPaper);
+    for (int i = 0; i < kVolumeSteps; ++i)  // step i at col 7 + 2i, 1..5 pixels high
+        for (int k = 0; k <= i * 4 / 9; ++k) g.put(7 + 2 * i, 22 - k, i < level ? kAmber : 0x3A3846);
+}
+
 }  // namespace face

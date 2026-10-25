@@ -138,6 +138,17 @@ bool RobotRuntime::begin()
     } else if (!vocal_.begin()) {
         ESP_LOGE(kTag, "voice begin failed");
     }
+    {
+        nvs_handle_t h;
+        uint8_t level = AudioOutput::kDefaultLevel;
+        if (nvs_open("v4", NVS_READONLY, &h) == ESP_OK) {
+            nvs_get_u8(h, "vol", &level);
+            nvs_close(h);
+        }
+        audio_.setLevel(level);
+        face_.setVolumeLevel(audio_.level());
+        ESP_LOGI(kTag, "speaker volume %d/%d", audio_.level(), AudioOutput::kLevels);
+    }
 
     ESP_LOGI(kTag, "servos");
     if (!power::enableServoPower()) {
@@ -272,6 +283,14 @@ void RobotRuntime::superviseServos(uint32_t now)
         // glides below the gyro's 3 deg/s noise floor and adds commanded
         // degrees the gyro never counts (one false power cycle on hardware).
         stalled_windows_ = stalled ? stalled_windows_ + 1 : 0;
+        // Sparse moves never make 10 deg in two windows in a row: since the gaze moves are rate-limited (one per
+        // >= 2.5 s, 2026-10-24) a hung head got a step of 8..18 deg now and then and stood dead for minutes unseen
+        // (2026-10-24: in 61 % of the windows with commanded motion the gyro saw none, runs of up to 3 minutes).
+        // So the commanded degrees the gyro has not confirmed add up until it sees the head turn; windows under
+        // 6 deg (a slow drift below the gyro's noise floor) do not count.
+        if (real >= 3.0f) unseen_deg_ = 0.0f;
+        else if (real < 1.5f && commanded >= 6.0f && imu_.gyroAlive()) unseen_deg_ += commanded;
+        if (unseen_deg_ >= kUnseenDeg) stalled_windows_ = std::max(stalled_windows_, 2);
         // (A soft cure - position mode, torque and position resent - was
         // tried first for a while: it cleared 2 stalls of ~14. The servos
         // really hang; only their power brings them back.)
@@ -326,6 +345,7 @@ void RobotRuntime::superviseServos(uint32_t now)
     last_repower_ms_ = nowMs();
     loop_.servoRepowered(last_repower_ms_);  // the head's jolt is not a shake
     stalled_windows_ = 0;
+    unseen_deg_ = 0.0f;
     ++servo_repowers_;
     // the last three power cycles (oldest first): three within 3 minutes are a series
     repower_times_[0] = repower_times_[1];
@@ -595,11 +615,11 @@ int RobotRuntime::formatStatus(char* buf, int size)
     return std::snprintf(buf, static_cast<size_t>(size),
                          "{\"firmware\":\"%s\",\"firmware_trial\":%s,\"brain\":\"v4\",\"learned_version\":%u,"
                          "\"learned_slot\":\"%c\",\"learned_trial\":%s,\"uptime_s\":%u,\"diary_sent\":%u,"
-                         "\"diary_dropped\":%u,\"touch_level\":%d}\n",
+                         "\"diary_dropped\":%u,\"touch_level\":%d,\"volume\":%d}\n",
                          run ? run->label : "?", state == ESP_OTA_IMG_PENDING_VERIFY ? "true" : "false",
                          static_cast<unsigned>(learned_.version()), learned_.slot(), learned_.onTrial() ? "true" : "false",
                          static_cast<unsigned>(nowMs() / 1000), static_cast<unsigned>(life_.sent()),
-                         static_cast<unsigned>(life_.dropped()), touch_.sensitivity());
+                         static_cast<unsigned>(life_.dropped()), touch_.sensitivity(), audio_.level());
 }
 
 void RobotRuntime::loop()
@@ -633,6 +653,22 @@ void RobotRuntime::loop()
         if (face_.takeScreenTouch()) {
             loop_.screenTouch(now);
             ESP_LOGI(kTag, "screen touch");
+        }
+        int volume = 0;
+        if (face_.takeVolumeChange(volume)) {  // the speaker button: at once, with a beep at the new volume
+            audio_.setLevel(volume);
+            vocal_.beep();
+            volume_save_ms_ = now + 3000;  // into NVS once the owner has stopped tapping
+            ESP_LOGI(kTag, "speaker volume %d/%d (codec %d)", audio_.level(), AudioOutput::kLevels, audio_.volume());
+        }
+        if (volume_save_ms_ && msReached(now, volume_save_ms_)) {
+            volume_save_ms_ = 0;
+            nvs_handle_t h;
+            if (nvs_open("v4", NVS_READWRITE, &h) == ESP_OK) {
+                nvs_set_u8(h, "vol", static_cast<uint8_t>(audio_.level()));
+                nvs_commit(h);
+                nvs_close(h);
+            }
         }
         touch_.update();
         lap();  // 2 LEDs + head pad

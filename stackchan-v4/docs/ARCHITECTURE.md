@@ -99,7 +99,7 @@ The network decides **what**; `V4Executor` decides only **how**, inside fixed ru
 | head mode | the chosen mode, debounced | a mode counts once the network has kept it for two decisions (a one-decision wish - a flinch at a touch's very start - is ignored) |
 | voice | the droid babble (BabbleNet + synth) with the network's style and mood | call budget 5 tokens, 1 per 10 s (a reaction may spend the last one); **silent 21:45-06:00** and for the first 2 min of a boot without clock |
 | LEDs | colour, pattern, brightness, rate | brightness <= 6 % at night |
-| head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +12° | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; gaze moves at most every 2.5 s and only for >= 8° yaw / 5° pitch (the servos hang more often the more packets they get); gesture keyframes <= 8 commands/s; yaw ±100°, pitch -20..35° |
+| head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +12° | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; gaze moves at most every 2.5 s and only for >= 8° yaw / 5° pitch (the servos hang more often the more packets they get); at night the head only sinks into the doze (no look / scan); gesture keyframes <= 8 commands/s; yaw ±100°, pitch -20..35° |
 
 What really happened (shown face, said, gestured, head pose, LED level) goes back into the network's own state.
 
@@ -110,6 +110,12 @@ is composed of hand-drawn glyphs: eyes, brows, a mouth and extras (tears, Zzz, h
 sparkles, sweat, sunglasses). Everything moves in whole pixels: the gaze shifts eyes and brows, blinks close the eyes
 to a line, tears fall, Zzz rise, hearts beat, dizzy eyes spin, laughter bounces, fear trembles; a new emotion dissolves
 in pixel by pixel (0.42 s). `face::kPixelFace = false` brings the earlier smooth vector face back (`face_style.*`).
+
+**The speaker button** (2026-10-25, the owner): a small grey speaker in the bottom left corner of the pixel face (coral
+without its wave when silent). A tap opens the volume bar in the mouth's place for 5 s: minus, 10 steps, plus; a tap
+on a step or on minus / plus sets the level at once (`AudioOutput::setLevel`, codec volume 0-100 on a dB scale; level 8
+= the volume 90 of before), the voice beeps at it, and it goes into NVS "v4" "vol" 3 s after the last tap. These taps
+are not touch_screen events for the brain; a tap on the face above the open bar closes it and is one.
 `tools/face_preview/run.sh` draws every face on the PC exactly as the robot does.
 
 ![The faces](png/FACES_V4.png)

@@ -60,10 +60,13 @@ private:
     uint32_t logged_tick_ = 0;
     bool firmware_confirmed_ = false;
     float last_travel_deg_ = 0.0f;
+    uint32_t volume_save_ms_ = 0;  // the speaker volume goes into NVS at this time (0 = nothing to save)
     // Servo watchdog (the bus is write-only on this board: the gyro is the only way to know the head really moves).
     uint32_t watch_window_ms_ = 0, last_repower_ms_ = 0;
     float watch_travel_deg_ = 0.0f;
     int stalled_windows_ = 0;
+    float unseen_deg_ = 0.0f;  // commanded degrees the gyro has not confirmed since it last saw the head turn
+    static constexpr float kUnseenDeg = 25.0f;
     uint32_t servo_repowers_ = 0;
     uint32_t panel_recover_ms_ = 0, next_panel_refresh_ms_ = 60000;
     uint32_t repower_times_[3] = {0, 0, 0};

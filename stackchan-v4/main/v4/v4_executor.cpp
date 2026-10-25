@@ -210,6 +210,9 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
     // ---- where to look
     const float move_speed = (night ? 8.0f : 18.0f) + 50.0f * speed;
     const float gy = o[NO_GAZE_YAW] * BrainV4::kGazeYawDeg, gp = o[NO_GAZE_PITCH] * BrainV4::kGazePitchDeg;
+    // At night the head only sinks into the doze: a clap at 03:51 (2026-10-25) lifted it, the servos hung, and the
+    // power cycle that freed them clicked next to the sleeping owner.
+    if (night && mode != kHeadDoze) return;
     switch (mode) {
         case kHeadLook: command(gy, 5.0f - gp, move_speed, now); break;
         case kHeadScan: command(gy, 5.0f - gp, move_speed * 0.6f, now); break;

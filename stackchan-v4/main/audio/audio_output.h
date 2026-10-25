@@ -1,4 +1,6 @@
 #pragma once
+#include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <esp_codec_dev.h>
@@ -27,6 +29,18 @@ public:
     bool begin();  // must run after bsp_audio_init() with a stereo I2S config
     void playPcm(const int16_t* samples, size_t count, int volume = 90);
 
+    // The owner's volume, 0 (silent) .. kLevels, set on the screen (FaceEngine's speaker button) and kept in NVS "v4"
+    // "vol" (2026-10-25). kDefaultLevel is the codec volume 90 every sound had before.
+    static constexpr int kLevels = 10, kDefaultLevel = 8;
+    void setLevel(int level) { level_.store(std::clamp(level, 0, kLevels)); }
+    int level() const { return level_.load(); }
+    // the codec volume (0..100) of the current level: the codec's scale is in dB, so the low steps are farther apart
+    int volume() const
+    {
+        static constexpr int8_t kVolume[kLevels + 1] = {0, 45, 55, 63, 70, 76, 81, 86, 90, 95, 100};
+        return kVolume[level_.load()];
+    }
+
     // What was really played since the last call (the SELF_SOUND sense).
     SelfSoundAnalyzer::Features takeSelfSound() { return self_sound_.take(); }
 
@@ -35,5 +49,6 @@ public:
 private:
     esp_codec_dev_handle_t speaker_ = nullptr;
     int volume_ = -1;  // last volume written to the amplifier
+    std::atomic<int> level_{kDefaultLevel};
     SelfSoundAnalyzer self_sound_;
 };

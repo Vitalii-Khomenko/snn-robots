@@ -237,7 +237,35 @@ const face::PixelGrid& FaceEngine::shownGrid() { return g_shown; }
 void FaceEngine::touchEvent(lv_event_t* event)
 {
     auto* self = static_cast<FaceEngine*>(lv_event_get_user_data(event));
-    if (self != nullptr) self->screen_touch_pending_.store(true);
+    if (self == nullptr) return;
+    lv_point_t p{};
+    if (lv_indev_t* indev = lv_indev_active()) lv_indev_get_point(indev, &p);
+    if (face::kPixelFace && self->volumeTouch(p.x, p.y, nowMs())) return;
+    self->screen_touch_pending_.store(true);
+}
+
+bool FaceEngine::volumeTouch(int x, int y, uint32_t now)
+{
+    if (!msWithin(now, volume_panel_until_ms_.load())) {
+        if (x >= kVolumeButtonRight || y < kVolumeZoneTop) return false;
+        volume_panel_until_ms_.store(now + kVolumePanelMs);
+        ui_dirty_.store(true);
+        return true;
+    }
+    ui_dirty_.store(true);
+    if (y < kVolumeZoneTop) {
+        volume_panel_until_ms_.store(now);
+        return false;
+    }
+    // minus left of the steps, plus right of them, a step: the level up to it (step i is centred at 74 + 20 i px)
+    int level = volume_level_.load();
+    if (x < 55) --level;
+    else if (x >= 265) ++level;
+    else level = std::clamp((x - 64) / 20, 0, face::kVolumeSteps - 1) + 1;
+    volume_level_.store(std::clamp(level, 0, face::kVolumeSteps));
+    volume_changed_.store(true);
+    volume_panel_until_ms_.store(now + kVolumePanelMs);
+    return true;
 }
 
 void FaceEngine::draw(lv_layer_t* layer) const
@@ -409,7 +437,9 @@ void FaceEngine::update()
     if (pixel_face_ == nullptr) return;
     const uint32_t now = nowMs();
     if (now - last_frame_ms_ < 30) return;  // LVGL refreshes at ~30 Hz anyway
-    if (!animate(now) && !frame_pending_) return;
+    const bool panel = face::kPixelFace && msWithin(now, volume_panel_until_ms_.load());
+    const bool ui = ui_dirty_.exchange(false) || panel != panel_shown_;
+    if (!animate(now) && !frame_pending_ && !ui) return;
     int c1 = 0, r1 = 0, c2 = face::kPixCols - 1, r2 = face::kPixRows - 1;  // what to redraw (pixels)
     if constexpr (face::kPixelFace) {
         // The pixel face: render the next grid here and redraw only the pixels that changed - nothing at all when an
@@ -421,6 +451,8 @@ void FaceEngine::update()
         } else {
             g_next = g_to;
         }
+        face::drawVolume(g_next, volume_level_.load(), panel);
+        panel_shown_ = panel;
         c1 = face::kPixCols, r1 = face::kPixRows, c2 = -1, r2 = -1;
         for (int r = 0; r < face::kPixRows; ++r)
             for (int c = 0; c < face::kPixCols; ++c)

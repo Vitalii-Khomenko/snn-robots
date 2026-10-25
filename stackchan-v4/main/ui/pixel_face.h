@@ -34,4 +34,10 @@ void renderPixelFace(Emotion e, const Anim& a, PixelGrid& out);
 // A change of emotion: every pixel switches from `from` to `to` at its own moment of t 0..1 (a pixel dissolve).
 void dissolve(const PixelGrid& from, const PixelGrid& to, float t, PixelGrid& out);
 
+// The speaker button over the face (2026-10-25): a small speaker in the bottom left corner (coral and without its
+// wave when silent), or - `panel` - the volume bar across the bottom: minus, kVolumeSteps steps lit up to `level`,
+// plus. The touch zones that go with it are in FaceEngine.
+constexpr int kVolumeSteps = 10;
+void drawVolume(PixelGrid& g, int level, bool panel);
+
 }  // namespace face

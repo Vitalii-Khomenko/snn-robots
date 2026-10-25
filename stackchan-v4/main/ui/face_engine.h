@@ -39,6 +39,21 @@ public:
         dirty_ = true;
     }
     bool takeScreenTouch() { return screen_touch_pending_.exchange(false); }
+    // The speaker button (pixel face only; 2026-10-25, the owner): a tap on the speaker in the bottom left corner opens
+    // the volume bar for a few seconds, a tap on a step or on minus / plus sets the level. These taps are not screen
+    // touches for the brain; a tap on the face above the bar closes it and is one.
+    void setVolumeLevel(int level)
+    {
+        volume_level_.store(level);
+        ui_dirty_.store(true);
+    }
+    // true once after the owner changed the level on the screen
+    bool takeVolumeChange(int& level)
+    {
+        if (!volume_changed_.exchange(false)) return false;
+        level = volume_level_.load();
+        return true;
+    }
     Emotion emotion() const { return emotion_; }
     // CPU cost for the stats line: frames drawn and the slowest draw (us)
     // since the last call.
@@ -92,6 +107,15 @@ private:
     bool frame_pending_ = false;  // a frame is ready but the display was busy
     mutable std::atomic<uint32_t> frames_{0}, draw_max_us_{0};
     std::atomic<bool> screen_touch_pending_{false};
+
+    // Speaker button (the touch side runs in the LVGL task).
+    bool volumeTouch(int x, int y, uint32_t now);  // true: the tap was the button's
+    std::atomic<int> volume_level_{8};
+    std::atomic<bool> volume_changed_{false}, ui_dirty_{false};
+    std::atomic<uint32_t> volume_panel_until_ms_{0};
+    bool panel_shown_ = false;  // main loop: the last frame showed the bar
+    static constexpr int kVolumeZoneTop = 170, kVolumeButtonRight = 70;  // px: the bar's rows, the speaker's corner
+    static constexpr uint32_t kVolumePanelMs = 5000;
 
     // Simulator bookkeeping (simulator/hal/platform.cpp).
     int gaze_dx_ = 0, gaze_dy_ = 0;

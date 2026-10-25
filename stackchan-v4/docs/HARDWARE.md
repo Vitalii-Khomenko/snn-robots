@@ -13,7 +13,7 @@ PY32 IO expander that switches servo power, LEDs (12 RGB565 LEDs, written as one
 | SCS servo bus | UART1, 1 Mbaud, TX GPIO6, RX GPIO7; yaw ID 1 (zero 460), pitch ID 2 (zero 620); 0.3125° per unit |
 | Servo power (VM EN) | PY32 IO expander at I²C `0x6F`, pin 0 |
 | Bus / boost enables | AW9523 BUS_OUT_EN, BOOST_EN (same as the official M5 firmware) |
-| Speaker | AW88298 via the BSP codec, always opened at 24000 Hz with `pa_gain = 1` (the BSP default gain is ~14 dB too quiet and its 22050 Hz rate never wakes the amp); the codec is opened once and left open (reopening per sound glitched the shared I²S bus and the microphones); the volume is written to the amplifier only when it changes (it was an I²C write on every 20 ms chunk); the playback rate was measured on 2026-09-30 (1.5 s of silence: 23,995 samples/s consumed of 24,000 - the mono stream on the stereo bus shared with the microphones plays at the right speed); loudness is set by `droid::Synth::level` (0.17 of full scale since 2026-10-02: peaks ~5k, RMS ~2.5k, at the owner's request after the voice had been made louder twice; the amplifier stays at 90); the voice is rendered and written by its own audio task (core 1, priority 5), because writes from the main loop stuttered whenever a brain tick ran long |
+| Speaker | AW88298 via the BSP codec, always opened at 24000 Hz with `pa_gain = 1` (the BSP default gain is ~14 dB too quiet and its 22050 Hz rate never wakes the amp); the codec is opened once and left open (reopening per sound glitched the shared I²S bus and the microphones); the volume is written to the amplifier only when it changes (it was an I²C write on every 20 ms chunk); the playback rate was measured on 2026-09-30 (1.5 s of silence: 23,995 samples/s consumed of 24,000 - the mono stream on the stereo bus shared with the microphones plays at the right speed); loudness is set by `droid::Synth::level` (0.17 of full scale since 2026-10-02: peaks ~5k, RMS ~2.5k, at the owner's request after the voice had been made louder twice; the amplifier stayed at 90 until 2026-10-25; since then the owner sets the level 0-10 with the speaker button on the screen, ARCHITECTURE.md); the voice is rendered and written by its own audio task (core 1, priority 5), because writes from the main loop stuttered whenever a brain tick ran long |
 | Microphones | stereo I²S (shared bus with the speaker), own task (core 1, priority 3) running the 16-band filter bank |
 | IMU | BMI270 (in the head: head pitch rotates gravity) |
 | Touch | Si12T head pad; LCD touch via LVGL `LV_EVENT_PRESSED` (an atomic flag, handled in the main loop) |
@@ -79,6 +79,13 @@ once per 10 s. One window was not enough (slow drift below the gyro's
 position again) helped in only 2 of ~14 stalls and was removed. Log:
 `servo rail power cycle (...) py32=0x41 vm_en out=1`. Every boot also
 power-cycles the servos once.
+
+**2026-10-25, sparse moves:** with one gaze move per >= 2.5 s a hung head rarely got 10° in two windows in a row: on
+2026-10-24 the gyro saw nothing in 61 % of the 5 s windows with commanded motion, in runs of up to 3 minutes, and the
+watchdog did not act. Now the commanded degrees the gyro has not confirmed also add up (windows of >= 6° commanded and
+< 1.5° real; any window with >= 3° real resets the sum): 25° unconfirmed count as a stall. Watch `servo_repowers`
+against `real_rotation`: a power cycle after which the head turns at once was a real stall; many cycles with the head
+turning fine in between would be the false ones of 2026-10-03 (below).
 
 **Diagnosing a frozen head:** if the face lives but the head does not move,
 compare `cmd_travel` with `real_rotation` in `runtime: stats`. Commanded

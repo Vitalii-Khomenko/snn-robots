@@ -238,12 +238,12 @@ def brain_map():
     xx, xw = 2090, 280
     s.box(xx, 130, xw, 310, C["det"], "Executor (safety in C++)",
           [f"takes the {len(S.NN_OUT)} outputs every 100 ms", "face shown >= 1.5 s, confirmed 2 ticks", "voice budget: 5 tokens, 1 per 10 s;",
-           "  reactions may spend the last one", "night 21:45-06:00: silent,", "  LEDs <= 6 %, no nods / shakes",
+           "  reactions may spend the last one", "night 21:45-06:00: silent,", "  LEDs <= 6 %, head only dozes",
            "nod / shake at most every 4 s", "servo bus <= 8 commands / s", "yaw ±100°, pitch -20..35°",
            "· the network decides WHAT,", "· the executor only HOW"], tsize=15)
     s.arrow([(nx + nw, ny + 150), (xx - 2, ny + 150)], C["nn"], width=3)
     body = [("Display: the face", [f"{N_EMO} pixel-art faces (airwitech", "style), eyes follow attention"]),
-            ("Speaker: droid babble", ["child-like phrases, style and", "mood from the network"]),
+            ("Speaker: droid babble", ["phrases with the network's mood;", "volume 0-10: button on the screen"]),
             ("LED ring", [f"{len(S.LED_COLORS)} colours x {len(S.LED_PATTERNS)} patterns", "steady breathe pulse flicker wave"]),
             ("Head servos (yaw, pitch)", ["look, scan, look up / down, doze,", "nod YES, shake NO, flinch"])]
     yy = 460

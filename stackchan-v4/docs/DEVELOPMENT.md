@@ -153,6 +153,7 @@ send the innate blob, the next nights start from the new network.
 | `runtime: power: vbus_min=... vsys_min=...` | every 5 s: the power rails |
 | `runtime: loop_us (servos face leds+pad imu+mic sensors brain diary supervise, mean/max): ...` | every 5 s: where the main loop's time goes, per stage, us |
 | `runtime: servo rail power cycle (...)` | the servo watchdog acted (HARDWARE.md) |
+| `runtime: speaker volume 5/10 (codec 76)` | the owner set the volume on the screen (the status JSON: `volume`) |
 | `runtime: boot reason: ...`, `crash of the last run: ...` | why it (re)started |
 
 ## 7. Pictures

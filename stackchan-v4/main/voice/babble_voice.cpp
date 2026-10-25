@@ -86,6 +86,23 @@ void BabbleVoice::topUp()
     }
 }
 
+// 0.12 s of a soft 1 kHz tone (audio task): what the new volume sounds like. active() is up meanwhile, so the robot
+// knows the sound is its own.
+void BabbleVoice::playBeep()
+{
+    active_.store(true);
+    constexpr int kChunks = 6, kFade = 120;  // 6 x 20 ms; 5 ms fades: no clicks
+    const int n = static_cast<int>(chunk_.size()), total = kChunks * n;
+    for (int k = 0; k < kChunks; ++k) {
+        for (int i = 0; i < n; ++i) {
+            const int j = k * n + i;
+            const float env = std::min({1.0f, j / static_cast<float>(kFade), (total - j) / static_cast<float>(kFade)});
+            chunk_[i] = static_cast<int16_t>(9000.0f * env * std::sin(6.2831853f * 1000.0f * j / kSampleRate));
+        }
+        audio_.playPcm(chunk_.data(), chunk_.size(), audio_.volume());
+    }
+}
+
 void BabbleVoice::taskLoop()
 {
     int64_t last_start_us = 0;
@@ -100,6 +117,7 @@ void BabbleVoice::taskLoop()
             // before step() raised it): a phrase played with active() false is heard by the robot as the world
             active_.store(true);
         }
+        if (beep_.exchange(false) && !synth_.active() && !phrase_active_) playBeep();
         topUp();
         if (synth_.active()) {
             const int64_t t0 = esp_timer_get_time();
@@ -108,7 +126,7 @@ void BabbleVoice::taskLoop()
             last_start_us = t0;
             synth_.render(chunk_.data(), chunk_.size());
             render_us_.fetch_add(static_cast<uint32_t>(esp_timer_get_time() - t0));
-            audio_.playPcm(chunk_.data(), chunk_.size(), 90);  // paced by the DMA: blocks ~20 ms
+            audio_.playPcm(chunk_.data(), chunk_.size(), audio_.volume());  // paced by the DMA: blocks ~20 ms
         } else {
             last_start_us = 0;
             if (!phrase_active_ && !pending_.load()) active_.store(false);

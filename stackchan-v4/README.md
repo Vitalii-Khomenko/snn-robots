@@ -84,7 +84,7 @@ secrets/             your Wi-Fi, device IPs, diary host and OTA token (templates
 data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) shared with platform B's history
 ```
 
-## Status (2026-10-24)
+## Status (2026-10-25)
 
 - Brain v4 drives the robot since 2026-10-24; the firmware holds nothing else (v3 and platform B were removed from it
   the same day: CPU busy 45 % -> 37 %, internal RAM minimum 14 -> 21 KB).
@@ -98,6 +98,10 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   experience, checks everything in the simulator and sends it to the robot without a reboot
   ([ARCHITECTURE](docs/ARCHITECTURE.md#7-what-the-robot-learns-from-its-life-stage-6)).
 - The proximity sensor works (a hand at the face: up to ~1100 counts, 2026-10-24).
+- The first night of stage 6 (2026-10-25 03:30): the heads stayed (KL 0.058 over the 0.05 gate), the sharp-sound zone
+  moved +0.01 (habituated); the blob went live without a reboot.
+- A speaker button on the screen (2026-10-25): the volume 0-10 is set on the fly, beeps at the new level and is kept
+  across reboots.
 
 ## Rollback
 

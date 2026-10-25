@@ -42,6 +42,8 @@ public:
     bool step(const Intent& a, bool allow, int emotion, bool preempt = false);
 
     bool active() const { return active_.load(); }
+    // A short beep at the speaker's volume (the owner set a new one on the screen), unless a phrase is sounding.
+    void beep() { beep_.store(true); }
     bool trained() const { return net_.trained(); }
     bool phraseEnded() { return ended_.exchange(false); }
     const char* phraseText() const { return text_; }
@@ -67,13 +69,14 @@ private:
     void taskLoop();
     void startPhrase();
     void topUp();
+    void playBeep();
 
     AudioOutput& audio_;
     BabbleNet net_;
     droid::Synth synth_;
     std::array<int16_t, 480> chunk_{};
     // main thread -> audio task
-    std::atomic<bool> pending_{false}, interrupt_{false};
+    std::atomic<bool> pending_{false}, interrupt_{false}, beep_{false};
     std::array<float, BabbleNet::kIntent> pending_intent_{};
     int pending_emotion_ = 0;
     float pending_base_hz_ = 250.0f;
