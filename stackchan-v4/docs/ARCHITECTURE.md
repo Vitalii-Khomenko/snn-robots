@@ -104,6 +104,15 @@ input 44 = 32 SNN numbers + 12 own state -> GRU 64 -> emotion head: 21 emotions 
   a function of the three pacemakers the network sees (how wide, how fast, how jittery per mood), so the network
   learns it exactly and no two minutes look the same; with someone in view the head stays on them and moves around
   them. The network acting alone: hold 50 % -> 2.5 % of the time.
+- **Looking round the room** (2026-10-25, the owner: the head stayed within ~15° of the centre and nothing in the room
+  interested it). The yaw amplitudes are 1.4x wider and the wandering stays out at the sides (sign x sqrt), so the
+  head looks round the room instead of wobbling round the centre (simulator, a day alone: |yaw| > 15° 63 % of the
+  time, > 30° 28 %, up to ~42°). Something moving in view (attention > 0.12, was 0.2) turns the head to it: the
+  direction is the head's own yaw plus half the picture position (the camera is ~62° wide; it used to be taken as
+  an absolute direction, wrong whenever the head was turned), and a moving thing makes it curious. A light coming
+  on (light salience > 0.12, pleasant) makes it curious too: a wide look round, since one light sensor has no
+  direction. Open: the motion sense is weak (a person walking across the room at 2.5 m gives attention ~0.03 in the
+  simulator), and a light direction needs the camera (where the bright part of the picture is).
 
 ## 4. The executor
 
@@ -144,7 +153,7 @@ are not touch_screen events for the brain; a tap on the face above the open bar 
 - **Own motion:** the servos click up to 32k into the microphone: loud / onset events are dropped while the head moves
   and 700 ms after (the servo glides on after the motion model has arrived); camera frames taken while the head turns are not used; the servos' own share is taken off the
   shake channel; the IMU is ignored for 3 s after a servo power cycle. The servo rail is on only while the head moves
-  (HARDWARE.md); its switching on or off (400 ms) counts as own motion too.
+  (HARDWARE.md); its switching on or off raises the microphone threshold for 400 ms (the camera keeps looking).
 - **Own voice:** the microphone is muted while the voice plays; the ear is told when the robot itself speaks.
 - **Head pad phantoms:** a touch during a fast move counts only if it is held (level 3 >= 120 ms, level 2 >= 250 ms);
   more than 8 touches in 10 minutes with nobody heard, moving or near in those 10 minutes are pad noise.

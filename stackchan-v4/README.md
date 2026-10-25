@@ -107,6 +107,8 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
 - The servos are powered only while the head moves (2026-10-25): a hung servo costs one move, not a dead head; the
   gyro confirmed 85 % of the commanded rotation in the first 11 minutes (30-38 % the same morning), see
   [HARDWARE](docs/HARDWARE.md#servos).
+- Looking round the room (2026-10-25): wider head turns (beyond 15-40°) and a turn towards something moving in view,
+  see ARCHITECTURE section 3.
 - A speaker button on the screen (2026-10-25): the volume 0-10 is set on the fly, beeps at the new level and is kept
   across reboots.
 

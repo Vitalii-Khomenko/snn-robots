@@ -72,8 +72,7 @@ void BrainLoop::coupleMotion(uint32_t now)
 {
     // Motion phase for the microphone's own-noise measurement: servo clicks are expected at the start and the stop of
     // every movement.
-    // (the servo rail switching on or off clicks and jolts too: MotionEngine::kGatedPower)
-    const bool moving = e_.motion.isMoving() || e_.motion.railSwitching(now);
+    const bool moving = e_.motion.isMoving();
     if (moving != was_moving_) {
         was_moving_ = moving;
         motion_edge_ms_ = now;
@@ -86,6 +85,9 @@ void BrainLoop::coupleMotion(uint32_t now)
         e_.mic.raiseThresholdFor(700);
         own_motion_until_ms_ = now + 700;
     }
+    // the servo rail switching on or off (MotionEngine::kGatedPower) clicks: the microphone only - the camera keeps
+    // looking (as own motion it cost ~1 s of sight after every move, the rail goes off 0.6 s after the head stops)
+    if (e_.motion.railSwitching(now)) e_.mic.raiseThresholdFor(400);
     e_.imu.update(moving);
     MicrophoneEngine::Onset onset;
     while (e_.mic.takeOnset(onset)) soundOnset(std::clamp(onset.strength, 0.0f, 1.0f));

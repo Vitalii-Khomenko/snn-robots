@@ -73,6 +73,9 @@ public:
     // take hold or let go: a click in the microphone, a small jolt in the IMU and the head pad).
     bool railSwitching(uint32_t nowMs) const { return kGatedPower && nowMs - rail_change_ms_ < 400; }
     bool railOn() const { return rail_on_; }
+    // what switches the rail (power::setServoPower on the robot)
+    using RailFn = bool (*)(bool on);
+    void setRailSwitch(RailFn fn) { rail_fn_ = fn; }
     // The servo watchdog in gated mode: the rail off now (it comes on again, after kRailMinOffMs, for the next move).
     void cutPower();
     // Rail switch-ons and the ms the rail was on since the last call (diagnostics).
@@ -138,6 +141,7 @@ private:
     uint32_t last_packet_ms_ = 0;
     uint32_t arrive_ms_ = 0;  // when the servo should have reached the last destination sent
     // the rail (kGatedPower); power::enableServoPower() leaves it on at boot
+    RailFn rail_fn_ = nullptr;
     bool rail_on_ = true;
     uint32_t rail_change_ms_ = 0, rail_idle_ms_ = 0;
     uint32_t rail_ons_ = 0, rail_on_ms_ = 0, rail_count_ms_ = 0;

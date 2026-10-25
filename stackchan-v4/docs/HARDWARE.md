@@ -99,7 +99,9 @@ arrived (`kRailHoldMs`) and stays off at least 300 ms (`kRailMinOffMs`). Gesture
 that, so a nod or shake keeps the rail on. A hung servo now costs one move instead of a dead head until the watchdog
 notices (and, in a series, minutes of waiting), and a still head draws no current. The watchdog in this mode just
 switches the rail off (the next move switches it on); the screen is not re-initialised after it. The rail switching
-counts as own motion for the microphone, the shake channel and the head pad (`railSwitching`, 400 ms). First 11
+(`railSwitching`, 400 ms) raises the microphone threshold and counts as own motion for the shake channel and the head
+pad, not for the camera (as own motion it cost ~1 s of sight after every move). The simulator runs the same timing
+without a switch (`setRailSwitch`). First 11
 minutes (12:53-13:04): 8 switch-ons a minute, the rail on 30 % of the time, the gyro saw 85 % of the commanded
 rotation (30-38 % between 08:00 and 11:00 the same day), dead windows 12 % (57-66 %), no watchdog power cycle (~55 an
 hour in the morning), VBUS never under 4.74 V. Open: whether the head sinks under its own weight with the rail off

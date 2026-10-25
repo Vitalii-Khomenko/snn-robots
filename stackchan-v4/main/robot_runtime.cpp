@@ -157,6 +157,7 @@ bool RobotRuntime::begin()
     if (!motion_.begin()) {
         ESP_LOGE(kTag, "motion begin failed");
     }
+    motion_.setRailSwitch(power::setServoPower);  // power-gated moves (MotionEngine::kGatedPower)
 
     ESP_LOGI(kTag, "touch");
     {

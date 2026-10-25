@@ -78,26 +78,40 @@ MANNER = {
     "sick":       ("scan", 0.25, 0.60, 0.10, 0.3, 0.0, "wander"),
 }
 assert list(MANNER) == EMOTIONS
+# 2026-10-25 (the owner): the head stayed within ~15 deg of the centre (the network's gaze p99 0.37). The yaw amplitudes
+# are 1.4x wider and the wandering is shaped so it stays out at the sides (sign * sqrt): a look around the room, not a
+# wobble round the centre.
+GAZE_WIDE = 1.4
+# Something moving in view: the head turns to it. att_x is where in the picture (-1..1, the camera's ~62 deg wide), so
+# the direction is the head's own yaw plus half of it (gaze units: 1 = 60 deg).
+ATT_LOOK = 0.12
+CAM_HALF = 0.5
 
 
-def manner(emo, s, pace):
+def seen_yaw(head_yaw, ax):
+    """The gaze yaw of what is at picture position ax while the head is at head_yaw."""
+    return float(np.clip(head_yaw + ax * CAM_HALF, -1, 1))
+
+
+def manner(emo, s, pace, head_yaw=0.0):
     """-> (head mode, gaze) of the mood's own head motion (MANNER). Someone in view: the head stays on them and moves
     a little around them - unless the mood turns away from them."""
     mode, amp, pc, pamp, fast, jit, kind = MANNER[emo]
     pf, ps, pj = pace
-    amp *= 0.7 + 0.3 * (ps + 1) / 2  # the slow pacemaker varies how wide
+    amp = min(1.0, amp * GAZE_WIDE) * (0.7 + 0.3 * (ps + 1) / 2)  # the slow pacemaker varies how wide
     wy = float(np.clip(fast * pf + (1 - fast) * ps + jit * pj, -1, 1))
+    wy = float(np.sign(wy) * np.sqrt(abs(wy)))
     wp = float(np.clip(0.6 * ps - 0.4 * pf + jit * pj, -1, 1))
     pitch = pc + pamp * wp
     att, ax, ay = s[S["att_strength"]], s[S["att_x"]], s[S["att_y"]]
     if kind == "away":
-        if att > 0.15 and abs(ax) > 0.05:
-            side = -1.0 if ax > 0 else 1.0  # the other way from them
+        if att > ATT_LOOK and abs(ax) > 0.05:
+            side = -1.0 if seen_yaw(head_yaw, ax) > 0 else 1.0  # the other way from them
         else:
             side = 1.0 if wy >= 0 else -1.0
         yaw = side * amp * (0.6 + 0.4 * abs(wy))
-    elif att > 0.2:
-        yaw = ax * 0.5 + 0.35 * amp * wy
+    elif att > ATT_LOOK:
+        yaw = seen_yaw(head_yaw, ax) + 0.2 * amp * wy
         pitch = ay * 0.4 + 0.35 * (pitch - pc) + 0.5 * pc
     else:
         yaw = amp * wy
@@ -185,8 +199,11 @@ class Teacher:
         motion = s[S["sal_motion"]]
         if voice > 0.15 and s[S["hed_voice"]] > 0.45:
             return pick(["happy", "curious", "thinking", "cool", "very_happy"], ps), False
-        if motion > 0.15 and s[S["att_strength"]] > 0.15:
+        if motion > 0.1 and s[S["att_strength"]] > ATT_LOOK:
             return pick(["curious", "curious", "thinking", "surprised"], ps), False
+        if s[S["sal_light"]] > 0.12 and s[S["hed_light"]] > 0.5:  # real days: p99.9 0.07 (habituated)
+            # a light came on or the sun came out: no direction to it (one light sensor), so a wide curious look round
+            return pick(["curious", "surprised", "curious", "happy"], ps), False
         if val > 0.62 and aro > 0.55:
             return pick(["very_happy", "laughing", "happy"], ps), False
         if val > 0.58:
@@ -301,9 +318,9 @@ class Teacher:
             elif emo == "thinking" and self.emo_age < 3:
                 mode = "look_up"
             elif not night:
-                mode, gaze = manner(emo, s, pace)
+                mode, gaze = manner(emo, s, pace, self.head[0])
             elif att > 0.2:
-                mode, gaze = "look", (float(np.clip(s[S["att_x"]] * 0.5, -1, 1)), float(np.clip(s[S["att_y"]] * 0.4, -1, 1)))
+                mode, gaze = "look", (seen_yaw(self.head[0], s[S["att_x"]]), float(np.clip(s[S["att_y"]] * 0.4, -1, 1)))
         y[O["head_" + mode]] = 1.0
         y[O["gaze_yaw"]], y[O["gaze_pitch"]] = gaze
         amp = {"nod": 0.4 + 0.5 * aro, "shake": 0.35 + 0.6 * aro if emo != "sad" else 0.3}.get(mode, 0.5)

@@ -9,7 +9,6 @@
 #include <esp_rom_sys.h>
 
 #include "../core/ms_clock.h"
-#include "../power/power_rails.h"
 
 namespace {
 constexpr const char* kTag = "motion";
@@ -284,7 +283,7 @@ bool MotionEngine::railReady(uint32_t now)
 
 void MotionEngine::setRail(bool on, uint32_t now)
 {
-    if (!power::setServoPower(on)) return;
+    if (rail_fn_ && !rail_fn_(on)) return;  // (no switch in the simulator: the timing runs all the same)
     if (rail_on_) rail_on_ms_ += now - rail_count_ms_;
     rail_count_ms_ = now;
     rail_on_ = on;
