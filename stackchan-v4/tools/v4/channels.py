@@ -38,8 +38,9 @@ TILT_FIT_TAU, TILT_TAU, TILT_WARM, TILT_ROLL_BAND, TILT_ACCEPT_S = 1800.0, 0.5, 
 NEAR_FULL, NEAR_TAU = 600.0, 1.0
 LIGHT_FULL, LIGHT_TAU = 20000.0, 2.0
 MOTION_GAIN, MOTION_TAU, MOTION_FALL_TAU, MOTION_HOLD_DECAY = 3.0, 0.5, 4.0, 2.0  # 1.5, 5 s mean until 2026-10-25
-SPOT_SLOW_TAU, SPOT_NOV_GAIN, SPOT_HAB_TAU, SPOT_HAB_RATE, SPOT_HAB_CUT = 8.0, 2.0, 180.0, 0.001, 0.7
+SPOT_SLOW_TAU, SPOT_NOV_GAIN, SPOT_HAB_TAU, SPOT_HAB_RATE, SPOT_HAB_CUT = 4.0, 2.0, 180.0, 0.001, 0.7
 SPOT_CAM_HALF_DEG, SPOT_PLACE_DEG, SPOT_FORGET_TAU, SPOT_PLACES = 30.0, 15.0, 900.0, 13  # novelty per room direction
+SPOT_FALL_TAU, SPOT_MARGIN = 120.0, 0.15  # a place keeps its usual peak
 LONELY_TAU, LONELY_MOTION_CAP, LONELY_START = 2400.0, 300.0, 600.0
 CONTACT_SPEECH, CONTACT_NEAR, CONTACT_MOTION = 0.5, 0.3, 0.1
 
@@ -81,6 +82,7 @@ def _encode(R, out, state):
     a_spot = 1.0 - np.exp(-DT / SPOT_SLOW_TAU)
     k_spot_hab = np.exp(-DT / SPOT_HAB_TAU)
     k_forget = np.exp(-DT / SPOT_FORGET_TAU)
+    a_spot_fall = 1.0 - np.exp(-DT / SPOT_FALL_TAU)
     k_mhold = np.exp(-DT / MOTION_HOLD_DECAY)
     loud, sharp, voice, head, screen, shake = state[0], state[1], state[2], state[3], state[4], state[5]
     # tilt: what upright reads (p0, r0), learned while upright and still
@@ -139,8 +141,9 @@ def _encode(R, out, state):
                 i = min(int(p), SPOT_PLACES - 2)
                 w = p - i
                 known = place[i] * (1.0 - w) + place[i + 1] * w
-                nov = max(0.0, s - known)
-                step = (s - known) * a_spot  # both by the same step: the read value learns at a_spot
+                nov = max(0.0, s - known - SPOT_MARGIN)
+                # both by the same step: the read value learns at a_spot (up) / a_spot_fall (down)
+                step = (s - known) * (a_spot if s > known else a_spot_fall)
                 place[i] += step
                 place[i + 1] += step
             spot = _clamp(SPOT_NOV_GAIN * nov) * (1.0 - SPOT_HAB_CUT * spot_hab)

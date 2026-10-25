@@ -24,6 +24,7 @@ void ChannelEncoder::update(const Raw& r, Out& out)
                         a_tilt = alpha(kTiltTau), a_near = alpha(kNearTau), a_light = alpha(kLightTau),
                         a_motion = alpha(kMotionTau), a_mfall = alpha(kMotionFallTau), k_mhold = keep(kMotionHoldDecay),
                         a_spot = alpha(kSpotSlowTau), k_spot_hab = keep(kSpotHabTau), k_forget = keep(kSpotForgetTau),
+                        a_spot_fall = alpha(kSpotFallTau),
                         log_light_full = std::log10(1.0 + kLightFull);
     const double dt = kDt;
 
@@ -73,8 +74,9 @@ void ChannelEncoder::update(const Raw& r, Out& out)
             const int i = std::min(static_cast<int>(p), kSpotPlaces - 2);
             const double w = p - i;
             const double known = place_[i] * (1.0 - w) + place_[i + 1] * w;
-            nov = std::max(0.0, s - known);
-            const double step = (s - known) * a_spot;  // both by the same step: the read value learns at a_spot
+            nov = std::max(0.0, s - known - kSpotMargin);
+            // both by the same step: the read value learns at a_spot (up) / a_spot_fall (down)
+            const double step = (s - known) * (s > known ? a_spot : a_spot_fall);
             place_[i] += step;
             place_[i + 1] += step;
         }

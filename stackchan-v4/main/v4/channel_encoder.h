@@ -59,9 +59,12 @@ public:
     // picture; learned over kSpotSlowTau while in view, forgotten over kSpotForgetTau), less what was already looked
     // at (habituation over kSpotHabTau). One memory for the whole picture (until 2026-10-25 evening) made a lamp
     // switched on elsewhere read old after a white cup; every new view now reads a little new, so the habituation
-    // rate went 0.005 -> 0.001 (it saturated and cut a lamp to 0.3).
-    static constexpr float kSpotSlowTau = 8.0f, kSpotNovGain = 2.0f, kSpotHabTau = 180.0f, kSpotHabRate = 0.001f,
-                           kSpotHabCut = 0.7f, kSpotCamHalfDeg = 30.0f, kSpotPlaceDeg = 15.0f, kSpotForgetTau = 900.0f;
+    // rate went 0.005 -> 0.001 (it saturated and cut a lamp to 0.3). A place keeps its usual PEAK (up in kSpotSlowTau,
+    // down in kSpotFallTau) and novelty starts kSpotMargin above it: on the robot one lamp read 0.1..0.63 (p10..p90)
+    // from glance to glance, and against the mean its brighter half was "new" 35 % of the time (2026-10-25 17:00).
+    static constexpr float kSpotSlowTau = 4.0f, kSpotNovGain = 2.0f, kSpotHabTau = 180.0f, kSpotHabRate = 0.001f,
+                           kSpotHabCut = 0.7f, kSpotCamHalfDeg = 30.0f, kSpotPlaceDeg = 15.0f, kSpotForgetTau = 900.0f,
+                           kSpotFallTau = 120.0f, kSpotMargin = 0.15f;
     static constexpr int kSpotPlaces = 13;  // -90 .. +90 deg
     static constexpr float kLonelyTau = 2400.0f, kLonelyMotionCap = 300.0f, kLonelyStart = 600.0f;
     static constexpr float kContactSpeech = 0.5f, kContactNear = 0.3f, kContactMotion = 0.1f;

@@ -46,7 +46,7 @@ simulator 25 s of pokes every 0.8 s no longer anger it; the first annoyed face c
 | 12 | tired | 0.75 x the night ramp (21:00-21:45 up, 06:00-06:45 down) + 0.25 x (1 - servo stamina) | comfort |
 | 13 | lonely | 1 - exp(-t / 40 min) since the last contact (touch, speech, near; motion caps it at 5 min) | comfort, boredom |
 | - | motion_x, motion_y | where the motion is (-1..1) | for attention |
-| - | light_x, light_y, light_spot | the picture's brightest spot (a lamp, a window; -1..1) and how NEW it is (0..1): its excess over how bright that place in the room has looked (13 directions 15° apart from head yaw + place in the picture, learned in ~8 s of frames, forgotten in 15 min), less what was already looked at (habituation over 3 min) - 2026-10-25 | for attention |
+| - | light_x, light_y, light_spot | the picture's brightest spot (a lamp, a window; -1..1) and how NEW it is (0..1): its excess over how bright that place in the room has looked (13 directions 15° apart from head yaw + place in the picture; each keeps its usual peak, up in 4 s of frames, down in 2 min, forgotten in 15 min; novelty starts 0.15 above it), less what was already looked at (habituation over 3 min) - 2026-10-25 | for attention |
 
 Slow clocks (minutes, hours) are computed in code, not by the SNN: a spiking network cannot count minutes (v3's lesson,
 2026-10-03). `tools/v4/channels.py` is the same encoder for training; a parity test keeps them identical (error 0).

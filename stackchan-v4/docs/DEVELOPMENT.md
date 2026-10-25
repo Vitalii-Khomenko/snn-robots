@@ -55,7 +55,7 @@ tools/v4/py behavior_test_v4.py                      # 10 scenarios in parallel,
 | learn_rough | shaken, picked up | frightened (scared / dizzy / surprised / flinch) |
 | hearing | claps and bangs | startled |
 | seek_motion | someone walks about the room (a few seconds at ~1 m/s, then stands), often outside the picture | report only: the share of the time the head points within 25° of them (the simulated walker is a low-contrast figure, found as often as by chance: 0.37 over 5 seeds, the same with nobody there; the robot's diary judges the motion sense) |
-| seek_light | a lamp switched on beside the desk (-55°), outside the picture | the head finds it within 60 s and points at it >= 50 % of the time (5 seeds: 74 %, the lamp left off 42 %) |
+| seek_light | a lamp switched on beside the desk (-55°), outside the picture | the head finds it within 60 s and points at it >= 50 % of the time (5 seeds: 56 %, the lamp left off 36 %) |
 
 **Time.** Firmware tasks (main loop, microphone, camera, voice) run on a virtual RTOS (`simulator/core/vrtos`): each
 in its own thread but strictly one at a time, and time advances only when all wait. The same scenario and seed always
