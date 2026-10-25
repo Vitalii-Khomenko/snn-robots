@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <array>
 
 #include "v4_spec.h"
@@ -9,7 +10,7 @@
 // the PC's night sleep (tools/v4/sleep_v4.py), kept in the learned blob.
 //
 // Applied as a monotone warp of the channel's value before the spiking analyzer, so the analyzer's innate zone wiring
-// stays as trained: a + s maps onto a, 0 and 1 stay. tools/v4/zone_shift.py is the same function.
+// stays as trained: tolerant(c, a) + s maps onto a, 0 and 1 stay. tools/v4/learned.py warp() is the same function.
 struct ZoneShift {
     std::array<float, v4::CH_COUNT> shift{};
 
@@ -24,10 +25,23 @@ struct ZoneShift {
         return a <= 1.0f ? a : -1.0f;
     }
 
-    static float warp(float x, float a, float s)
+    // Innate tolerance (2026-10-25, the owner: "it gets cross too fast at sounds and touches - every input twice as
+    // tolerable"): the raw level that reads as the alarm border a is min(2a, a + 0.6 (1 - a)) - the calm range below
+    // the alarm twice as wide where the scale allows it (sharp 0.35 -> 0.70, touch_screen 0.40 -> 0.76, shake
+    // 0.20 -> 0.40, loud and touch_head 0.70 -> 0.88). The learned shift moves this border. Sharp sounds are not
+    // warped: their channel saturated at one bang, so their tolerance is a twice wider scale in the encoder
+    // (channel_encoder.h kSharpFull).
+    static constexpr float kTolerance = 2.0f;
+    static float tolerant(int c, float a)
     {
-        const float m = a + s;  // the raw level that now reads as the border
-        if (a <= 0.0f || m <= 0.01f || m >= 0.99f || s == 0.0f) return x;
+        return c == v4::CH_SHARP ? a : std::min(kTolerance * a, a + 0.6f * (1.0f - a));
+    }
+
+    // the raw level m reads as a; 0 and 1 stay, linear in between
+    static float warp(float x, float a, float m)
+    {
+        m = std::clamp(m, 0.02f, 0.98f);
+        if (a <= 0.0f || m == a) return x;
         return x <= m ? x * (a / m) : a + (x - m) * ((1.0f - a) / (1.0f - m));
     }
 
@@ -35,9 +49,8 @@ struct ZoneShift {
     void apply(Channels& ch) const
     {
         for (int c = 0; c < v4::CH_COUNT; ++c) {
-            if (shift[c] == 0.0f) continue;
             const float a = alarm(c);
-            if (a > 0.0f) ch[c] = warp(ch[c], a, shift[c]);
+            if (a > 0.0f) ch[c] = warp(ch[c], a, tolerant(c, a) + shift[c]);
         }
     }
 };

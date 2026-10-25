@@ -150,9 +150,10 @@ def brain_map():
         s.rect(ex + 14 + i * 105, ly, 18, 12, ZC[z], rx=2)
         s.text(ex + 38 + i * 105, ly + 11, z, 12, C["dim"])
     s.text(ex + 14, ly + 36, "+ where: motion_x, motion_y (-1..1) for attention", 13)
-    s.text(ex + 14, ly + 56, f"soft zone borders (±{S.EDGE}); innate table, may shift ±{S.SHIFT_MAX} with experience", 12, C["dim"])
-    s.text(ex + 14, ly + 74, "slow clocks (minutes, hours) stay in code: a spiking net cannot count them", 12, C["dim"])
-    s.text(ex + 14, ly + 92, "on the robot and in the trainer: the same code (parity test, error 0)", 12, C["dim"])
+    s.text(ex + 14, ly + 56, f"soft zone borders (±{S.EDGE}); innate table, may shift ±{S.SHIFT_MAX} with experience;", 12, C["dim"])
+    s.text(ex + 14, ly + 74, "innate tolerance: alarm only at ~2x the stimulus", 12, C["dim"])
+    s.text(ex + 14, ly + 92, "slow clocks (minutes, hours) stay in code: a spiking net cannot count them", 12, C["dim"])
+    s.text(ex + 14, ly + 110, "on the robot and in the trainer: the same code (parity test, error 0)", 12, C["dim"])
 
     # ---------------------------------------------------------------- SNN
     sx, sy, sw = 1010, 130, 390

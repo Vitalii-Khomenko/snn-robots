@@ -29,7 +29,7 @@ from spec_v4 import CHANNELS, RAW, SNN_IN
 DT = 0.05
 # ---- constants (mirrored in main/v4/channel_encoder.h)
 LOUD_TAU, LOUD_GAIN = 10.0, 1.6
-SHARP_TAU, SHARP_FULL = 15.0, 3.0
+SHARP_TAU, SHARP_FULL = 15.0, 6.0  # 3.0 until 2026-10-25 (twice as tolerable)
 VOICE_TAU = 60.0
 TOUCH_TAU, HEAD_K, SCREEN_K, HOLD_RATE = 30.0, 18.6, 9.5, 0.5
 SHAKE_FLOOR, SHAKE_FULL, SHAKE_DECAY = 0.03, 0.8, 3.0

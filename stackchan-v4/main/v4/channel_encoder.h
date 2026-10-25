@@ -37,7 +37,9 @@ public:
     // ---- constants (mirrored in tools/v4/channels.py)
     static constexpr float kDt = 0.05f;
     static constexpr float kLoudTau = 10.0f, kLoudGain = 1.6f;
-    static constexpr float kSharpTau = 15.0f, kSharpFull = 3.0f;
+    // kSharpFull 3 -> 6 (2026-10-25, the owner: twice as tolerable): a clap (1) read 0.33, two claps in 15 s or one
+    // bang (up to 6) were the anger zone; now the same takes twice the sound. The zone warp leaves sharp alone.
+    static constexpr float kSharpTau = 15.0f, kSharpFull = 6.0f;
     static constexpr float kVoiceTau = 60.0f;
     static constexpr float kTouchTau = 30.0f, kHeadK = 18.6f, kScreenK = 9.5f, kHoldRate = 0.5f;
     static constexpr float kShakeFloor = 0.03f, kShakeFull = 0.8f, kShakeDecay = 3.0f;

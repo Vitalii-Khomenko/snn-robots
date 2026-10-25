@@ -1,10 +1,12 @@
-# Brain v4: poked on the head - a tap every 0.8 s for 25 s, twice (faster ones merge into one press in the pad: release after 0.4 s). By the owner's scale (BRAIN_V4_INPUT_SCALES.txt,
+# Brain v4: poked on the head - a tap every 0.8 s for 60 s, twice (faster ones merge into one press in the pad: release after 0.4 s). By the owner's scale (BRAIN_V4_INPUT_SCALES.txt,
 # touch_head) that is far past petting and play: it should get cross (an Annoyed / Angry face, a head shake "no").
+# (25 s bursts until 2026-10-25; since then every input is twice as tolerable - main/v4/zone_shift.h kTolerance - and
+# 25 s of pokes only amuse it; the first Annoyed face comes after ~58 s.)
 duration 5:00
 clock 14:00
 seed 41
 room_light on
 owner home
 at 0:05 person v enter 0 1.0
-every 0:00.8 from 1:00 until 1:25 touch_head 150
-every 0:00.8 from 3:00 until 3:25 touch_head 150
+every 0:00.8 from 1:00 until 2:00 touch_head 150
+every 0:00.8 from 3:00 until 4:00 touch_head 150

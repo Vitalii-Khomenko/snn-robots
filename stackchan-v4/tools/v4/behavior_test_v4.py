@@ -72,7 +72,7 @@ def metrics(ev, minutes, moves=0):
 # (scenario, minutes, [(metric, min, max, why)])
 CASES = [
     ("touch_response", 9, [("touch_answered_frac", 0.9, 1.01, "answers every isolated touch (voice or gesture within 2 s)")]),
-    ("pokes", 5, [("cross", 1, 200, "poked every 0.8 s it gets cross (an annoyed / angry face or a head shake)")]),
+    ("pokes", 5, [("cross", 1, 200, "poked every 0.8 s for 60 s it gets cross (an annoyed / angry face or a head shake; 25 s are tolerated since 2026-10-25)")]),
     ("petting", 6, [("angry_after_touch", 0, 0, "petting never angers"), ("touch_answered_frac", 0.8, 1.01, "answers the hand"),
                     ("nods_per_touch", 0.2, 5, "nods 'yes' to the hand (owner 2026-10-24: the head hardly moved)")]),
     ("night_quiet", 40, [("calls", 0, 0, "silent at night (the owner sleeps)"), ("sleepy_frac", 0.3, 1.01, "sleeps")]),

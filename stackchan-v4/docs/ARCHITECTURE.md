@@ -23,10 +23,17 @@ Each channel is a number 0..1. Its scale is divided into innate **zones**: bored
 (not every channel has all five; zones may overlap, borders are soft over ±0.03). The table is the owner's
 ([BRAIN_V4_INPUT_SCALES.txt](../BRAIN_V4_INPUT_SCALES.txt)) and may later shift by up to ±0.15 with experience.
 
+**Innate tolerance** (2026-10-25, the owner: "it gets cross too fast at sounds and touches - every input twice as
+tolerable"): before the analyzer every channel with an anxiety or anger zone is warped so that its alarm border a is
+reached only at the raw level min(2a, a + 0.6 (1 - a)) - touch_screen 0.40 -> 0.76, shake 0.20 -> 0.40, motion 0.25 ->
+0.50, tilt 0.30 -> 0.58, loud and touch_head 0.70 -> 0.88, near 0.80 -> 0.92 (`ZoneShift::tolerant`). Sharp sounds
+saturated at one bang, so their scale is twice as wide instead (6 = full, was 3) and they are not warped. In the
+simulator 25 s of pokes every 0.8 s no longer anger it; the first annoyed face comes after ~58 s.
+
 | # | Channel | Made from | Zones (low -> high) |
 |---|---|---|---|
 | 1 | loud | the ear's loudness over the room's floor, 10 s average x 1.6 | boredom, comfort, interest, anxiety, anger |
-| 2 | sharp | loud peaks (claps, bangs, knocks), each weighted by strength, 15 s memory, 3 = full | interest, anxiety, anger |
+| 2 | sharp | loud peaks (claps, bangs, knocks), each weighted by strength (1-6), 15 s memory, 6 = full (3 until 2026-10-25) | interest, anxiety, anger |
 | 3 | voice | share of speech over 60 s (Auditory NN speech > 0.4) | boredom, comfort, interest, anxiety |
 | 4 | touch_head | strokes on the head pad (weight by pad level), holding counts, 30 s memory | boredom, comfort, interest, anxiety, anger |
 | 5 | touch_screen | taps on the face, 30 s memory | interest, comfort, anxiety, anger |
@@ -156,8 +163,8 @@ Learning happens on the PC at night; the robot only receives the result, without
   action heads (voice, LEDs, head: `act1`, `act2`, 8039 floats) and one zone shift per channel. The GRU, the emotion
   head and the spiking analyzer stay innate.
 - **Zone shift** (`main/v4/zone_shift.h`): per channel a shift s of its alarm border a (the lower border of its first
-  anxiety or anger zone), |s| <= 0.15, applied as a monotone warp of the channel value before the analyzer (a + s maps
-  onto a; 0 and 1 stay), so the analyzer's innate wiring stays as trained. s > 0 is habituation (an always-humming
+  anxiety or anger zone), |s| <= 0.15, applied as a monotone warp of the channel value before the analyzer (the
+  innate tolerant border + s maps onto a; 0 and 1 stay), so the analyzer's innate wiring stays as trained. s > 0 is habituation (an always-humming
   fridge stops being alarming), s < 0 sensitization.
 - **In flash** (`main/net/learned_store.*`): the partitions `weights_a` / `weights_b`, NVS namespace `learned`. A new
   blob (`PUT /learned`, `tools/robot/ota.py learned FILE`) goes into the idle slot, the main loop switches to it between

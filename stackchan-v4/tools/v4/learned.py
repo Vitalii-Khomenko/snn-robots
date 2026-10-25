@@ -29,13 +29,24 @@ def alarm(c):
     return min(los) if los else None
 
 
+TOLERANCE = 2.0  # main/v4/zone_shift.h kTolerance (2026-10-25): every input twice as tolerable
+
+
+def tolerant(c, a):
+    """main/v4/zone_shift.h ZoneShift::tolerant: the raw level that reads as the alarm border a of channel c (sharp:
+    not warped, its tolerance is the encoder's wider scale, channels.py SHARP_FULL)."""
+    return a if CHANNELS[c] == "sharp" else min(TOLERANCE * a, a + 0.6 * (1 - a))
+
+
 def warp(x, c, s):
-    """main/v4/zone_shift.h ZoneShift::warp: a + s maps onto a, 0 and 1 stay."""
+    """main/v4/zone_shift.h ZoneShift::apply for channel c: tolerant(c, a) + s maps onto a, 0 and 1 stay."""
     a = alarm(c)
-    m = (a or 0) + s
-    if a is None or a <= 0 or m <= 0.01 or m >= 0.99 or s == 0:
-        return x
+    if a is None or a <= 0:
+        return np.asarray(x, np.float32)
+    m = min(max(tolerant(c, a) + s, 0.02), 0.98)
     x = np.asarray(x, np.float32)
+    if m == a:
+        return x
     return np.where(x <= m, x * (a / m), a + (x - m) * ((1 - a) / (1 - m))).astype(np.float32)
 
 
