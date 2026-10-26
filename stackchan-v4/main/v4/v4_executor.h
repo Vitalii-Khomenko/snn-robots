@@ -48,18 +48,22 @@ public:
     // 2x ran away - the network follows its own head yaw - and the head stayed at -95 deg in the simulator.)
     static constexpr uint32_t kWanderHoldMinMs = 5000, kWanderHoldMaxMs = 11000, kWatchMs = 10000;
     static constexpr float kWanderDeadDeg = 20.0f, kAttLook = 0.12f;
-    // Something new in view turns the head there 2.5x faster than the idle wander (still eased): at the wander's
+    // Something new in view turns the head there 1.5x faster than the idle wander (still eased): at the wander's
     // speed a lamp had stopped being new before the head got there (2026-10-26, simulator: at the lamp 30 % of the
     // time, 27 % with it off).
-    static constexpr float kOrientSpeedK = 2.5f;
+    static constexpr float kOrientSpeedK = 1.5f;  // 2.5 until 2026-10-26 evening: a jerk right after a glance
     // Curious glances (2026-10-26, the owner: "add some creativity and unpredictability"): while it wanders by day, at
     // a random moment every 40-150 s the head turns far to one side (55-90 deg, the other side when it already looks
     // aside; a little up or down), looks there 3-7 s and goes back to the network's gaze. The room's edges, which
     // the network's gaze rarely reaches, get looked at too. (A move it makes by itself, like a nod: the network
     // decides what the robot feels and wants, this only how its idle head moves.)
-    static constexpr uint32_t kGlanceGapMinMs = 40000, kGlanceGapMaxMs = 150000, kGlanceHoldMinMs = 3000,
-                              kGlanceHoldMaxMs = 7000;
-    static constexpr float kGlanceYawMinDeg = 55.0f, kGlanceYawMaxDeg = 90.0f, kGlanceSpeedDegS = 40.0f;
+    // 2026-10-26 evening, the owner: "sometimes it jerks its head far to the side and back" - 55-90 deg at a 20 deg/s
+    // peak and back after 3-7 s: now 40-70 deg at 12 deg/s, looking 4-9 s.
+    static constexpr uint32_t kGlanceGapMinMs = 40000, kGlanceGapMaxMs = 150000, kGlanceHoldMinMs = 4000,
+                              kGlanceHoldMaxMs = 9000;
+    static constexpr float kGlanceYawMinDeg = 40.0f, kGlanceYawMaxDeg = 70.0f, kGlanceSpeedDegS = 24.0f;
+    // the flinch: at most one every kFlinchGapMs by day (2026-10-26: 9 in 13 minutes at the owner's sounds)
+    static constexpr uint32_t kFlinchGapMs = 15000;
     static constexpr uint32_t kGestureGapMs = 4000;    // nod / shake at most every 4 s
     static constexpr float kMaxSpeedDegS = 110.0f;
 
@@ -100,6 +104,7 @@ private:
     uint32_t attended_ms_ = 0;  // when the attention last held something (kAttLook)
     uint32_t wander_hold_ms_ = kWanderHoldMinMs;  // how long the wandering gaze keeps its present place
     uint32_t next_glance_ms_ = 0, glance_until_ms_ = 0;
-    uint32_t rng_ = 0;  // xorshift32 state (0: not seeded yet)  // the next curious glance; the end of the present one (0: none)
+    uint32_t rng_ = 0;  // xorshift32 state (0: not seeded yet)
+    uint32_t last_flinch_ms_ = 0;  // the next curious glance; the end of the present one (0: none)
     bool attended_ = false;
 };

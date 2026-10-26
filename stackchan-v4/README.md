@@ -112,8 +112,8 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
 - A calm head (2026-10-25 evening, the owner: "a whizz of the motors every few seconds"): with nothing to attend to
   the gaze keeps a place 5-11 s and turns only for >= 20°, and every longer turn starts and stops softly (half a
   cosine, sent as waypoints) - 4 moves a minute instead of 8-11, see [HARDWARE](docs/HARDWARE.md#servos).
-- Curious glances (2026-10-26): at random moments every 40-150 s the idle head turns far to one side (55-90°), looks a
-  few seconds and comes back - the room's edges get looked at and no two minutes are alike; a new light is turned to
+- Curious glances (2026-10-26): at random moments every 40-150 s the idle head turns slowly to one side (40-70°),
+  looks a few seconds and comes back - the room's edges get looked at and no two minutes are alike; a new light is turned to
   quickly. See ARCHITECTURE section 4; a concept for a network of its own for this: [CREATIVITY](docs/CREATIVITY.md).
 - Seeking (2026-10-25): the motion sense is three times stronger and quicker, and the camera's brightest spot reaches
   the brain - a light that is NEW in its place in the room draws the head to it, then it gets used to it; after a look

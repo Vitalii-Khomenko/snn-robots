@@ -169,7 +169,9 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
         if (mode == kHeadNod && gap_ok && !night) g = Gesture::Nod;
         else if (mode == kHeadShake && gap_ok && !night) g = Gesture::Shake;
         // not at night either: a jerk of the head is servo noise next to the sleeping owner
-        else if (mode == kHeadFlinch && !night && (last_gesture_ms_ == 0 || now - last_gesture_ms_ >= 1500)) g = Gesture::Flinch;
+        else if (mode == kHeadFlinch && !night && (last_flinch_ms_ == 0 || now - last_flinch_ms_ >= kFlinchGapMs) &&
+                 (last_gesture_ms_ == 0 || now - last_gesture_ms_ >= 1500))
+            g = Gesture::Flinch;
         if (g != Gesture::None) {
             gesture_ = g;
             gesture_start_ms_ = now;
@@ -177,7 +179,8 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
             base_yaw_ = sent_yaw_;
             base_pitch_ = sent_pitch_;
             // nod 5..12 deg, shake 5..14 deg; a half swing 0.45 .. 0.3 s; 1..3 repeats
-            gesture_amp_ = g == Gesture::Nod ? 5.0f + 7.0f * amp : g == Gesture::Shake ? 5.0f + 9.0f * amp : 8.0f;
+            gesture_amp_ = g == Gesture::Nod ? 5.0f + 7.0f * amp : g == Gesture::Shake ? 5.0f + 9.0f * amp : 6.0f;
+            if (g == Gesture::Flinch) last_flinch_ms_ = now;
             gesture_half_s_ = 0.45f - 0.15f * speed;
             gesture_reps_ = 1 + static_cast<int>(std::lround(std::clamp(reps, 0.0f, 1.0f) * 2.0f));
             last_gesture_ms_ = now;
@@ -195,8 +198,8 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
         const float t = static_cast<float>(now - gesture_start_ms_) * 0.001f;
         if (gesture_ == Gesture::Flinch) {
             if (gesture_step_ < 0) {
-                // the head starts back (12 deg at 160 deg/s until 2026-10-25: a jerk the owner heard as a whizz)
-                command(base_yaw_, base_pitch_ + gesture_amp_, 90.0f, now, true);
+                // the head starts back (12 deg at 160 deg/s until 2026-10-25: a jerk the owner heard as a whizz; 8 at 90 until 10-26)
+                command(base_yaw_, base_pitch_ + gesture_amp_, 60.0f, now, true);
                 gesture_step_ = 0;
             } else if (gesture_step_ == 0 && t > 0.6f) {
                 command(base_yaw_, base_pitch_, 50.0f, now, true);
