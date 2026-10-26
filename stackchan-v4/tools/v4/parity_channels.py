@@ -28,7 +28,7 @@ def random_raw(T, rng):
     r["near_ok"] = np.ones(T)
     r["als"] = 300 + 200 * np.sin(np.arange(T) / 5000)
     r["als_ok"] = np.ones(T)
-    r["frame_ok"] = (np.arange(T) % 3 == 0) * 1.0
+    r["frame_ok"] = (np.arange(T) % 3 == 0) * np.where((np.arange(T) // 500) % 2 == 0, 1.0, 0.5)  # still / turning
     r["motion_frac"] = np.clip(rng.normal(0.05, 0.05, T), 0, 1)
     r["motion_x"], r["motion_y"] = rng.uniform(-1, 1, T), rng.uniform(-1, 1, T)
     # a bright spot that comes and goes (the head turning to a lamp) and moves

@@ -119,7 +119,8 @@ private:
     // the camera's last frame (~7 fps): motion share and centre
     float motion_[3] = {0, 0, 0};
     float light_spot_[3] = {0, 0, 0};  // the camera's brightest spot: x, y, strength
-    bool frame_ok_ = false, frame_this_tick_ = false;
+    bool frame_ok_ = false, light_ok_ = false, frame_this_tick_ = false;
+    static constexpr float kLightTurnDegS = 12.0f;  // the bright spot is read in turns slower than this
     // touches
     float head_ev_ = 0.0f, screen_ev_ = 0.0f;
     uint32_t touch_ms_ = 0;          // the last accepted head touch (or the finger still on the pad after it)

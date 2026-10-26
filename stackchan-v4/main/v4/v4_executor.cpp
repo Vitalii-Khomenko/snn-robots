@@ -107,6 +107,22 @@ void V4Executor::applyLeds(const BrainV4& brain, bool night)
     led_.setPattern(kLedRgb[c][0], kLedRgb[c][1], kLedRgb[c][2], p, bright, o[NO_LED_RATE]);
 }
 
+// The head's own chance (glances, how long a place is kept): a generator of its own, seeded by the moment it is
+// first needed - the simulator's world keeps its random numbers to itself, and no two days on the robot are alike.
+float V4Executor::rnd01(uint32_t now)
+{
+    if (rng_ == 0) rng_ = ((now * 2654435761u) ^ 0x9E3779B9u) | 1u;
+    rng_ ^= rng_ << 13;
+    rng_ ^= rng_ >> 17;
+    rng_ ^= rng_ << 5;
+    return static_cast<float>(rng_ & 0xFFFFFF) / 16777216.0f;
+}
+
+uint32_t V4Executor::rndMs(uint32_t lo, uint32_t hi, uint32_t now)
+{
+    return lo + static_cast<uint32_t>(rnd01(now) * static_cast<float>(hi - lo));
+}
+
 bool V4Executor::command(float yaw, float pitch, float speed, uint32_t now, bool force, uint32_t gap_ms,
                          float dead_yaw_deg)
 {
@@ -218,27 +234,52 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
     const bool wander = !attended_ || now - attended_ms_ > kWatchMs;
     uint32_t gap = kGazeGapMs;
     float dead = kGazeDeadYawDeg;
+    float speed_k = 1.0f;
     if (wander) {
         gap = wander_hold_ms_;
         dead = kWanderDeadDeg;
+    } else {
+        speed_k = kOrientSpeedK;  // something caught its attention: it turns there quickly (still eased)
     }
     // At night the head only sinks into the doze: a clap at 03:51 (2026-10-25) lifted it, the servos hung, and the
     // power cycle that freed them clicked next to the sleeping owner.
     if (night && mode != kHeadDoze) return;
+
+    // ---- a curious glance (kGlanceGapMinMs): only while it wanders by day, looking or scanning
+    const bool idle = wander && !night && (mode == kHeadLook || mode == kHeadScan);
+    if (next_glance_ms_ == 0) next_glance_ms_ = now + rndMs(kGlanceGapMinMs / 2, kGlanceGapMaxMs / 2, now);
+    if (glance_until_ms_ != 0) {
+        if (idle && !msReached(now, glance_until_ms_)) return;  // looking there
+        glance_until_ms_ = 0;  // over (or something to attend to, a mood with its own pose): the network's gaze again
+        next_glance_ms_ = now + rndMs(kGlanceGapMinMs, kGlanceGapMaxMs, now);
+        wander_hold_ms_ = 0;
+    } else if (idle && msReached(now, next_glance_ms_) && now - last_command_ms_ >= kGazeGapMs) {
+        const float side = std::fabs(sent_yaw_) > 30.0f ? (sent_yaw_ > 0 ? -1.0f : 1.0f) : (rnd01(now) < 0.5f ? -1.0f : 1.0f);
+        const float yaw = side * (kGlanceYawMinDeg + (kGlanceYawMaxDeg - kGlanceYawMinDeg) * rnd01(now));
+        const float pitch = -5.0f + 23.0f * rnd01(now);
+        // the turn there takes T = pi/2 * distance / peak speed (MotionEngine: eased, at half the asked speed)
+        const float travel_s = 1.5708f * std::hypot(yaw - sent_yaw_, pitch - sent_pitch_) / (0.5f * kGlanceSpeedDegS);
+        if (command(yaw, pitch, kGlanceSpeedDegS, now, true)) {
+            const uint32_t hold = rndMs(kGlanceHoldMinMs, kGlanceHoldMaxMs, now);
+            glance_until_ms_ = now + static_cast<uint32_t>(travel_s * 1000.0f) + hold;
+            if (glance_until_ms_ == 0) glance_until_ms_ = 1;
+            ESP_LOGI(kTag, "glance: yaw %.0f pitch %.0f, looks %.1f s", static_cast<double>(yaw),
+                     static_cast<double>(pitch), static_cast<double>(hold) * 0.001);
+            return;
+        }
+    }
     bool moved = false;
     switch (mode) {
-        case kHeadLook: moved = command(gy, 5.0f - gp, move_speed, now, false, gap, dead); break;
-        case kHeadScan: moved = command(gy, 5.0f - gp, move_speed * 0.6f, now, false, gap, dead); break;
+        case kHeadLook: moved = command(gy, 5.0f - gp, move_speed * speed_k, now, false, gap, dead); break;
+        case kHeadScan: moved = command(gy, 5.0f - gp, move_speed * 0.6f * speed_k, now, false, gap, dead); break;
         case kHeadLookDown: command(sent_yaw_, -15.0f, 15.0f, now); break;
         case kHeadLookUp: command(sent_yaw_, 22.0f, 15.0f, now); break;
         case kHeadDoze: command(sent_yaw_ * 0.5f, -18.0f, 8.0f, now); break;
         default: break;  // hold
     }
     if (moved) {
-        // how long the new place is kept: shorter in a lively mood, and varied by where the gaze went (no random
-        // numbers: the simulator replays the same day the same way)
-        const float vary = std::fabs(std::fmod(o[NO_GAZE_YAW] * 7.31f + o[NO_GAZE_PITCH] * 3.17f, 1.0f));
-        const float k = std::clamp(0.6f * speed + 0.4f * vary, 0.0f, 1.0f);
+        // how long the new place is kept: shorter in a lively mood, and by chance
+        const float k = std::clamp(0.6f * speed + 0.4f * rnd01(now), 0.0f, 1.0f);
         wander_hold_ms_ = kWanderHoldMaxMs - static_cast<uint32_t>((kWanderHoldMaxMs - kWanderHoldMinMs) * k);
     }
 }

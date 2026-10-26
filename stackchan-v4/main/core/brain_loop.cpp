@@ -62,6 +62,12 @@ void BrainLoop::vision(const CameraEngine::VisionFrame& f, uint32_t now)
 {
     // a frame taken while our own head turned shows the room sliding past: not the world moving
     frame_ok_ = !f.blind && !msWithin(now, own_motion_until_ms_);
+    // the bright spot also while the head turns slowly: a lamp stays a lamp, its place comes from the head yaw (the
+    // motion sense sees the room slide then - 2026-10-26, nobody home: 16-23 % of the frames of slow turns read as
+    // motion, 6 % of still ones)
+    float vy = 0.0f, vp = 0.0f;
+    e_.motion.getVelocityDegS(vy, vp);
+    light_ok_ = !f.blind && std::hypot(vy, vp) < kLightTurnDegS;
     motion_[0] = f.motionFrac;
     motion_[1] = f.motionX;
     motion_[2] = f.motionY;
@@ -176,6 +182,7 @@ void BrainLoop::updateChannels(uint32_t now, float sharpEv, const Env& env)
     r.als = e_.presence.alsRaw();
     r.alsOk = e_.presence.lightOk();
     r.frameOk = frame_this_tick_ && frame_ok_;
+    r.lightOk = frame_this_tick_ && light_ok_;
     r.motionFrac = motion_[0];
     r.motionX = motion_[1];
     r.motionY = motion_[2];

@@ -15,7 +15,7 @@ int main(int argc, char** argv)
         r.energy = row[0]; r.speech = row[1]; r.sharpEv = row[2]; r.headEv = row[3]; r.headHold = row[4];
         r.screenEv = row[5]; r.accelSd = row[6]; r.imuPitch = row[7]; r.imuRoll = row[8]; r.imuOk = row[9] > 0;
         r.nearRaw = row[10]; r.nearOk = row[11] > 0; r.als = row[12]; r.alsOk = row[13] > 0; r.motionFrac = row[14];
-        r.motionX = row[15]; r.motionY = row[16]; r.frameOk = row[17] > 0; r.battery = row[18]; r.stamina = row[19];
+        r.motionX = row[15]; r.motionY = row[16]; r.frameOk = row[17] > 0.75f; r.lightOk = row[17] > 0.25f; r.battery = row[18]; r.stamina = row[19];
         r.hour = row[20]; r.clockOk = row[21] > 0; r.lightX = row[22]; r.lightY = row[23]; r.lightStr = row[24];
         r.headYaw = row[25];
         enc.update(r, out);

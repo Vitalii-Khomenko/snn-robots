@@ -48,6 +48,18 @@ public:
     // 2x ran away - the network follows its own head yaw - and the head stayed at -95 deg in the simulator.)
     static constexpr uint32_t kWanderHoldMinMs = 5000, kWanderHoldMaxMs = 11000, kWatchMs = 10000;
     static constexpr float kWanderDeadDeg = 20.0f, kAttLook = 0.12f;
+    // Something new in view turns the head there 2.5x faster than the idle wander (still eased): at the wander's
+    // speed a lamp had stopped being new before the head got there (2026-10-26, simulator: at the lamp 30 % of the
+    // time, 27 % with it off).
+    static constexpr float kOrientSpeedK = 2.5f;
+    // Curious glances (2026-10-26, the owner: "add some creativity and unpredictability"): while it wanders by day, at
+    // a random moment every 40-150 s the head turns far to one side (55-90 deg, the other side when it already looks
+    // aside; a little up or down), looks there 3-7 s and goes back to the network's gaze. The room's edges, which
+    // the network's gaze rarely reaches, get looked at too. (A move it makes by itself, like a nod: the network
+    // decides what the robot feels and wants, this only how its idle head moves.)
+    static constexpr uint32_t kGlanceGapMinMs = 40000, kGlanceGapMaxMs = 150000, kGlanceHoldMinMs = 3000,
+                              kGlanceHoldMaxMs = 7000;
+    static constexpr float kGlanceYawMinDeg = 55.0f, kGlanceYawMaxDeg = 90.0f, kGlanceSpeedDegS = 40.0f;
     static constexpr uint32_t kGestureGapMs = 4000;    // nod / shake at most every 4 s
     static constexpr float kMaxSpeedDegS = 110.0f;
 
@@ -57,6 +69,8 @@ private:
     void applyVoice(const BrainV4& brain, bool night, uint32_t now, BrainV4::Executed& done);
     void applyLeds(const BrainV4& brain, bool night);
     void applyHead(const BrainV4& brain, bool night, uint32_t now, BrainV4::Executed& done);
+    float rnd01(uint32_t now);
+    uint32_t rndMs(uint32_t lo, uint32_t hi, uint32_t now);
     bool command(float yaw, float pitch, float speed, uint32_t now, bool force = false, uint32_t gap_ms = kGazeGapMs,
                  float dead_yaw_deg = kGazeDeadYawDeg);
 
@@ -85,5 +99,7 @@ private:
     int head_cand_ = 0, head_cand_ticks_ = 0, head_mode_ = 0;  // the head mode, debounced
     uint32_t attended_ms_ = 0;  // when the attention last held something (kAttLook)
     uint32_t wander_hold_ms_ = kWanderHoldMinMs;  // how long the wandering gaze keeps its present place
+    uint32_t next_glance_ms_ = 0, glance_until_ms_ = 0;
+    uint32_t rng_ = 0;  // xorshift32 state (0: not seeded yet)  // the next curious glance; the end of the present one (0: none)
     bool attended_ = false;
 };

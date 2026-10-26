@@ -63,6 +63,10 @@ void ChannelEncoder::update(const Raw& r, Out& out)
             mx_ = r.motionX;
             my_ = r.motionY;
         }
+    } else {
+        motion_ *= 1.0 - (1.0 - k_mhold) * 0.25;  // no usable frame: fade slowly, do not jump to 0
+    }
+    if (r.frameOk || r.lightOk) {
         const double s = clamp01(r.lightStr);
         double nov = 0.0;
         if (s > 0.0) {
@@ -82,7 +86,6 @@ void ChannelEncoder::update(const Raw& r, Out& out)
         }
         spot_ = clamp01(kSpotNovGain * nov) * (1.0 - kSpotHabCut * spot_hab_);
     } else {
-        motion_ *= 1.0 - (1.0 - k_mhold) * 0.25;  // no usable frame: fade slowly, do not jump to 0
         spot_ *= 1.0 - (1.0 - k_mhold) * 0.25;
     }
     spot_hab_ = clamp01(spot_hab_ * k_spot_hab + spot_ * kSpotHabRate);

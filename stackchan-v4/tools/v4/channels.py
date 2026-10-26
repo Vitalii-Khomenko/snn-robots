@@ -18,7 +18,8 @@ Raw inputs (dict of float32 arrays [T], missing ones default to 0):
   als         ambient light, raw counts of channel 0 (als_ok = 1 when valid)
   motion_frac share of the picture that moved by itself (head motion searched out), 0..1
   motion_x, motion_y    centre of that movement, -1..1
-  frame_ok    1 in a tick with a fresh, usable camera frame (not blind, not during our own motion)
+  frame_ok    1 in a tick with a fresh, usable camera frame (not blind, not during our own motion); 0.5: a fresh frame
+              good for the bright spot only (the head turning slowly, 2026-10-26)
   light_x, light_y, light_str   the picture's brightest spot (-1..1) and its excess over the frame (0..1)
   battery     0..1, stamina 0..1 (the servos' tiredness), hour 0..24, clock_ok 1 when the clock is synced
 """
@@ -128,11 +129,14 @@ def _encode(R, out, state):
             near += (_clamp(near_raw / NEAR_FULL) - near) * a_near
         if als_ok > 0:
             light += (_clamp(np.log10(1.0 + max(als, 0.0)) / np.log10(1.0 + LIGHT_FULL)) - light) * a_light
-        if frame_ok > 0:
+        if frame_ok > 0.75:
             target = _clamp(mfrac * MOTION_GAIN)
             motion += (target - motion) * (a_motion if target > motion else a_mfall)
             if mfrac > 0.01:
                 mx, my = mxr, myr
+        else:
+            motion *= 1.0 - (1.0 - k_mhold) * 0.25  # no usable frame: fade slowly, do not jump to 0
+        if frame_ok > 0.25:
             s = _clamp(lstr)
             nov = 0.0
             if s > 0:
@@ -148,7 +152,6 @@ def _encode(R, out, state):
                 place[i + 1] += step
             spot = _clamp(SPOT_NOV_GAIN * nov) * (1.0 - SPOT_HAB_CUT * spot_hab)
         else:
-            motion *= 1.0 - (1.0 - k_mhold) * 0.25  # no usable frame: fade slowly, do not jump to 0
             spot *= 1.0 - (1.0 - k_mhold) * 0.25
         spot_hab = _clamp(spot_hab * k_spot_hab + spot * SPOT_HAB_RATE)
         for k in range(SPOT_PLACES):

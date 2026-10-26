@@ -142,9 +142,22 @@ CASES = [
     # camera saw of a real person (2026-10-24: frame share p90 0.135); over 5 seeds it is found as often as by chance
     # (0.37 / 0.37, 2026-10-25). The robot's diary is the test of the motion sense.
     ("seek_motion", 5, [("on_person", 0.0, 1.01, "report: how much of the time the head points at someone walking about")]),
-    ("seek_light", 4, [("lamp_found_s", 0, 60, "a lamp switched on outside the picture: looks round and finds it within a minute"),
-                       ("on_lamp", 0.5, 1.01, "and keeps going back to it (the lamp left off: ~0.4 by chance)")]),
+    # 2026-10-26: the calm head (a place kept 5-11 s, slow turns) looks round less: 0.5 at the lamp was the old busy
+    # head's level; what counts is the lamp against the same run with it left off (5 seeds: 0.31 vs 0.18)
+    ("seek_light", 4, [("lamp_found_s", 0, 120, "a lamp switched on outside the picture: looks round and finds it within 2 minutes"),
+                       ("lamp_over_chance", 0.05, 1.01, "and looks there more than with the lamp left off (same seed)")]),
 ]
+
+
+def chance(name, minutes):
+    """The share of the time the head points at the scenario's lamp with the lamp left off (same seed)."""
+    src = open(os.path.join(SCN, name + ".scn")).read()
+    ghost = os.path.join(ROOT, "simulator", "out", "v4_" + name + "_off.scn")
+    open(ghost, "w").write("\n".join(l for l in src.splitlines() if not (l.startswith("at ") and " lamp " in l and l.endswith(" on"))))
+    out = os.path.join(ROOT, "simulator", "out", "v4_" + name + "_off")
+    cmd = [SIM, ghost, "--out", out, "--minutes", str(minutes)]
+    subprocess.run(cmd + (["--learned", LEARNED] if LEARNED else []), check=True, stdout=subprocess.DEVNULL)
+    return seek_metrics(name, out).get("on_lamp", 0.0)
 
 
 def check(case):
@@ -152,6 +165,9 @@ def check(case):
     ev, minutes, moves, out = run(name, minutes)
     m = metrics(ev, minutes, moves)
     m.update(seek_metrics(name, out))
+    if any(k == "lamp_over_chance" for k, *_ in checks):
+        m["lamp_chance"] = chance(name, minutes)
+        m["lamp_over_chance"] = m["on_lamp"] - m["lamp_chance"]
     return name, m, checks
 
 

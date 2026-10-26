@@ -25,6 +25,10 @@ public:
         bool alsOk = false;
         float motionFrac = 0, motionX = 0, motionY = 0;  // the picture's own movement and its centre
         bool frameOk = false;            // a fresh usable frame this tick (not blind, not during our own motion)
+        // a fresh frame good for the bright spot only: taken while the head turned slowly (2026-10-26: the turns are
+        // slow and long, the head moves ~40 % of the time; the motion sense sees the room slide by then, the spot is
+        // as good as still). The diary keeps both in frame_ok: 1 frameOk, 0.5 lightOk only, 0 neither.
+        bool lightOk = false;
         float lightX = 0, lightY = 0, lightStr = 0;  // the picture's brightest spot (-1..1) and its excess (0..1)
         float headYaw = 0;               // where the head points, degrees (MotionEngine): places the spot in the room
         float battery = 1, stamina = 1, hour = 12;
