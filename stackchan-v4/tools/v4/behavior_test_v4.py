@@ -122,6 +122,9 @@ def metrics(ev, minutes, moves=0):
         "errors": sum(1 for _, _, _, lvl in ev if lvl == "E"),
         "moves_per_min": moves / minutes,
         "nods_per_touch": sum(1 for _, g in gestures if g == "nod") / len(touches) if touches else None,
+        # the Muse (docs/CREATIVITY.md): how many kinds of idea came, and how many different faces it made
+        "idea_kinds": len(set(x.split()[2] for _, tag, x, _ in ev if tag == "v4" and x.startswith("muse: idea"))),
+        "ideas": sum(1 for _, tag, x, _ in ev if tag == "v4" and x.startswith("muse: idea")),
     }
 
 
@@ -133,8 +136,10 @@ CASES = [
                     ("nods_per_touch", 0.2, 5, "nods 'yes' to the hand (owner 2026-10-24: the head hardly moved)")]),
     ("night_quiet", 40, [("calls", 0, 0, "silent at night (the owner sleeps)"), ("sleepy_frac", 0.3, 1.01, "sleeps")]),
     ("play_session", 12, [("n_faces", 5, 30, "a variety of faces"), ("calls", 3, 400, "talks")]),
-    ("day_alone", 20, [("calls_per_h", 40, 600, "babbles by itself by day"), ("n_faces", 2, 30, "moods change"),
-                       ("moves_per_min", 3, 60, "looks around by itself (owner 2026-10-24: the head hardly moved)")]),
+    ("day_alone", 20, [("calls_per_h", 40, 600, "babbles by itself by day"),
+                       ("moves_per_min", 3, 60, "looks around by itself (owner 2026-10-24: the head hardly moved)"),
+                       ("idea_kinds", 4, 5, "the Muse has ideas of most kinds by itself (2026-10-26: creativity)"),
+                       ("n_faces", 5, 30, "and the robot's faces vary (2 until the Muse)")]),
     ("learn_rough", 7, [("frightened", 1, 500, "being shaken frightens it (scared / dizzy / surprised / flinch)")]),
     ("hearing", 4, [("frightened", 1, 500, "claps and bangs startle it")]),
     # 2026-10-25, the owner: nothing in the room interested it, not movement, not a bright light
@@ -143,19 +148,26 @@ CASES = [
     # (0.37 / 0.37, 2026-10-25). The robot's diary is the test of the motion sense.
     ("seek_motion", 5, [("on_person", 0.0, 1.01, "report: how much of the time the head points at someone walking about")]),
     # 2026-10-26: the calm head (a place kept 5-11 s, slow turns) looks round less: 0.5 at the lamp was the old busy
-    # head's level; what counts is the lamp against the same run with it left off (5 seeds: 0.31 vs 0.18)
+    # head's level; what counts is the lamp against the same runs with it left off, over 3 seeds (SEEK_SEEDS)
     ("seek_light", 4, [("lamp_found_s", 0, 120, "a lamp switched on outside the picture: looks round and finds it within 2 minutes"),
-                       ("lamp_over_chance", 0.05, 1.01, "and looks there more than with the lamp left off (same seed)")]),
+                       ("lamp_over_chance", 0.05, 1.01, "and looks there more than with the lamp left off (3 seeds)")]),
 ]
 
 
-def chance(name, minutes):
-    """The share of the time the head points at the scenario's lamp with the lamp left off (same seed)."""
-    src = open(os.path.join(SCN, name + ".scn")).read()
-    ghost = os.path.join(ROOT, "simulator", "out", "v4_" + name + "_off.scn")
-    open(ghost, "w").write("\n".join(l for l in src.splitlines() if not (l.startswith("at ") and " lamp " in l and l.endswith(" on"))))
-    out = os.path.join(ROOT, "simulator", "out", "v4_" + name + "_off")
-    cmd = [SIM, ghost, "--out", out, "--minutes", str(minutes)]
+SEEK_SEEDS = (9, 1, 2)  # the head's path differs a lot from seed to seed: the lamp's pull is judged over three
+
+
+def lamp_share(name, minutes, seed, lamp):
+    """The share of the time the head points at the scenario's lamp, the lamp switched on or left off, one seed."""
+    src = open(os.path.join(SCN, name + ".scn")).read().splitlines()
+    src = [("seed %d" % seed) if l.startswith("seed ") else l for l in src]
+    if not lamp:
+        src = [l for l in src if not (l.startswith("at ") and " lamp " in l and l.endswith(" on"))]
+    tag = f"{name}_{seed}_{'on' if lamp else 'off'}" + ("_learned" if LEARNED else "")
+    scn = os.path.join(ROOT, "simulator", "out", "v4_" + tag + ".scn")
+    open(scn, "w").write("\n".join(src))
+    out = os.path.join(ROOT, "simulator", "out", "v4_" + tag)
+    cmd = [SIM, scn, "--out", out, "--minutes", str(minutes)]
     subprocess.run(cmd + (["--learned", LEARNED] if LEARNED else []), check=True, stdout=subprocess.DEVNULL)
     return seek_metrics(name, out).get("on_lamp", 0.0)
 
@@ -166,8 +178,9 @@ def check(case):
     m = metrics(ev, minutes, moves)
     m.update(seek_metrics(name, out))
     if any(k == "lamp_over_chance" for k, *_ in checks):
-        m["lamp_chance"] = chance(name, minutes)
-        m["lamp_over_chance"] = m["on_lamp"] - m["lamp_chance"]
+        on = [m["on_lamp"]] + [lamp_share(name, minutes, s, True) for s in SEEK_SEEDS[1:]]
+        off = [lamp_share(name, minutes, s, False) for s in SEEK_SEEDS]
+        m["lamp_over_chance"] = sum(on) / len(on) - sum(off) / len(off)
     return name, m, checks
 
 

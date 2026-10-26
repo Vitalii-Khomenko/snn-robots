@@ -16,8 +16,9 @@ import torch.nn.functional as F
 
 from nn_v4 import ACT_IDX, EMO_IDX, GROUPS, SIG, SIGNED, STRENGTH, NnV4, activate
 from snn_v4 import SnnV4
-from spec_v4 import EMOTIONS, HEAD_MODES, NN_OUT, SNN_OUT
-from teacher_nn import Teacher, pacemakers
+from spec_v4 import EMOTIONS, HEAD_MODES, NN_OUT, PREV, SNN_OUT
+import muse as M
+from teacher_nn import Teacher
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "out")
@@ -50,12 +51,12 @@ def build():
 
 def label(S, rng, policy=None, dev="cpu"):
     """Teacher rollouts over SNN output sequences S [N, T, 32]. policy=None: the teacher acts itself (imitation);
-    else the network acts (DAgger) and the teacher labels. -> inputs [N, T, 44], targets [N, T, 61]."""
+    else the network acts (DAgger) and the teacher labels. -> inputs [N, T, 49], targets [N, T, 61]."""
     N, T, _ = S.shape
-    X = np.zeros((N, T, len(SNN_OUT) + 12), np.float32)
+    X = np.zeros((N, T, len(SNN_OUT) + len(PREV)), np.float32)
     Y = np.zeros((N, T, len(NN_OUT)), np.float32)
     teachers = [Teacher() for _ in range(N)]
-    pace = np.stack([pacemakers(rng, T) for _ in range(N)])
+    pace = M.run(S.astype(np.float32), rng)  # the Muse: pacemakers + ideas, driven by each life's mood
     h = None
     for t in range(T):
         for n in range(N):
@@ -130,10 +131,14 @@ def fit(model, X, Y, epochs, dev, emo_w, log, head_w=None):
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
         sched.step()
-        with torch.no_grad():
-            raw, _ = model(torch.tensor(X[va], device=dev))
-            vl = float(loss_fn(raw, torch.tensor(Y[va], device=dev), emo_w, head_w))
-            acc = float((raw[..., EMO_IDX].argmax(-1).cpu() == torch.tensor(Y[va][..., EMO_IDX]).argmax(-1)).float().mean())
+        with torch.no_grad():  # in chunks: with three DAgger rounds the whole validation set no longer fits the GPU
+            vls, accs = [], []
+            for c in np.array_split(va, max(1, len(va) // 64)):
+                raw, _ = model(torch.tensor(X[c], device=dev))
+                vls.append(float(loss_fn(raw, torch.tensor(Y[c], device=dev), emo_w, head_w)) * len(c))
+                accs.append(float((raw[..., EMO_IDX].argmax(-1).cpu() == torch.tensor(Y[c][..., EMO_IDX]).argmax(-1))
+                                  .float().mean()) * len(c))
+            vl, acc = sum(vls) / len(va), sum(accs) / len(va)
         msg = f"  epoch {ep + 1}/{epochs} val {vl:.3f} emotion acc {acc:.3f} {time.time() - t0:.0f}s"
         print(msg, flush=True)
         log.append(msg)

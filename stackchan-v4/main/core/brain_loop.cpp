@@ -294,6 +294,12 @@ int BrainLoop::useLearned(const learned::View& v)
             zones_.shift[c] = std::isfinite(s[c]) ? std::clamp(s[c], -v4::kZoneShiftMax, v4::kZoneShiftMax) : 0.0f;
         ++taken;
     }
+    // the Muse: which ideas the owner answered (sleep_v4.py learn_muse)
+    const float* mb = v.find("muse.bias", muse_data::kOuts);
+    bool mb_ok = mb != nullptr;
+    for (int k = 0; mb_ok && k < muse_data::kOuts; ++k) mb_ok = std::isfinite(mb[k]);
+    brain_.muse().setBias(mb_ok ? mb : nullptr);
+    if (mb_ok) ++taken;
     return taken;
 }
 

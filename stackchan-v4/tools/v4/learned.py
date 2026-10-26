@@ -20,6 +20,7 @@ MAGIC = b"V4L1"
 HEADER = struct.Struct("<4sIIII12x")
 ENTRY = struct.Struct("<32sIIII")
 HEADS = ("act1_w", "act1_b", "act2_w", "act2_b")
+MUSE_BIAS_MAX = 0.6  # muse.py BIAS_MAX
 
 
 def alarm(c):
@@ -50,7 +51,7 @@ def warp(x, c, s):
     return np.where(x <= m, x * (a / m), a + (x - m) * ((1 - a) / (1 - m))).astype(np.float32)
 
 
-def pack(version, heads=None, shift=None):
+def pack(version, heads=None, shift=None, muse_bias=None):
     arrays = []
     if heads is not None:
         arrays += [("nn." + k, np.asarray(heads[k], np.float32).ravel()) for k in HEADS]
@@ -58,6 +59,10 @@ def pack(version, heads=None, shift=None):
         s = np.clip(np.asarray(shift, np.float32), -SHIFT_MAX, SHIFT_MAX)
         assert s.shape == (len(CHANNELS),)
         arrays.append(("zones.shift", s))
+    if muse_bias is not None:  # the Muse's ideas (muse.py, sleep_v4.learn_muse)
+        b = np.clip(np.asarray(muse_bias, np.float32), -MUSE_BIAS_MAX, MUSE_BIAS_MAX)
+        assert b.shape == (8,)
+        arrays.append(("muse.bias", b))
     offset = HEADER.size + ENTRY.size * len(arrays)
     table, data = b"", b""
     for name, a in arrays:

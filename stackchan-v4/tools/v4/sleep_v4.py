@@ -10,6 +10,10 @@ sleeps, and gets the result without a reboot.
   4. zones    habituation: a channel that sits in its alarm zone a lot without anything bad following moves its
               alarm border up (0.01 a night); one whose alarm is followed by rough handling moves it down; one that
               is rarely alarming drifts back; |shift| <= 0.15 (learned.py, main/v4/zone_shift.h)
+  4b. muse    the Muse's ideas (muse.py, docs/CREATIVITY.md): an idea after which people answered more than usual
+              (reward over 20 s), or after which the world turned out other than the robot expected (curiosity: the
+              error of a 1 s forward model of the channels over 5 s), comes a little more often - its bias up 0.05 at
+              most a night; one nobody answered, a little less; none below -0.4 (every idea stays possible)
   5. gates    enough life; the replay matches; the heads change little (KL, choices); all behaviour tests pass in the
               simulator with the new blob - otherwise the robot keeps what it has
   6. send     tools/robot/ota.py learned (switched in between two ticks, a minute on trial, no reboot)
@@ -34,6 +38,7 @@ import torch.nn.functional as F
 
 import diary as D
 import learned as LR
+import muse as MU
 from nn_v4 import EMO_IDX, GROUPS, NnV4
 from reward_v4 import reward
 from spec_v4 import CHANNELS, NN_OUT, SHIFT_MAX, SNN_OUT, PREV
@@ -56,6 +61,10 @@ REPLAY_MAX_ERR = 0.05
 ADAPTIVE = ["loud", "sharp", "voice", "near", "light", "motion"]  # touch, shake, tilt keep the owner's innate rules
 ZONE_STEP, ZONE_RELAX = 0.01, 0.005
 SAY = NN_OUT.index("say")
+# the Muse (learn_muse)
+MUSE_STEP, MUSE_ETA, MUSE_FLOOR, MUSE_CURIOSITY = 0.05, 0.05, -0.4, 0.3
+MUSE_MIN_EPISODES = 3
+IDEA0 = len(SNN_OUT) + PREV.index("idea_play")
 
 
 def say(lines, text):
@@ -85,12 +94,14 @@ def load_life(days):
             o = np.argsort(seq)
             v, f, seq, rb = v[o], f[o], seq[o], r[m][o]
             dec = (f & D.FLAG_DECIDED) > 0
-            if dec.sum() < 100 or not np.isfinite(v[dec][:, P0]).all():
+            # every own-state input logged (the Muse's ideas since 2026-10-26 evening: older boots ran another network)
+            if dec.sum() < 100 or not np.isfinite(v[dec][:, P0:P0 + len(PREV)]).all():
                 continue
             # the reward between two decisions goes to the earlier one
             idx = np.flatnonzero(dec)
             rd = np.add.reduceat(rb, idx) if len(idx) else np.zeros(0)
-            boots.append(dict(day=day, x=np.concatenate([v[dec][:, S0:S0 + len(SNN_OUT)], v[dec][:, P0:P0 + len(PREV)]], 1),
+            boots.append(dict(day=day, dec_idx=idx,
+                              x=np.concatenate([v[dec][:, S0:S0 + len(SNN_OUT)], v[dec][:, P0:P0 + len(PREV)]], 1),
                               nn=v[dec][:, N0:N0 + len(NN_OUT)], r=rd.astype(np.float32),
                               day_mask=((f[dec] & D.FLAG_DRIVES) > 0) & ((f[dec] & D.FLAG_NIGHT) == 0),
                               gaps=int(np.sum(np.diff(seq[dec].astype(np.int64)) != 2)),
@@ -111,7 +122,7 @@ def returns(r):
 def base_model():
     m = NnV4()
     m.load_state_dict(torch.load(os.path.join(HERE, "data", "nn_v4.pt"), weights_only=False, map_location="cpu")["state"])
-    version, shift = 0, np.zeros(len(CHANNELS), np.float32)
+    version, shift, mbias = 0, np.zeros(len(CHANNELS), np.float32), np.zeros(len(MU.OUTS), np.float32)
     if os.path.exists(LIVE):
         version, arrays = LR.unpack(open(LIVE, "rb").read())
         if "nn.act1_w" in arrays:
@@ -122,8 +133,10 @@ def base_model():
                 m.act2.bias.copy_(torch.tensor(arrays["nn.act2_b"]))
         if "zones.shift" in arrays:
             shift = arrays["zones.shift"].astype(np.float32)
+        if "muse.bias" in arrays:
+            mbias = arrays["muse.bias"].astype(np.float32)
     m.eval()
-    return m, version, shift
+    return m, version, shift, mbias
 
 
 def replay(m, boots):
@@ -246,6 +259,60 @@ def zones(boots, shift, lines):
     return new
 
 
+def surprise_of(ch, day):
+    """The channels' unexpectedness per tick: |error| of a ridge forward model ch(t) -> ch(t + 1 s), fitted on the day."""
+    lag = 20
+    e = np.full(len(ch), np.nan, np.float32)
+    ok = np.isfinite(ch).all(1)
+    i = np.flatnonzero(day[:-lag] & ok[:-lag] & ok[lag:])
+    if len(i) < 2000:
+        return e
+    fit = i[::5]
+    X = np.concatenate([ch[fit], np.ones((len(fit), 1), np.float32)], 1)
+    W = np.linalg.solve(X.T @ X + 1.0 * np.eye(X.shape[1]), X.T @ ch[fit + lag])
+    pred = np.concatenate([ch[i], np.ones((len(i), 1), np.float32)], 1) @ W
+    e[i] = np.abs(ch[i + lag] - pred).mean(1)
+    return e
+
+
+def learn_muse(boots, bias, lines):
+    """One night's step of the Muse's idea biases (docs/CREATIVITY.md step 3 + 4)."""
+    new = bias.copy()
+    stats = {k: ([], []) for k in MU.IDEAS}
+    for b in boots:
+        day, r = b["day_mask"], b["r"]
+        if day.sum() < 6000:  # 10 min of daytime decisions
+            continue
+        win_r = np.convolve(r, np.ones(200), "full")[199:][:len(r)]  # reward over the next 20 s of each decision
+        e = surprise_of(b["ch"], ((b["flags"] & D.FLAG_DRIVES) > 0) & ((b["flags"] & D.FLAG_NIGHT) == 0))
+        e_dec = np.array([np.nanmean(e[t:t + 100]) if np.isfinite(e[t:t + 100]).any() else np.nan for t in b["dec_idx"]])
+        rb, rs = win_r[day].mean(), win_r[day].std() + 1e-6
+        cb, cs = np.nanmean(e_dec[day]), np.nanstd(e_dec[day]) + 1e-6
+        for k, name in enumerate(MU.IDEAS):
+            on = (b["x"][:, IDEA0 + k] > MU.IDEA_ON) & day
+            last = -10 ** 9
+            for i in np.flatnonzero(on[1:] & ~on[:-1]) + 1:
+                if i - last < 100 or i + 200 > len(r):
+                    continue
+                last = i
+                stats[name][0].append((win_r[i] - rb) / rs)
+                if np.isfinite(e_dec[i]) and np.isfinite(cb):
+                    stats[name][1].append((e_dec[i] - cb) / cs)
+    for k, name in enumerate(MU.IDEAS):
+        R, C = stats[name]
+        j = 3 + k
+        if len(R) < MUSE_MIN_EPISODES:
+            if new[j] != 0:  # not had: back towards innate
+                new[j] -= np.sign(new[j]) * min(0.005, abs(new[j]))
+            continue
+        adv = float(np.mean(R)) + MUSE_CURIOSITY * (float(np.mean(C)) if C else 0.0)
+        step = float(np.clip(MUSE_ETA * adv * min(1.0, len(R) / 10), -MUSE_STEP, MUSE_STEP))
+        new[j] = float(np.clip(new[j] + step, MUSE_FLOOR, MU.BIAS_MAX))
+        say(lines, f"  muse {name}: {len(R)} ideas, answered {np.mean(R):+.2f}, curiosity "
+                   f"{np.mean(C) if C else 0:+.2f} -> bias {bias[j]:+.3f} -> {new[j]:+.3f}")
+    return new.astype(np.float32)
+
+
 def behaviour_gate(blob_path, lines):
     r = subprocess.run([sys.executable, os.path.join(HERE, "behavior_test_v4.py"), "--learned", blob_path],
                        capture_output=True, text=True, cwd=HERE)
@@ -268,7 +335,7 @@ def main():
     tonight = dt.date.today().isoformat()
     days = days_with_v4(a.days)
     say(lines, f"night of {tonight}: days {', '.join(days) or '-'}")
-    m, live_version, shift = base_model()
+    m, live_version, shift, mbias = base_model()
     boots = load_life(days)
     n_dec = sum(len(b["x"]) for b in boots)
     n_day = sum(int(b["day_mask"].sum()) for b in boots)
@@ -307,6 +374,9 @@ def main():
     new_shift = zones(boots, shift, lines)
     if not np.allclose(new_shift, shift):
         changed = True
+    new_mbias = learn_muse(boots, mbias, lines)
+    if not np.allclose(new_mbias, mbias):
+        changed = True
     if not changed:
         return finish(lines, started, "nothing new: the robot keeps what it has")
     if heads_new is None:
@@ -314,7 +384,7 @@ def main():
     version = int(dt.datetime.now().strftime("%y%m%d%H"))
     os.makedirs(STORE, exist_ok=True)
     blob_path = os.path.join(STORE, f"v{version}.bin")
-    open(blob_path, "wb").write(LR.pack(version, heads_new, new_shift))
+    open(blob_path, "wb").write(LR.pack(version, heads_new, new_shift, new_mbias))
     say(lines, f"  candidate {os.path.relpath(blob_path, ROOT)} (version {version})")
     if not behaviour_gate(blob_path, lines):
         return finish(lines, started, "gate failed: the robot keeps what it has")

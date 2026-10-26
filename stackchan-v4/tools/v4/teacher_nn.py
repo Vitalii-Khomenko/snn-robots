@@ -5,7 +5,9 @@ quiet at night.
 
 The teacher has a memory (the shown emotion and how long, when it last spoke / gestured, the open touch) and its
 random choices are read from the three pacemaker inputs (pace_fast / pace_slow / pace_jitter) that the network sees
-too - a random choice the network cannot see could not be learned (v3 lesson).
+too - a random choice the network cannot see could not be learned (v3 lesson). Since 2026-10-26 they come from the
+Muse (muse.py, docs/CREATIVITY.md), with its five ideas (idea_*): when nothing calls for a reaction, an idea the Muse
+is having turns into a few seconds of play, show, stillness, a call to the owner or a little surprise (IDEA_ACTS).
 
 Training metadata only: the robot runs the trained network, never this code.
 """
@@ -88,6 +90,17 @@ GAZE_WIDE = 1.4
 # Something moving in view: the head turns to it. att_x is where in the picture (-1..1, the camera's ~62 deg wide), so
 # the direction is the head's own yaw plus half of it (gaze units: 1 = 60 deg).
 ATT_LOOK = 0.12
+# The Muse's ideas (muse.py IDEAS) as acts: how long one lasts (s). An idea starts when the Muse has it above IDEA_ON
+# (lower when bored: the creativity budget), nothing calls for a reaction (a touch, a fright, the night, a threat) and
+# the last idea ended IDEA_GAP s ago. play: short lively calls in a row, a wave of colour; show: a face it rarely makes,
+# a flicker; still: no babble, the head holds, the lights breathe low; social: an asking call, a look to where someone
+# was last seen; surprise: a nod dance with a burst of light.
+IDEA_NAMES = ["play", "show", "still", "social", "surprise"]
+IDEA_S = {"play": 6.0, "show": 5.0, "still": 10.0, "social": 6.0, "surprise": 2.5}
+IDEA_ON, IDEA_GAP = 0.5, 12.0
+IDEA_FACES = {"play": ["happy", "laughing", "wink", "very_happy"], "show": ["wink", "cool", "love", "confused", "surprised",
+              "laughing", "shy"], "still": ["thinking", "normal", "cool"], "social": ["curious", "happy", "wink"],
+              "surprise": ["surprised", "laughing"]}
 CAM_HALF = 0.5
 # ... and keeps watching that place a while after it stopped (2026-10-25 evening: someone who walked and then stood still
 # vanished from the motion sense in 1-4 s and the head wandered off; the simulator's walker was found less than by
@@ -157,9 +170,12 @@ class Teacher:
         self.led_level = 0.3
         self.gesture = None          # (mode, ticks left)
         self.speak_ticks = 0
+        self.idea, self.idea_t, self.since_idea = None, 0.0, IDEA_GAP  # the Muse's idea being acted, s left, s since one
+        self.idea_face, self.idea_color = "normal", "white"
+        self.seen = 0.0  # gaze yaw of where someone / something was last seen in view
 
     # ---- what the network sees of the past (PREV), from the executed state
-    def prev_inputs(self, pace):
+    def prev_inputs(self, muse):
         v, a = EMO[self.emo][0], EMO[self.emo][1]
         x = np.zeros(len(PREV), np.float32)
         x[P["prev_valence"]], x[P["prev_arousal"]] = v, a
@@ -169,8 +185,28 @@ class Teacher:
         x[P["head_yaw"]], x[P["head_pitch"]] = self.head
         x[P["led_level"]] = self.led_level
         x[P["touch_answered"]] = 0.0 if self.touch_open else 1.0
-        x[P["pace_fast"]], x[P["pace_slow"]], x[P["pace_jitter"]] = pace
+        x[P["pace_fast"]:P["pace_fast"] + 8] = muse  # pace_* and idea_* (muse.py OUTS order)
         return x
+
+    def idea_step(self, s, ideas, night, urgent):
+        """-> (the idea being acted or None, True at its first tick)."""
+        threat, under = s[S["threat"]], s[S["under"]]
+        if self.idea is not None:
+            self.idea_t -= DT
+            if self.idea_t <= 0 or urgent or night or self.touch_open or threat > 0.3:
+                self.idea, self.since_idea = None, 0.0
+            return self.idea, False
+        self.since_idea += DT
+        if night or urgent or self.touch_open or threat > 0.3 or s[S["sleepiness"]] > 0.5 or self.since_idea < IDEA_GAP:
+            return None, False
+        k = int(np.argmax(ideas))
+        if ideas[k] <= IDEA_ON - 0.15 * under:  # bored: a lower bar
+            return None, False
+        self.idea, self.idea_t = IDEA_NAMES[k], IDEA_S[IDEA_NAMES[k]]
+        pick_u = float(np.clip(ideas[(k + 1) % 5] * 1.7, -1, 1))  # another idea's value: a choice the network sees
+        self.idea_face = pick(IDEA_FACES[self.idea], pick_u)
+        self.idea_color = pick(LED_COLORS, float(np.clip(ideas[(k + 2) % 5] * 1.7, -1, 1)))
+        return self.idea, True
 
     def choose_emotion(self, s, pace, events):
         """-> (emotion, urgent): what this moment calls for."""
@@ -226,10 +262,13 @@ class Teacher:
             return pick(["sad", "confused", "annoyed"], ps), False
         return pick(["normal", "normal", "thinking", "curious", "cool", "normal"], ps), False
 
-    def step(self, s, pace, executed=None):
-        """s: the SNN's 32 numbers, pace: 3 pacemaker values. -> target NN_OUT vector. `executed`: what the robot
-        really did this tick (the network's decision during DAgger) - updates the memory instead of the target."""
+    def step(self, s, muse, executed=None):
+        """s: the SNN's 32 numbers, muse: the Muse's 8 outputs (3 pacemakers, 5 ideas). -> target NN_OUT vector.
+        `executed`: what the robot really did this tick (the network's decision during DAgger) - updates the memory
+        instead of the target."""
         s = np.asarray(s)
+        muse = np.asarray(muse)
+        pace, ideas = muse[:3], muse[3:]
         y = np.zeros(len(NN_OUT), np.float32)
         touch_now = max(s[S["sal_touch_head"]], s[S["sal_touch_screen"]])
         touch_onset = touch_now > 0.12 and touch_now - self.prev_touch > 0.04
@@ -249,9 +288,14 @@ class Teacher:
         night = s[S["sleepiness"]] > 0.65
 
         want, urgent = self.choose_emotion(s, pace, events)
+        idea, idea_start = self.idea_step(s, ideas, night, urgent)
+        if idea is not None:
+            want = self.idea_face
         min_show = MIN_SHOW.get(self.emo, DEFAULT_MIN_SHOW)
         emo = self.emo
-        if want != self.emo and (urgent or self.emo_age >= min_show):
+        if idea_start:
+            emo = want  # an idea shows at once
+        elif want != self.emo and (urgent or self.emo_age >= min_show):
             # a calm change of mood needs a while; reactions are at once
             if urgent or self.emo_age > 4.0 + 3.0 * (pace[1] + 1):
                 emo = want
@@ -270,13 +314,18 @@ class Teacher:
             say = True
         elif (events["surprise_onset"] or events["threat_onset"] or events["over_onset"]) and self.since_sound > 0.7:
             say = True
-        elif not night and self.since_sound > 6.0 + 10.0 * (1 - aro) and pace[0] > 0.55 - 0.3 * aro:
+        elif idea == "play" and self.since_sound > 2.0:
+            say = True  # a sound game: short calls in a row
+        elif idea in ("social", "surprise") and (idea_start or (idea == "social" and self.since_sound > 3.5)):
+            say = True
+        elif idea != "still" and self.since_sound > 6.0 + 10.0 * (1 - aro) and pace[0] > 0.55 - 0.3 * aro:
             say = True  # idle babble: ~ every 8-25 s by day
         if say:
             self.speak_ticks = 3
         if self.speak_ticks > 0:
             y[O["say"]] = 1.0
             self.speak_ticks -= 1
+        style = {"play": "play", "social": "ask", "surprise": "play"}.get(idea, style)
         y[O["style_" + style]] = 1.0
         y[O["snd_arousal"]] = float(np.clip(0.3 * a + 0.7 * aro, 0, 1)) * (0.5 if night else 1.0)
         y[O["snd_valence"]] = float(np.clip(v * 2 - 1, -1, 1))
@@ -284,11 +333,20 @@ class Teacher:
         y[O["snd_length"]] = float(np.clip(0.25 if emo in ("surprised", "scared") else 0.4 + 0.4 * (pace[2] + 1) / 2,
                                            0, 1))
         y[O["snd_rate"]] = float(np.clip(0.3 + 0.6 * aro, 0, 1))
+        if idea == "play":
+            y[O["snd_length"]], y[O["snd_rate"]] = 0.3, 0.85
 
         # ---- LEDs
+        if idea is not None:
+            color = self.idea_color if idea != "still" else color
+            pattern = {"play": "wave", "show": "flicker", "still": "breathe", "social": "pulse", "surprise": "flicker"}[idea]
         y[O["led_" + color]] = 1.0
         y[O["pat_" + pattern]] = 1.0
         bright = 0.06 if night else float(np.clip(0.25 + 0.65 * aro, 0, 1))
+        if idea == "still":
+            bright = 0.12
+        elif idea == "surprise":
+            bright = 1.0
         y[O["led_bright"]] = bright
         y[O["led_rate"]] = float(np.clip(0.15 + 0.8 * aro, 0, 1))
 
@@ -299,6 +357,7 @@ class Teacher:
         if att > ATT_LOOK and not night:
             self.watch = (seen_yaw(self.head[0], s[S["att_x"]]), float(np.clip(s[S["att_y"]] * 0.4, -1, 1)))
             self.watch_t = WATCH_S
+            self.seen = self.watch[0]
         else:
             self.watch_t = max(0.0, self.watch_t - DT)
         if self.gesture is not None:
@@ -323,6 +382,8 @@ class Teacher:
                 mode = "nod"
             elif nod_ok and emo == "sad" and self.emo_age < 0.3 and pace[2] > 0.3:
                 mode = "shake"
+            elif nod_ok and idea == "surprise" and idea_start:
+                mode = "nod"  # the Muse's surprise: a nod dance
             if mode != "hold":
                 self.gesture = (mode, 12)  # ~1.2 s
         if mode == "hold":
@@ -334,6 +395,12 @@ class Teacher:
                 mode, gaze = ("look_up", gaze) if head_touch else ("look", (0.0, -0.2))
             elif emo in ("sad", "shy", "crying") and self.emo_age < 3:
                 mode = "look_down"
+            elif idea == "still":
+                mode, gaze = "hold", self.head
+            elif idea == "social":
+                mode, gaze = "look", (self.seen, -0.1)  # to where someone was last seen
+            elif idea == "show" and self.idea_t > IDEA_S["show"] - 1.5:
+                mode = "look_up"
             elif emo == "thinking" and self.emo_age < 3:
                 mode = "look_up"
             elif not night:
@@ -346,6 +413,8 @@ class Teacher:
         y[O["gest_amp"]] = float(np.clip(amp, 0, 1))
         y[O["gest_speed"]] = float(np.clip(0.3 + 0.6 * aro, 0, 1)) * (0.5 if night else 1.0)
         y[O["gest_reps"]] = float(np.clip(0.3 + 0.5 * aro, 0, 1))
+        if idea == "surprise" and mode == "nod":
+            y[O["gest_amp"]], y[O["gest_reps"]] = 0.8, 1.0
 
         # ---- the memory follows what was really done
         self.apply(executed if executed is not None else y)
@@ -380,7 +449,8 @@ class Teacher:
 
 
 def pacemakers(rng, T):
-    """Three slow random drifts in [-1, 1] at 10 Hz (fast ~3 s, slow ~60 s, jitter ~0.5 s)."""
+    """Three slow random drifts in [-1, 1] at 10 Hz (fast ~3 s, slow ~60 s, jitter ~0.5 s): the network's random
+    choices until 2026-10-26, the Muse's pace_* outputs since (muse.py)."""
     out = np.zeros((T, 3), np.float32)
     for k, tau in enumerate((3.0, 60.0, 0.5)):
         a = np.exp(-DT / tau)
@@ -393,9 +463,10 @@ def pacemakers(rng, T):
 
 
 def rollout(snn_seq, rng):
-    """Teacher on a 10 Hz sequence of SNN outputs -> (inputs [T, 44], targets [T, 61])."""
+    """Teacher on a 10 Hz sequence of SNN outputs -> (inputs [T, 49], targets [T, 61])."""
+    import muse as M
     T = len(snn_seq)
-    pace = pacemakers(rng, T)
+    pace = M.run(np.asarray(snn_seq, np.float32)[None], rng)[0]
     tch = Teacher()
     X = np.zeros((T, len(SNN_OUT) + len(PREV)), np.float32)
     Y = np.zeros((T, len(NN_OUT)), np.float32)

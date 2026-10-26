@@ -3,14 +3,15 @@
 #include <cstdint>
 
 #include "channel_encoder.h"
+#include "muse_v4.h"
 #include "nn_v4.h"
 #include "snn_v4.h"
 
 // Brain v4 (BRAIN_V4_PLAN.txt): the spiking analyzer every 50 ms tick, the main network every second tick (10 Hz),
 // and what the main network sees of its own past ("what I just did", v4_spec.h Prev): the shown emotion and for how
 // long, when it last spoke or gestured, where the head is, the LEDs, whether the last touch has been answered, and
-// three slow pacemakers (its random choices are made visible to it). Mirrors tools/v4/teacher_nn.py
-// (Teacher.prev_inputs / apply) and pacemakers().
+// what the Muse (muse_v4.h) gives it: three pacemakers (its random choices are made visible to it) and five ideas.
+// Mirrors tools/v4/teacher_nn.py (Teacher.prev_inputs / apply) and tools/v4/muse.py.
 class BrainV4 {
 public:
     // What the executor really did in the main network's tick (v4_executor.h).
@@ -32,6 +33,8 @@ public:
     bool trained() const { return snn_.trained() && nn_.trained(); }
     bool nnValid() const { return nn_valid_; }
     SnnV4& analyzer() { return snn_; }
+    MuseV4& muse() { return muse_; }
+    const MuseV4::Out& ideas() const { return muse_out_; }
     NnV4& network() { return nn_; }
     // the own-state inputs (v4_spec.h Prev) of the main network's last decision: the diary keeps them (stage 6)
     const std::array<float, v4::PV_COUNT>& lastPrev() const { return prev_; }
@@ -53,7 +56,8 @@ private:
     std::array<float, v4::PV_COUNT> prev_{};
     bool nn_valid_ = false;
     uint32_t ticks_ = 0, nn_faults_ = 0, rng_ = 0x2545f491u;
-    std::array<float, 3> pace_v_{}, pace_{};
+    MuseV4 muse_;
+    MuseV4::Out muse_out_{};
     // the past, as teacher_nn.Teacher keeps it
     int emo_ = 0;
     float emo_age_ = 10.0f, since_sound_ = 10.0f, since_gesture_ = 30.0f, touch_age_ = 0.0f, prev_touch_ = 0.0f;

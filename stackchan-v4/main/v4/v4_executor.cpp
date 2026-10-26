@@ -24,6 +24,17 @@ int argmaxRange(const NnV4::Out& o, int at, int count)
 void V4Executor::apply(const BrainV4& brain, bool decided, bool night, uint32_t now, BrainV4::Executed& done)
 {
     if (!brain.nnValid()) return;
+    // the Muse's ideas as they come (the log line only: the network decides what to make of them)
+    static constexpr const char* kIdeaNames[5] = {"play", "show", "still", "social", "surprise"};
+    for (int k = 0; k < 5; ++k) {
+        const float v = brain.ideas()[3 + k];
+        const bool on = idea_on_[k] ? v > 0.3f : v > 0.5f;  // hysteresis: an idea near 0.5 is one idea, not ten
+        if (on && !idea_on_[k] && !night && (idea_log_ms_[k] == 0 || now - idea_log_ms_[k] >= 10000)) {
+            ESP_LOGI(kTag, "muse: idea %s (%.2f)", kIdeaNames[k], static_cast<double>(v));
+            idea_log_ms_[k] = now;
+        }
+        idea_on_[k] = on;
+    }
     applyFace(brain, now);
     applyVoice(brain, night, now, done);
     applyLeds(brain, night);
@@ -247,6 +258,24 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
     // At night the head only sinks into the doze: a clap at 03:51 (2026-10-25) lifted it, the servos hung, and the
     // power cycle that freed them clicked next to the sleeping owner.
     if (night && mode != kHeadDoze) return;
+
+    // ---- the orienting reflex: something new in view (the analyzer's attention) - the head turns to it and keeps
+    // watching that place kWatchMs (teacher_nn.py: ATT_LOOK, WATCH_S), whatever the network's gaze says meanwhile
+    const bool free_head = mode == kHeadLook || mode == kHeadScan || mode == kHeadHold;
+    if (!night && free_head && brain.snn()[SO_ATT_STRENGTH] > kAttLook) {
+        float hy = 0, hp = 0;
+        motion_.getCurrentDeg(hy, hp);
+        watch_yaw_ = std::clamp(hy + brain.snn()[SO_ATT_X] * kCamHalfDeg, -kYawLimitDeg, kYawLimitDeg);
+        watch_pitch_ = 5.0f - 0.4f * brain.snn()[SO_ATT_Y] * BrainV4::kGazePitchDeg;
+        watch_until_ms_ = now + kWatchMs;
+        if (glance_until_ms_ != 0) {
+            glance_until_ms_ = 0;
+            next_glance_ms_ = now + rndMs(kGlanceGapMinMs, kGlanceGapMaxMs, now);
+        }
+        command(watch_yaw_, watch_pitch_, move_speed * kOrientSpeedK, now, false, kOrientGapMs, kOrientDeadDeg);
+        return;
+    }
+    if (!night && free_head && watch_until_ms_ != 0 && !msReached(now, watch_until_ms_)) return;  // still watching
 
     // ---- a curious glance (kGlanceGapMinMs): only while it wanders by day, looking or scanning
     const bool idle = wander && !night && (mode == kHeadLook || mode == kHeadScan);

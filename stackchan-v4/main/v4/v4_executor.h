@@ -52,6 +52,11 @@ public:
     // speed a lamp had stopped being new before the head got there (2026-10-26, simulator: at the lamp 30 % of the
     // time, 27 % with it off).
     static constexpr float kOrientSpeedK = 1.5f;  // 2.5 until 2026-10-26 evening: a jerk right after a glance
+    // The orienting reflex (2026-10-26 evening): the turn to what the analyzer's attention holds is the executor's own,
+    // like the teacher's rule (head yaw + att_x x half the camera's width), and the place is watched kWatchMs. It was
+    // left to the network; with the Muse's ideas to learn as well it turned to a new lamp no more than by chance.
+    static constexpr float kCamHalfDeg = 30.0f, kOrientDeadDeg = 8.0f;
+    static constexpr uint32_t kOrientGapMs = 1500;
     // Curious glances (2026-10-26, the owner: "add some creativity and unpredictability"): while it wanders by day, at
     // a random moment every 40-150 s the head turns far to one side (55-90 deg, the other side when it already looks
     // aside; a little up or down), looks there 3-7 s and goes back to the network's gaze. The room's edges, which
@@ -105,6 +110,10 @@ private:
     uint32_t wander_hold_ms_ = kWanderHoldMinMs;  // how long the wandering gaze keeps its present place
     uint32_t next_glance_ms_ = 0, glance_until_ms_ = 0;
     uint32_t rng_ = 0;  // xorshift32 state (0: not seeded yet)
-    uint32_t last_flinch_ms_ = 0;  // the next curious glance; the end of the present one (0: none)
+    uint32_t last_flinch_ms_ = 0;
+    float watch_yaw_ = 0.0f, watch_pitch_ = 5.0f;
+    uint32_t watch_until_ms_ = 0;
+    bool idea_on_[5] = {false, false, false, false, false};  // the Muse's ideas above 0.5 (logged as they come)
+    uint32_t idea_log_ms_[5] = {0, 0, 0, 0, 0};  // the next curious glance; the end of the present one (0: none)
     bool attended_ = false;
 };

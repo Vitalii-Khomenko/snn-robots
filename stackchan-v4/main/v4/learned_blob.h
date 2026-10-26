@@ -11,7 +11,8 @@
 //   data, every array 16-byte aligned
 //
 // Arrays: "nn.act1_w", "nn.act1_b", "nn.act2_w", "nn.act2_b" (the main network's action heads, retrained each night)
-// and "zones.shift" (13: how far each channel's alarm border moved with experience). Plain C++: the robot reads it
+// "zones.shift" (13: how far each channel's alarm border moved with experience) and "muse.bias" (8: how much more
+// or less often each of the Muse's ideas comes, from what the owner answered; muse_v4.h). Plain C++: the robot reads it
 // from flash (net/learned_store.h), the simulator from a file (--learned).
 namespace learned {
 

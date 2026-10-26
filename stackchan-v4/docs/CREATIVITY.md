@@ -1,8 +1,9 @@
-# Creativity: a "Muse" network (concept, 2026-10-26)
+# Creativity: a "Muse" network (2026-10-26)
 
 The owner, 2026-10-26: *"for creativity and unpredictability we probably need an additional NN that gives new
-signals - work it out as a concept."* This is that concept. Nothing here is built yet. The curious glances in the
-executor (ARCHITECTURE section 4) are its hand-made forerunner.
+signals - work it out as a concept."* Then: *"implement it all the way."* Steps 1-4 below are built the same evening
+(ARCHITECTURE sections 3 and 7). The curious glances in the executor (section 4) stay as the head's own small
+chance.
 
 ## 1. Where variety comes from today
 
@@ -47,17 +48,18 @@ sound", "try a funny face" or "be still and watch". Three things together make i
                          night sleep: AWR on the readout from reward_v4 + curiosity (forward model error)
 ```
 
-### What an idea is (the 8 outputs)
+### What the outputs are (as built)
 
-| # | Idea | What the main network learns to do with it (teacher) |
+| # | Output | What the main network learns to do with it (teacher) |
 |---|---|---|
-| 0-1 | where (yaw, pitch) | look there: a glance, or a slow sweep to it |
-| 2 | tempo | quick, busy moves and calls vs slow and dreamy ones |
-| 3 | play | a sound game: a motif repeated with variations (babble voice), a little "song" |
-| 4 | show | try a face combination it rarely makes, an LED pattern, a gesture |
-| 5 | stillness | be still and watch (creativity includes doing nothing on purpose) |
-| 6 | social | call to the owner: a question tone, a look at where they were last seen |
-| 7 | surprise | the strength of the urge; at its peak a short, unusual act (a double glance, a "dance" of nods) |
+| 0-2 | pace_fast / pace_slow / pace_jitter | the old pacemakers' job (every "random" pick of the teacher: where to look, how wide, which face of a mood), same spread and time scales, now coloured by the mood |
+| 3 | play | a sound game: short lively calls every 2 s, play style, a wave of colour, a lively face (6 s) |
+| 4 | show | a face it rarely makes (wink, cool, love, confused, surprised, laughing, shy), the head up, a flicker (5 s) |
+| 5 | still | be still and watch: no babble, the head holds, the lights breathe low (10 s) |
+| 6 | social | an asking call, the head to where someone was last seen, a pulse (6 s) |
+| 7 | surprise | a nod dance (3 reps), a call, a burst of light (2.5 s) |
+
+(The concept had "where" and "tempo" as ideas of their own; the pacemakers already carry them.)
 
 The Muse **proposes** and never acts itself. The main network decides, through what it learned from the teacher.
 The teacher gets a rule per idea, such as "with play > 0.6 and no reason to be quiet: a sound game". It also gets
@@ -88,7 +90,7 @@ writes, so the blob gains one more array.
 - **The owner's verdict** stays the real test: does it surprise in a good way?
 - **Night numbers:** how often Muse-driven acts drew an answer, and whether that share grows over the days.
 
-## 6. Steps
+## 6. Steps (all four built 2026-10-26)
 
 | Step | What | Retrain | Rough size |
 |---|---|---|---|

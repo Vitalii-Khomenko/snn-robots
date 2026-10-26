@@ -31,10 +31,12 @@ KIND_LINE, KIND_V4 = 2, 3
 # The v4 layout grew; older layouts are read by column name, missing columns as NaN:
 #   135 values (2026-10-24, until 14:30): no pv_* columns
 #   147 values (until 2026-10-25 evening): no camera bright spot (raw_light_*, ch_light_*, raw_head_yaw)
+#   154 values (until 2026-10-26 evening): no Muse ideas (pv_idea_*; the pv_pace_* were blind noise then)
 _NEW_LIGHT = {"raw_light_x", "raw_light_y", "raw_light_str", "raw_head_yaw", "ch_light_x", "ch_light_y", "ch_light_spot"}
-_L147 = [n for n in DIARY if n not in _NEW_LIGHT]
+_L154 = [n for n in DIARY if not n.startswith("pv_idea_")]
+_L147 = [n for n in _L154 if n not in _NEW_LIGHT]
 _L135 = [n for n in _L147 if not n.startswith("pv_")]
-LAYOUTS = {len(DIARY): DIARY, len(_L147): _L147, len(_L135): _L135}
+LAYOUTS = {len(DIARY): DIARY, len(_L154): _L154, len(_L147): _L147, len(_L135): _L135}
 KNOWN_LAYOUTS = tuple(LAYOUTS)
 _INDEX = {n: i for i, n in enumerate(DIARY)}
 FLAG_DRIVES, FLAG_NIGHT, FLAG_DECIDED = 1, 2, 4

@@ -3,10 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-BrainV4::BrainV4()
-{
-    for (auto& v : pace_v_) v = 0.0f;
-}
+BrainV4::BrainV4() = default;
 
 float BrainV4::gauss()
 {
@@ -37,9 +34,7 @@ void BrainV4::prevInputs(float* x) const
     x[PV_HEAD_PITCH] = head_pitch_;
     x[PV_LED_LEVEL] = led_level_;
     x[PV_TOUCH_ANSWERED] = touch_open_ ? 0.0f : 1.0f;
-    x[PV_PACE_FAST] = pace_[0];
-    x[PV_PACE_SLOW] = pace_[1];
-    x[PV_PACE_JITTER] = pace_[2];
+    for (int k = 0; k < muse_data::kOuts; ++k) x[PV_PACE_FAST + k] = muse_out_[k];  // pace_* then idea_* (v4_spec.h)
 }
 
 bool BrainV4::tick(const ChannelEncoder::Out& channels)
@@ -47,12 +42,10 @@ bool BrainV4::tick(const ChannelEncoder::Out& channels)
     snn_.tick(channels, snn_out_);
     // the analyzer's first 5 s only settle its state (its readouts start at 0.5: "half threatened"); no decisions yet
     if (++ticks_ % 2 || ticks_ < kSettleTicks) return false;
-    // pacemakers: Ornstein-Uhlenbeck at 10 Hz, ~3 s / ~60 s / ~0.5 s
-    static const float keep[3] = {std::exp(-kNnDt / 3.0f), std::exp(-kNnDt / 60.0f), std::exp(-kNnDt / 0.5f)};
-    for (int k = 0; k < 3; ++k) {
-        pace_v_[k] = keep[k] * pace_v_[k] + std::sqrt(1.0f - keep[k] * keep[k]) * gauss();
-        pace_[k] = std::tanh(pace_v_[k] * 0.9f);
-    }
+    // the Muse: pacemakers and ideas (they were 3 Ornstein-Uhlenbeck noises until 2026-10-26)
+    float noise[MuseV4::kN];
+    for (float& n : noise) n = gauss();
+    muse_.step(snn_out_.data(), noise, muse_out_);
     // a new touch opens a question the robot has to answer (teacher_nn.Teacher.step)
     const float touch_now = std::max(snn_out_[v4::SO_SAL_TOUCH_HEAD], snn_out_[v4::SO_SAL_TOUCH_SCREEN]);
     if (touch_now > 0.12f && touch_now - prev_touch_ > 0.04f) {

@@ -114,7 +114,11 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   cosine, sent as waypoints) - 4 moves a minute instead of 8-11, see [HARDWARE](docs/HARDWARE.md#servos).
 - Curious glances (2026-10-26): at random moments every 40-150 s the idle head turns slowly to one side (40-70°),
   looks a few seconds and comes back - the room's edges get looked at and no two minutes are alike; a new light is turned to
-  quickly. See ARCHITECTURE section 4; a concept for a network of its own for this: [CREATIVITY](docs/CREATIVITY.md).
+  quickly. See ARCHITECTURE section 4.
+- The Muse (2026-10-26): a small chaotic reservoir network next to the main one. It gives the main network its
+  "random" pacemakers (now coloured by the mood) and five ideas (play, show, still, social, surprise), which the
+  robot acts when nothing calls for a reaction. It gets bored of its own ideas and learns at night which ones the
+  owner answered (plus curiosity: ideas after which the world surprised it). See [CREATIVITY](docs/CREATIVITY.md).
 - Seeking (2026-10-25): the motion sense is three times stronger and quicker, and the camera's brightest spot reaches
   the brain - a light that is NEW in its place in the room draws the head to it, then it gets used to it; after a look
   the head keeps watching that place ~10 s (simulator: at a lamp switched on beside it 56 % of the time, 36 % with

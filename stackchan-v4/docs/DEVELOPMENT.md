@@ -104,6 +104,8 @@ train_snn_v4.py data         1400 synthetic + 400 real 5-minute lives -> out/snn
 train_snn_v4.py train        SNN, 20 epochs (surrogate gradients, int8 QAT in the last 30 %) -> data/snn_v4.pt
 export_snn_v4.py ──> main/v4/snn_v4_data.h        parity_snn_v4.py   (C++ == PyTorch)
 train_nn_v4.py data          the trained SNN over the same lives -> out/nn_snn.npz (~0.6 GB, rebuildable)
+muse.py make                 the Muse's fixed reservoir (seeded), calibrated on those lives -> main/v4/muse_v4_data.h
+                             parity_muse.py (C++ == numpy); a new Muse means a retrained main network
 train_nn_v4.py train [2]     imitation of teacher_nn.py + DAgger rounds -> data/nn_v4.pt, out/nn_report.txt
 export_nn_v4.py ──> main/v4/nn_v4_data.h          parity_nn_v4.py
 behavior_test_v4.py          then build, flash, watch

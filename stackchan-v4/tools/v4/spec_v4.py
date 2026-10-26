@@ -84,7 +84,9 @@ EMOTIONS = ["normal", "happy", "very_happy", "laughing", "sad", "crying", "sleep
             "love", "shy", "wink", "curious", "confused", "thinking", "bored", "scared", "dizzy", "cool", "sick"]
 # what the network did a moment ago, fed back (BrainV4 fills them)
 PREV = ["prev_valence", "prev_arousal", "emo_age", "since_sound", "since_gesture", "head_yaw", "head_pitch",
-        "led_level", "touch_answered", "pace_fast", "pace_slow", "pace_jitter"]
+        "led_level", "touch_answered", "pace_fast", "pace_slow", "pace_jitter",
+        # the Muse's ideas (tools/v4/muse.py, docs/CREATIVITY.md; 2026-10-26) - the pace_* come from it too now
+        "idea_play", "idea_show", "idea_still", "idea_social", "idea_surprise"]
 NN_IN = SNN_OUT + PREV
 SOUND_STYLES = ["calm", "ask", "play", "grumble"]
 LED_COLORS = ["white", "yellow", "orange", "red", "pink", "violet", "blue", "cyan"]

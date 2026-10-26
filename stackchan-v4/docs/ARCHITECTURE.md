@@ -81,13 +81,33 @@ which channel each comes from; it does not choose emotions.
 One network decides everything (the owner's choice: one decider, the voice is only a synthesizer):
 
 ```
-input 44 = 32 SNN numbers + 12 own state -> GRU 64 -> emotion head: 21 emotions (softmax) + strength
+input 49 = 32 SNN numbers + 17 own state -> GRU 64 -> emotion head: 21 emotions (softmax) + strength
                                                     -> [GRU state, emotion] -> hidden 64 -> action heads (39)
+            SNN mood --> Muse (64-neuron reservoir) --> 3 pacemakers + 5 ideas (part of the own state)
 ```
 
-- **Own state (12):** last valence and arousal, how long the face has been shown, time since a sound and since a
-  gesture, head yaw and pitch, LED level, whether the last touch was answered, and three pacemakers (slow, fast,
-  jitter: random processes the network can see, so its "spontaneous" choices are learnable and reproducible).
+- **Own state (17):** last valence and arousal, how long the face has been shown, time since a sound and since a
+  gesture, head yaw and pitch, LED level, whether the last touch was answered, three pacemakers (slow, fast,
+  jitter: random processes the network can see, so its "spontaneous" choices are learnable and reproducible) and
+  the Muse's five ideas (below).
+- **The Muse** (2026-10-26, the owner: "for creativity and unpredictability an additional network that gives new
+  signals"; `main/v4/muse_v4.cpp`, twin `tools/v4/muse.py`, concept [CREATIVITY](CREATIVITY.md)). It has 64 leaky tanh
+  neurons in three time scales (16 x 0.5 s, 24 x 3 s, 24 x 60 s), fixed seeded weights a little past the edge of
+  chaos (spectral radius 1.1), noise from BrainV4's generator, and the SNN's mood (valence, arousal, under, over,
+  threat, attention, sleepiness, loneliness) pushing it gently.
+  - Its first three readouts replace the blind pacemakers: the same spread (0.6) and time scales, but now they
+    depend a little on the room and the mood.
+  - Five more readouts are ideas: **play** (short lively calls in a row, a wave of colour), **show** (a face it
+    rarely makes, a flicker), **still** (no babble, the head holds, the lights breathe low), **social** (an asking
+    call, a look to where someone was last seen) and **surprise** (a nod dance, a burst of light). Each idea is a
+    reservoir readout plus a direct mood push: play from lively and content, still from sleepy, social from
+    lonely, surprise from bored.
+  - It gets bored of its own ideas: an idea it keeps having fades (habituation over 90 s).
+  - The teacher (`IDEA_ACTS` in `teacher_nn.py`) acts an idea above 0.5 (lower when bored) for 2.5-10 s, at most
+    one every 12 s. It does so only when nothing calls for a reaction: no touch, fright or threat, not sleepy, not
+    at night.
+  - The night learns one bias per idea (`muse.bias` in the learned blob, section 7).
+  - Cost: ~5 k multiply-adds and 64 Gaussian draws per decision.
 - **Outputs (61):** 21 emotions + strength; voice 10 (say, 4 styles: calm / ask / play / grumble, arousal, valence,
   register, length, rate); LEDs 15 (8 colours, 5 patterns: steady / breathe / pulse / flicker / wave, brightness,
   rate); head 14 (9 modes: hold, look, scan, nod, shake, flinch, look down, look up, doze; gaze yaw / pitch; gesture
@@ -193,8 +213,14 @@ Every 5 s the robot logs three lines: `stats:` (CPU, memory, timing, servos, sen
 Learning happens on the PC at night; the robot only receives the result, without a reboot:
 
 - **The learned blob** (`main/v4/learned_blob.h`, made by `tools/v4/learned.py`): new weights of the main network's
-  action heads (voice, LEDs, head: `act1`, `act2`, 8039 floats) and one zone shift per channel. The GRU, the emotion
-  head and the spiking analyzer stay innate.
+  action heads (voice, LEDs, head: `act1`, `act2`, 8039 floats), one zone shift per channel and the Muse's idea
+  biases (`muse.bias`, 8). The GRU, the emotion head, the spiking analyzer and the Muse's reservoir stay innate.
+- **The Muse's ideas** (`sleep_v4.learn_muse`, since 2026-10-26): for each idea, its episodes by day (above 0.5,
+  at least 10 s apart). An idea after which people answered more than usual over 20 s (reward_v4, in units of
+  its spread) comes a little more often. So does one after which the world turned out other than the robot
+  expected: curiosity is the error of a ridge forward model of the 13 channels 1 s ahead, over 5 s, weighted
+  0.3. The bias moves at most 0.05 a night (with >= 3 episodes), stays within -0.4..+0.6 so no idea dies out,
+  and drifts back by 0.005 a night when the idea was not had.
 - **Zone shift** (`main/v4/zone_shift.h`): per channel a shift s of its alarm border a (the lower border of its first
   anxiety or anger zone), |s| <= 0.15, applied as a monotone warp of the channel value before the analyzer (the
   innate tolerant border + s maps onto a; 0 and 1 stay), so the analyzer's innate wiring stays as trained. s > 0 is habituation (an always-humming

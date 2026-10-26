@@ -117,9 +117,14 @@ enum Prev : uint8_t {
     PV_PACE_FAST,
     PV_PACE_SLOW,
     PV_PACE_JITTER,
+    PV_IDEA_PLAY,
+    PV_IDEA_SHOW,
+    PV_IDEA_STILL,
+    PV_IDEA_SOCIAL,
+    PV_IDEA_SURPRISE,
     PV_COUNT
 };
-inline constexpr const char* kPrevNames[] = {"prev_valence", "prev_arousal", "emo_age", "since_sound", "since_gesture", "head_yaw", "head_pitch", "led_level", "touch_answered", "pace_fast", "pace_slow", "pace_jitter"};
+inline constexpr const char* kPrevNames[] = {"prev_valence", "prev_arousal", "emo_age", "since_sound", "since_gesture", "head_yaw", "head_pitch", "led_level", "touch_answered", "pace_fast", "pace_slow", "pace_jitter", "idea_play", "idea_show", "idea_still", "idea_social", "idea_surprise"};
 enum NnOut : uint8_t {
     NO_EMO_NORMAL,
     NO_EMO_HAPPY,
@@ -234,6 +239,6 @@ inline constexpr int kHeadLookUp = 7;
 inline constexpr int kHeadDoze = 8;
 inline constexpr uint8_t kLedRgb[][3] = {{255, 240, 220}, {255, 200, 40}, {255, 110, 20}, {255, 20, 10}, {255, 70, 150}, {150, 40, 255}, {30, 60, 255}, {20, 200, 230}};
 inline constexpr int kSnnInputs = 18;
-inline constexpr int kNnInputs = 44;
-inline constexpr int kDiaryValues = 154;  // RAW, channels, SO, NO, BODY, PV (tools/v4/diary.py)
+inline constexpr int kNnInputs = 49;
+inline constexpr int kDiaryValues = 159;  // RAW, channels, SO, NO, BODY, PV (tools/v4/diary.py)
 }  // namespace v4
