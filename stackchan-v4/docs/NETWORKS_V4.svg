@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1500" width="2400" height="1500">
 <defs>
-<marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
+<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
 <marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
 <marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
-<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
-<marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
-<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
 <marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
+<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
+<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
+<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
+<marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
+<marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
+<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
 <marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
 <marker id="a26a6a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#26a6a6"/></marker>
-<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
-<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
-<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
-<marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
+<marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
 </defs>
 <rect width="2400" height="1500" fill="#0f1420"/>
 <text x="40" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="32" fill="#e6ebf5" font-weight="bold" text-anchor="start">Brain v4: inside the two networks</text>
@@ -264,8 +264,8 @@
 <rect x="40" y="730" width="2320" height="30" rx="10" fill="#2f6fdd"/>
 <rect x="40" y="748" width="2320" height="12" fill="#2f6fdd"/>
 <text x="52" y="751" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#ffffff" font-weight="bold" text-anchor="start">Main network: one decider, 61 outputs</text>
-<rect x="60" y="780" width="260" height="271" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
-<text x="72" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">input 44</text>
+<rect x="60" y="780" width="260" height="356" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
+<text x="72" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">input 49</text>
 <text x="72" y="826" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">32 SNN numbers</text>
 <text x="72" y="843" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ prev_valence</text>
 <text x="72" y="860" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ prev_arousal</text>
@@ -279,6 +279,11 @@
 <text x="72" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ pace_fast</text>
 <text x="72" y="1013" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ pace_slow</text>
 <text x="72" y="1030" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ pace_jitter</text>
+<text x="72" y="1047" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ idea_play</text>
+<text x="72" y="1064" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ idea_show</text>
+<text x="72" y="1081" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ idea_still</text>
+<text x="72" y="1098" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ idea_social</text>
+<text x="72" y="1115" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ idea_surprise</text>
 <rect x="380" y="780" width="260" height="101" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
 <text x="392" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">GRU 64</text>
 <text x="392" y="826" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">gated recurrent unit:</text>
@@ -297,7 +302,7 @@
 <path d="M640,830 L658,830" stroke="#2f6fdd" stroke-width="2.2" fill="none" marker-end="url(#a2f6fdd)"/>
 <path d="M920,830 L958,830" stroke="#2f6fdd" stroke-width="2.2" fill="none" marker-end="url(#a2f6fdd)"/>
 <path d="M640,880 L940,880 L958,880" stroke="#2f6fdd" stroke-width="2.2" fill="none" stroke-dasharray="7 5" marker-end="url(#a2f6fdd)"/>
-<text x="380" y="910" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">30589 float parameters, 10 Hz</text>
+<text x="380" y="910" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">31549 float parameters, 10 Hz</text>
 <text x="660" y="970" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#a9c6ff" font-weight="bold" text-anchor="start">emotions</text>
 <text x="660" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">normal</text>
 <text x="755" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">happy</text>
