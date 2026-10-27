@@ -56,9 +56,9 @@ tools/v4/py behavior_test_v4.py                      # 13 scenarios in parallel,
 | hearing | claps and bangs | startled |
 | seek_motion | someone walks about the room (a few seconds at ~1 m/s, then stands), often outside the picture | report only: the share of the time the head points within 25° of them (the simulated walker is a low-contrast figure, found as often as by chance: 0.37 over 5 seeds, the same with nobody there; the robot's diary judges the motion sense) |
 | seek_light | a lamp switched on beside the desk (-55°), outside the picture | the head finds it within 2 minutes and points at it >= 0.05 more of the time than the same run with the lamp left off (`lamp_over_chance`; until 2026-10-26 >= 50 % absolute, the old busy head's level). 10 seeds, 2026-10-26: 45 % vs 16 %, found after 49-67 s |
-| contingent | someone close answers the robot's calls and gestures with a pet, 0.8-2 s later, 85 % of the time (`responder`) | joy after an answer (a joyful face 1.5 s later) >= 0.35; the answered act again within 6 s >= 0.4 (CONTINGENCY) |
-| control | the same person and as many pets, at random moments | report: calls and gestures a minute, against `contingent` |
-| still_face | answered for 4 minutes, then ignored by the same person close by, answered again at 11:00 | low faces (sad / bored) >= 20 % of 7:00-11:00; never angry or annoyed after 5:00 |
+| contingent | someone close answers the robot's calls and gestures with a pet, 0.8-2 s later, 85 % of the time (`responder`) | report over 3 seeds: joy after an answer (a joyful face 1.5 s later; 0.35 was a gate until 2026-10-27 evening - one seed's luck, 6 seeds gave 0.09-0.33), the answered act again within 8 s over chance (CONTINGENCY) |
+| control | the same person and as many pets, at random moments | calls and gestures a minute over 3 seeds: `contingent` / `control` >= 1.05 (6 seeds: 1.10) |
+| still_face | answered for 4 minutes, then ignored by the same person close by, answered again at 11:00 | over 3 seeds: low faces (sad / bored) >= 20 % of 7:00-11:00; never angry or annoyed after 5:00 |
 
 **Time.** Firmware tasks (main loop, microphone, camera, voice) run on a virtual RTOS (`simulator/core/vrtos`): each
 in its own thread but strictly one at a time, and time advances only when all wait. The same scenario and seed always
@@ -136,6 +136,9 @@ tools/v4/py reward_v4.py 2026-10-25            # a day's reward events (pet, tap
 tools/v4/py contingency.py 2026-10-27          # the contingency detector's twin over a day: answered acts, agency, ignored, the robot's ct_* vs the twin
 tools/v4/py contingency.py --measure 2026-10-26  # step 0: P(answer | act) vs chance over whole days (docs/CONTINGENCY.md)
 tools/v4/py parity_contingency.py [DAY]       # C++ ContingencyV4 == the twin on real diary days
+tools/v4/py body.py --measure 2026-10-26      # the body's channels hour by hour, the sleep pressure's twin (docs/BODY.md)
+tools/v4/py body.py 2026-10-28                # the twin's sleep pressure against the robot's (1 - raw_stamina)
+tools/v4/py parity_body.py [DAY]              # C++ BodyV4 == the twin on real diary days
 tools/v4/py contingency.py --self 2026-10-26  # me or not me: sense events that follow the robot's own acts at once
 python tools/robot/listen.py [SECONDS]        # record the robot's microphone (24 kHz, ms-stamped) -> data/sound/<day>/<time>.wav
 tools/v4/py sound_check.py data/sound/DAY/TIME  # every speech onset of the ear vs the sound and the robot's own acts, + .png

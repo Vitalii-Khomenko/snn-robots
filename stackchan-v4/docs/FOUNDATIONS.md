@@ -105,9 +105,12 @@ It is not a literature review. Only what we can use is here. The last section sa
 - **Already:** the analyzer's core affect (valence, arousal) comes from channels, the main network then *picks one
   of 21 emotions* to explain it. That is very close to Barrett's construction: affect below, category above. The
   body needs (hunger, tired, lonely) are interoceptive channels.
+- **Measured (BODY step 0, 2026-10-27):** the body's channels were a clock and a timer. Hunger was 0 on USB, the
+  servo stamina never moved, tired came from the hour alone.
+- **Built (BODY step 1):** tiredness from what the robot did (sleep pressure, section 9a).
 - **Next:**
-  - a real body budget: battery, motor heat and effort (the servos' load, the sag cycles), how much was spent
-    today, all as interoception;
+  - a real body budget: effort and arousal spent, rest and people restoring it (BODY step 2), the hung servos as
+    discomfort, all as interoception;
   - prediction in the analyzer: the Muse's curiosity already has a small forward model (`sleep_v4.surprise_of`).
     The same idea in the day loop would let surprise be "what I did not predict" rather than "what is new".
 
@@ -355,6 +358,31 @@ It is not a literature review. Only what we can use is here. The last section sa
 
 ---
 
+## 9a. Alexander Borbely: sleep pressure and the clock (the basis of BODY.md step 1)
+
+**Read:**
+- Borbely, *A two process model of sleep regulation* (Human Neurobiology, 1982);
+- Borbely, Daan, Wirz-Justice & Deboer, *The two-process model of sleep regulation: a reappraisal* (J. Sleep
+  Research, 2016);
+- Huber, Ghilardi, Massimini & Tononi, *Local sleep and learning* (Nature, 2004).
+
+**Main ideas**
+
+- **Two processes decide when we are sleepy:**
+  - **S, sleep pressure,** builds up while awake (adenosine) and drains in sleep, both exponentially;
+  - **C, the circadian clock,** sends an alerting signal by day that holds the pressure off. This is why a rested
+    adult is alert all day and sleepy in the evening (Edgar, Dement & Fuller 1993).
+- **Use builds pressure.** The cortex that learned a motor task sleeps deeper in exactly that place the next night.
+- **Children** build and drain the pressure faster, hence naps (Jenni & LeBourgeois 2006).
+
+**For StackChan**
+
+- **Built (BODY step 1, 2026-10-27):** `BodyV4` keeps S, built faster by head travel, calls and arousal. It drains
+  in the night or in a nap. The tired channel feels only S above a usual day's curve: the clock holds a usual day off.
+- **Rejected:** S without the clock's alerting signal. It made the robot dull from mid-morning every day.
+
+---
+
 ## 10. The common thread: predictive processing
 
 **Read:**
@@ -400,7 +428,7 @@ more. Rules for this project:
 4. **This file grows only with what we used.** A new source enters when a step of the robot is built on it, with
    one line in its "For StackChan".
 5. **The order of development follows infants'**, as in Oudeyer's experiment:
-   1. its own body and what it causes (contingency, self vs other);
+   1. its own body and what it causes (contingency, self vs other; the body's needs: BODY.md);
    2. people's answers (still face, turn-taking);
    3. play with the owner;
    4. memory of its own story (episodes);

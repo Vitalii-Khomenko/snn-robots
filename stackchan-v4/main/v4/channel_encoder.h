@@ -31,7 +31,8 @@ public:
         bool lightOk = false;
         float lightX = 0, lightY = 0, lightStr = 0;  // the picture's brightest spot (-1..1) and its excess (0..1)
         float headYaw = 0;               // where the head points, degrees (MotionEngine): places the spot in the room
-        float battery = 1, stamina = 1, hour = 12;
+        float battery = 1, hour = 12;
+        float stamina = 1;               // 1 - the sleep pressure (BodyV4; until 2026-10-27 the servos' travel)
         bool clockOk = false;
     };
     using Out = std::array<float, v4::kSnnInputs>;
@@ -72,6 +73,8 @@ public:
     static constexpr int kSpotPlaces = 13;  // -90 .. +90 deg
     static constexpr float kLonelyTau = 2400.0f, kLonelyMotionCap = 300.0f, kLonelyStart = 600.0f;
     static constexpr float kContactSpeech = 0.5f, kContactNear = 0.3f, kContactMotion = 0.1f;
+    // the sleep pressure above a usual day's at this hour -> tired (docs/BODY.md step 1; 0.25 * (1 - stamina) before)
+    static constexpr float kTiredFelt = 2.0f;
 
     static float nightRamp(float hour);
 

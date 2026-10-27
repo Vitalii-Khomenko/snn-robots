@@ -88,7 +88,7 @@ NOTES = {
     "touch_screen": "taps / pokes on the face", "shake": "accelerometer jitter",
     "tilt": "lean from the learned upright", "near": "IR proximity (LTR-553)",
     "light": "ambient light, log scale", "motion": "camera: share of moving cells",
-    "hunger": "1 - battery", "tired": "night ramp + low stamina", "lonely": "time without contact (40 min)",
+    "hunger": "1 - battery", "tired": "night ramp + sleep pressure above usual", "lonely": "time without contact (40 min)",
 }
 
 N_ENC, N_ZONE, N_MIX, N_ATT = len(S.CHANNELS) * 10, len(S.CHANNELS) * len(S.ZONES) * 4, 282, 96
@@ -123,7 +123,7 @@ def brain_map():
             ("IMU BMI270", ["accelerometer jitter and lean", "(masked while servos re-power)"], ["shake", "tilt"]),
             ("LTR-553", ["IR proximity + ambient light"], ["near", "light"]),
             ("Camera GC0308", ["160x120, motion grid + brightest spot", "+ where (x, y)"], ["motion"]),
-            ("Battery, clock, timers", ["AXP2101, NTP time,", "time since contact"], ["hunger", "tired", "lonely"])]
+            ("Battery, clock, body", ["AXP2101, NTP time, sleep pressure,", "time since contact"], ["hunger", "tired", "lonely"])]
     y, ys = 130, {}
     for title, lines, chans in sens:
         hh = 52 + 18 * len(lines)

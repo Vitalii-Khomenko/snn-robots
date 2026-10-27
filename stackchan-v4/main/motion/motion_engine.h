@@ -54,16 +54,7 @@ public:
         return n;
     }
 
-    // 1.0 = fully rested, 0.0 = exhausted. Tracked here rather than by
-    // whoever calls moveTo() because update() sees every degree the
-    // servos actually travel, regardless of which caller requested it
-    // (gestures, SNN-driven reactions, sleep/wake poses, ...) - a single
-    // real source of "how much has this robot physically moved lately"
-    // instead of each call site guessing its own cost. See update()'s
-    // comment for the drain/regen rule.
-    float staminaLevel() const { return stamina_; }
-    // Cumulative yaw+pitch degrees actually travelled since boot - the same
-    // quantity stamina drains on, for calibrating it against real use.
+    // Cumulative yaw+pitch degrees actually travelled since boot.
     float travelledDeg() const { return travelled_deg_; }
     // True while the head moves faster than a slow drift (saccades, nods).
     // The touch pad's servo coupling (phantom touches) comes from these.
@@ -176,21 +167,8 @@ private:
     }
     static constexpr float kTargetEpsilonDeg      = 0.1f;
 
-    float stamina_ = 1.0f;
     float travelled_deg_ = 0.0f;
     uint32_t last_moved_ms_ = 0;
-    // 2026-09-27 (user request: fatigue got in the way of testing): a full
-    // reserve is ~120000 degrees of travel, i.e. about 3 hours of continuous
-    // exploring at the ~700 deg/min NeuroBrain moves at since the
-    // exploration bouts (2026-09-27, 20-degree average saccades). The brain feels
-    // tiredness only below 70% stamina (FATIGUE input), so the robot stays
-    // fully lively for roughly the first hour of non-stop activity.
-    // Was 12000 degrees (~40 minutes), then 54000.
-    static constexpr float kStaminaCostPerDeg = 1.0f / 120000.0f;
-    // Recovery needs this long without FAST movement first (slower than
-    // kRestSpeedDegPerSec counts as resting: micro-drift, settling).
-    static constexpr uint32_t kStaminaRestDelayMs = 2000;
+    // slower than this is rest (micro-drift, settling), not a fast move (isMovingFast)
     static constexpr float kRestSpeedDegPerSec = 8.0f;
-    // Full recovery after ~5 minutes of real rest.
-    static constexpr float kStaminaRegenPerSec = 1.0f / 300.0f;
 };

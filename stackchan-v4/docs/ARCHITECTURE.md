@@ -42,8 +42,8 @@ simulator 25 s of pokes every 0.8 s no longer anger it; the first annoyed face c
 | 8 | near | IR proximity over its baseline (600 counts = full) | boredom, comfort, interest, anxiety |
 | 9 | light | ambient light, log scale (20000 counts = full) | comfort, interest, anger |
 | 10 | motion | share of the picture that moves (head's own turn removed) x3, rising in 0.5 s, falling in 4 s (a 5 s average x1.5 until 2026-10-25: a person moving about read ~0.01) | boredom, interest, anxiety, anger |
-| 11 | hunger | 1 - battery | comfort, anxiety |
-| 12 | tired | 0.75 x the night ramp (21:00-21:45 up, 06:00-06:45 down) + 0.25 x (1 - servo stamina) | comfort |
+| 11 | hunger | 1 - battery (always 0 on USB: [BODY](BODY.md) step 0) | comfort, anxiety |
+| 12 | tired | 0.75 x the night ramp (21:00-21:45 up, 06:00-06:45 down) + 2 x the sleep pressure above a usual day's at this hour (section 5, [BODY](BODY.md); 0.25 x (1 - servo stamina) until 2026-10-27, and the stamina never fell) | comfort |
 | 13 | lonely | 1 - exp(-t / 40 min) since the last contact (touch, speech, near; motion caps it at 5 min) | comfort, boredom |
 | - | motion_x, motion_y | where the motion is (-1..1) | for attention |
 | - | light_x, light_y, light_spot | the picture's brightest spot (a lamp, a window; -1..1) and how NEW it is (0..1): its excess over how bright that place in the room has looked (13 directions 15° apart from head yaw + place in the picture; each keeps its usual peak, up in 4 s of frames, down in 2 min, forgotten in 15 min; novelty starts 0.15 above it), less what was already looked at (habituation over 3 min) - 2026-10-25. Read from every frame that is not dark and taken while the head turns slower than 12°/s (2026-10-26: the calm head turns ~40 % of the time; frame_ok 0.5 in the diary = a frame for the spot only) | for attention |
@@ -181,7 +181,7 @@ The network decides **what**; `V4Executor` decides only **how**, inside fixed ru
 | head mode | the chosen mode, debounced | a mode counts once the network has kept it for two decisions (a one-decision wish - a flinch at a touch's very start - is ignored) |
 | voice | the droid babble (BabbleNet + synth) with the network's style and mood | call budget 5 tokens, 1 per 10 s (a reaction may spend the last one); **silent 21:45-06:00** and for the first 2 min of a boot without clock |
 | LEDs | colour, pattern, brightness, rate | brightness <= 6 % at night |
-| head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +6° at 60°/s, at most one every 15 s (12° at 160°/s until 2026-10-25 evening, 8° at 90°/s and every 1.5 s until 10-26: 9 flinches in 13 minutes at the owner's sounds) | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; gaze moves at most every 4 s and only for >= 12° yaw / 8° pitch (the servos hang more often the more packets they get; 2.5 s / 8° until 2026-10-25); with nothing attended for 10 s (attention <= 0.12) the wandering gaze keeps a place 5-11 s (shorter in a lively mood) and turns only for >= 20° (2026-10-25 evening, the owner: a whizz of the motors every few seconds - 11 moves a minute of ~14°); a turn of 0.8 s or more is eased (half a cosine, peak 7-20°/s; HARDWARE, servos); something new in view (attention > 0.12) is turned to 1.5x faster, still eased (at the wander's speed a lamp was no longer new when the head got there; 2.5x jerked right after a glance); curious glances (2026-10-26, the owner: "add creativity and unpredictability"): while it wanders by day, at a random moment every 40-150 s the head turns 40-70° to one side at 12°/s (the other side when it already looks aside), a little up or down, looks 4-9 s and goes back (55-90° at 20°/s for 3-7 s the first hours: the owner saw the head jerk far aside and back) - its own xorshift generator, so the simulator's world keeps its random numbers (simulator, a day alone: yaw -57..48°, beyond 30° 34 % of the time, 5.5 moves a minute); the hold of a place is drawn by chance too; at night the head only sinks into the doze (no look / scan); gesture keyframes <= 8 commands/s; yaw ±100°, pitch -20..35° |
+| head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +6° at 60°/s, at most one every 15 s (12° at 160°/s until 2026-10-25 evening, 8° at 90°/s and every 1.5 s until 10-26: 9 flinches in 13 minutes at the owner's sounds) | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; gaze moves at most every 4 s and only for >= 12° yaw / 8° pitch (the servos hang more often the more packets they get; 2.5 s / 8° until 2026-10-25); with nothing attended for 10 s (attention <= 0.12) the wandering gaze keeps a place 5-11 s (shorter in a lively mood) and turns only for >= 20° (2026-10-25 evening, the owner: a whizz of the motors every few seconds - 11 moves a minute of ~14°); a turn of 0.8 s or more is eased (half a cosine, peak 7-20°/s; HARDWARE, servos); something new in view (attention > 0.12) is turned to 1.5x faster, still eased (at the wander's speed a lamp was no longer new when the head got there; 2.5x jerked right after a glance), aimed once (head yaw + attention x 30°, within ±75°) and again only after the head has been still 0.8 s - the picture is not renewed during a turn, and re-aiming every tick from the turning head ran after a lamp at the picture's edge to -88..-100° (2026-10-27, the owner: "it jerks its head far left and back"); curious glances (2026-10-26, the owner: "add creativity and unpredictability"): while it wanders by day, at a random moment every 40-150 s the head turns 40-70° to one side at 12°/s (the other side when it already looks aside), a little up or down, looks 4-9 s and goes back (55-90° at 20°/s for 3-7 s the first hours: the owner saw the head jerk far aside and back) - its own xorshift generator, so the simulator's world keeps its random numbers (simulator, a day alone: yaw -57..48°, beyond 30° 34 % of the time, 5.5 moves a minute); the hold of a place is drawn by chance too; at night the head only sinks into the doze (no look / scan); gesture keyframes <= 8 commands/s; yaw ±100°, pitch -20..35° |
 
 What really happened (shown face, said, gestured, head pose, LED level) goes back into the network's own state.
 
@@ -228,6 +228,17 @@ are not touch_screen events for the brain; a tap on the face above the open bar 
 - **Sharp sounds:** only loud peaks from ~6000 count (weak taps and words do not); the boot click (first 10 s) is not
   a bang.
 
+**The body** (`main/v4/body_v4.cpp`, twin `tools/v4/body.py`, concept [BODY](BODY.md), step 1 2026-10-27): after
+the executor, every tick, the sleep pressure (Borbely's process S):
+- **load:** a 10-minute average of head travel, calls and the analyzer's arousal against a usual day (2.5°/s, 4 a
+  minute, 0.15); load = 1 + 2 x (effort - 1), 0.25 .. 3;
+- **awake:** the pressure rises towards 1 with 12 h / load; **asleep** (night rules, or the sleepy face shown: a nap)
+  it drains with 3 h;
+- **felt:** the tired channel takes only the pressure above `usual(hour)` (a usual day's curve: 0.05 at 06:00, 0.42 at
+  noon, 0.74 at 21:45 - the clock's alerting signal), x2;
+- the next tick's `raw_stamina` = 1 - pressure (diary); the `stats:` line shows `sleep_pressure=` and `load=`; a
+  reboot starts on the usual curve.
+
 **The sense of "I did that"** (`main/v4/contingency_v4.cpp`, twin `tools/v4/contingency.py`, concept
 [CONTINGENCY](CONTINGENCY.md); step 1 2026-10-27 06:29 wrote the diary only; since step 3 the main network sees it,
 section 3). After the executor, every tick:
@@ -253,9 +264,9 @@ section 3). After the executor, every tick:
 ## 6. The diary
 
 Every tick goes to the home PC over UDP (`main/net/life_log.*`, kind 3 datagrams, four ticks each, float16), with
-every log line. Columns (`spec_v4.DIARY`, 167): the 26 raw readings the channels are made from, the 18 channel values
+every log line. Columns (`spec_v4.DIARY`, 173): the 26 raw readings the channels are made from, the 18 channel values
 (after the zone shift: what the analyzer saw), the 32 SNN numbers, the 61 network outputs, what the body did (head
-yaw / pitch, shown face, said, gestured) the main network's 23 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), and the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got). With the raw
+yaw / pitch, shown face, said, gestured) the main network's 23 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), and the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got). `raw_stamina` is 1 - the sleep pressure since 2026-10-27 (1.0 before). With the raw
 readings any day can be re-encoded after a change of the channels; with the own state every decision can be replayed
 exactly on the PC (stage 6). Flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided
 this tick. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it (also the older layouts by column name: 135

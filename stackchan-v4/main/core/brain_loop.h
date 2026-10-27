@@ -15,6 +15,7 @@
 #include "../sensors/touch_engine.h"
 #include "../ui/face_engine.h"
 #include "../voice/babble_voice.h"
+#include "../v4/body_v4.h"
 #include "../v4/brain_v4.h"
 #include "../v4/channel_encoder.h"
 #include "../v4/contingency_v4.h"
@@ -95,6 +96,8 @@ public:
     bool gestureThisTick() const { return gesture_tick_; }
     // the sense of "I did that" (docs/CONTINGENCY.md): its numbers of the last tick (diary ct_*)
     const ContingencyV4::Out& contingency() const { return contingency_out_; }
+    // the body (docs/BODY.md): the sleep pressure (the diary's raw_stamina is 1 - it)
+    const BodyV4& body() const { return body_; }
     // diagnostics
     uint64_t tickLastUs() const { return tick_last_us_; }
     uint64_t takeTickMaxUs() { const uint64_t m = tick_max_us_; tick_max_us_ = 0; return m; }
@@ -123,6 +126,9 @@ private:
     ZoneShift zones_;
     ContingencyV4 contingency_;
     ContingencyV4::Out contingency_out_{};
+    BodyV4 body_;
+    float body_yaw_ = 0.0f, body_pitch_ = 0.0f;
+    bool body_head_ = false;
 
     // the camera's last frame (~7 fps): motion share and centre
     float motion_[3] = {0, 0, 0};

@@ -55,8 +55,14 @@ public:
     // The orienting reflex (2026-10-26 evening): the turn to what the analyzer's attention holds is the executor's own,
     // like the teacher's rule (head yaw + att_x x half the camera's width), and the place is watched kWatchMs. It was
     // left to the network; with the Muse's ideas to learn as well it turned to a new lamp no more than by chance.
-    static constexpr float kCamHalfDeg = 30.0f, kOrientDeadDeg = 8.0f;
-    static constexpr uint32_t kOrientGapMs = 1500;
+    // 2026-10-27, the owner again: "sometimes it jerks its head far left and back". The reflex re-aimed every tick
+    // from where the head was *now*, while the picture (and the attention) is not renewed during a turn: the camera
+    // takes no frames in a fast turn, so a lamp at the picture's edge stayed at att_x -0.95 and each tick added another
+    // 30 deg - after a glance to -50..-66 the head ran on to -88..-100 (11:26, 12:03, 12:51; at -100 the servos hung and
+    // the rail was cycled), then went back. Now the place is aimed at once, again only after the head has been still
+    // kAimStillMs (fresh frames), and the reflex stays within kOrientLimitDeg.
+    static constexpr float kCamHalfDeg = 30.0f, kOrientDeadDeg = 8.0f, kOrientLimitDeg = 75.0f;
+    static constexpr uint32_t kOrientGapMs = 1500, kAimStillMs = 800;
     // Curious glances (2026-10-26, the owner: "add some creativity and unpredictability"): while it wanders by day, at
     // a random moment every 40-150 s the head turns far to one side (55-90 deg, the other side when it already looks
     // aside; a little up or down), looks there 3-7 s and goes back to the network's gaze. The room's edges, which
@@ -113,6 +119,7 @@ private:
     uint32_t last_flinch_ms_ = 0;
     float watch_yaw_ = 0.0f, watch_pitch_ = 5.0f;
     uint32_t watch_until_ms_ = 0;
+    uint32_t still_since_ms_ = 0;  // the head has not moved since
     bool idea_on_[5] = {false, false, false, false, false};  // the Muse's ideas above 0.5 (logged as they come)
     uint32_t idea_log_ms_[5] = {0, 0, 0, 0, 0};  // the next curious glance; the end of the present one (0: none)
     bool attended_ = false;

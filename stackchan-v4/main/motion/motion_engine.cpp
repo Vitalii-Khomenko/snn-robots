@@ -212,26 +212,12 @@ void MotionEngine::update()
         pitch_spring_.update(dt / steps);
     }
 
-    // Stamina: drain proportional to degrees actually travelled this tick
-    // (not degrees requested - a spring easing toward a far target costs
-    // the same per real step regardless of how big the original moveTo()
-    // call was), regenerate at a flat rate whenever nothing moved. Both
-    // happen every update() call so a robot that's constantly gesturing
-    // never gets a regen tick in between.
+    // Degrees actually travelled this tick (not requested: a spring easing toward a far target travels the same per
+    // real step); the brain's sleep pressure (v4/body_v4.h) took over the old stamina on 2026-10-27.
     float moved_deg = std::abs(yaw_spring_.value - yaw_before_deg) + std::abs(pitch_spring_.value - pitch_before_deg);
     travelled_deg_ += moved_deg;
-    stamina_ -= moved_deg * kStaminaCostPerDeg;
-    // Rest = no FAST movement for a while. The slow micro-drift between
-    // saccades (a few deg/s) is rest, like a resting animal still shifting
-    // its gaze; requiring complete stillness meant stamina never recovered
-    // once the drift existed (hardware 2026-09-27: 65% and falling).
     const float speed_deg_s = dt > 0.0f ? moved_deg / dt : 0.0f;
-    if (speed_deg_s > kRestSpeedDegPerSec) {
-        last_moved_ms_ = now;
-    } else if (now - last_moved_ms_ >= kStaminaRestDelayMs) {
-        stamina_ += kStaminaRegenPerSec * dt;
-    }
-    stamina_ = std::clamp(stamina_, 0.0f, 1.0f);
+    if (speed_deg_s > kRestSpeedDegPerSec) last_moved_ms_ = now;
 
     // Keep sending packets while moving, plus exactly one more once a spring
     // settles (yaw_was_done/pitch_was_done catches that last "just finished"

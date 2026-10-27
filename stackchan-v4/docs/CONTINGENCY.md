@@ -226,6 +226,13 @@ speaker, and sharp sounds were dropped while it spoke (06:55). Wrong.
 | contingent vs control | calls and gestures 9.3 vs 8.2 a minute (x1.13); nods 36 vs 24 |
 | still_face | sad or bored 30 % of 7:00-11:00, never angry, "Confused" bids before |
 
+**Checked again over 6 seeds (2026-10-27 evening):** the 42 % above was the default seed's luck.
+- Joy 1.5 s after an answer: 0.09-0.33, mean 0.18. A joyful face at any moment: 0.15. After a pet at random
+  (`control`): 0.18-0.24.
+- **So the robot is no happier after an answer than after any pet.** The joy of being answered is not learned yet.
+- Calls and gestures, `contingent` / `control`: 1.10 on every set of seeds. This part holds.
+- The tests now judge these scenarios over 3 seeds; joy is a report until it is learned.
+
 **Not reached:** the same act again right after its answer (Piaget's repetition) is not above chance:
 - calls are at the voice budget in every scenario (70 in 12 min), so there is no room for an extra one;
 - the network learns the teacher's timed nod-again only weakly.

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "body_v4.h"
+
 namespace {
 double clamp01(double x) { return x < 0.0 ? 0.0 : x > 1.0 ? 1.0 : x; }
 double alpha(double tau) { return 1.0 - std::exp(-ChannelEncoder::kDt / tau); }
@@ -100,7 +102,9 @@ void ChannelEncoder::update(const Raw& r, Out& out)
     }
 
     const double hunger = clamp01(1.0 - r.battery);
-    const double tired = clamp01(0.75 * (r.clockOk ? nightRamp(r.hour) : 0.0) + 0.25 * (1.0 - r.stamina));
+    // the clock, and the sleep pressure above a usual day's at this hour (stamina = 1 - pressure, BodyV4; docs/BODY.md)
+    const double felt = r.clockOk ? std::max(0.0, (1.0 - r.stamina) - static_cast<double>(BodyV4::usual(r.hour))) : 0.0;
+    const double tired = clamp01(0.75 * (r.clockOk ? nightRamp(r.hour) : 0.0) + kTiredFelt * felt);
     lonely_t_ += dt;
     if (r.headEv > 0 || r.screenEv > 0 || r.headHold > 0 || r.speech > kContactSpeech || near_ > kContactNear)
         lonely_t_ = 0.0;

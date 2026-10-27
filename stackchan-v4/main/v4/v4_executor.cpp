@@ -165,6 +165,7 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
     const float amp = o[NO_GEST_AMP], speed = o[NO_GEST_SPEED], reps = o[NO_GEST_REPS];
     float yaw = 0, pitch = 0;
     motion_.getCurrentDeg(yaw, pitch);
+    if (motion_.isMoving()) still_since_ms_ = now;  // the orienting reflex aims from a still head only
     if (!sent_valid_) {
         sent_yaw_ = base_yaw_ = yaw;
         sent_pitch_ = base_pitch_ = pitch;
@@ -263,10 +264,13 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
     // watching that place kWatchMs (teacher_nn.py: ATT_LOOK, WATCH_S), whatever the network's gaze says meanwhile
     const bool free_head = mode == kHeadLook || mode == kHeadScan || mode == kHeadHold;
     if (!night && free_head && brain.snn()[SO_ATT_STRENGTH] > kAttLook) {
-        float hy = 0, hp = 0;
-        motion_.getCurrentDeg(hy, hp);
-        watch_yaw_ = std::clamp(hy + brain.snn()[SO_ATT_X] * kCamHalfDeg, -kYawLimitDeg, kYawLimitDeg);
-        watch_pitch_ = 5.0f - 0.4f * brain.snn()[SO_ATT_Y] * BrainV4::kGazePitchDeg;
+        const bool watching = watch_until_ms_ != 0 && !msReached(now, watch_until_ms_);
+        if (!watching || now - still_since_ms_ >= kAimStillMs) {  // the picture is fresh: aim (again)
+            float hy = 0, hp = 0;
+            motion_.getCurrentDeg(hy, hp);
+            watch_yaw_ = std::clamp(hy + brain.snn()[SO_ATT_X] * kCamHalfDeg, -kOrientLimitDeg, kOrientLimitDeg);
+            watch_pitch_ = 5.0f - 0.4f * brain.snn()[SO_ATT_Y] * BrainV4::kGazePitchDeg;
+        }
         watch_until_ms_ = now + kWatchMs;
         if (glance_until_ms_ != 0) {
             glance_until_ms_ = 0;

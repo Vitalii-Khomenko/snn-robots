@@ -37,7 +37,7 @@ def random_raw(T, rng):
     r["light_x"], r["light_y"] = seen * np.sin(np.arange(T) / 400), seen * 0.3
     r["head_yaw"] = 50 * np.sin(np.arange(T) / 1300)  # the head looking round: the spot's place in the room moves
     r["battery"] = np.linspace(1, 0.3, T)
-    r["stamina"] = np.ones(T) * 0.8
+    r["stamina"] = 1.0 - (0.55 + 0.4 * np.sin(np.arange(T) / 600))  # the sleep pressure, above and below usual
     r["hour"] = (20.5 + np.arange(T) * 0.05 / 3600 * 30) % 24
     r["clock_ok"] = np.ones(T)
     return r
@@ -48,7 +48,8 @@ def main():
     exe = os.path.join(OUT, "parity_channels")
     subprocess.run(["g++", "-std=c++17", "-O2", "-I", os.path.join(HERE, "..", "..", "main", "v4"),
                     os.path.join(HERE, "parity_channels.cpp"),
-                    os.path.join(HERE, "..", "..", "main", "v4", "channel_encoder.cpp"), "-o", exe], check=True)
+                    os.path.join(HERE, "..", "..", "main", "v4", "channel_encoder.cpp"),
+                    os.path.join(HERE, "..", "..", "main", "v4", "body_v4.cpp"), "-o", exe], check=True)
     T = 40000
     raw = random_raw(T, np.random.default_rng(1))
     R = np.stack([raw[n] for n in RAW], 1).astype(np.float32)

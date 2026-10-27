@@ -383,7 +383,7 @@ void RobotRuntime::logStats(uint32_t now)
     ESP_LOGI(kTag,
              "stats: busy=%u.%u%% internal_free=%uB internal_min=%uB psram_free=%uB stack_headroom=%uB mic_stack=%uB wifi=%s time=%s "
              "owner=%s tick_us=%u tick_max_us=%u missed_ticks=%u tick_ms=%u audio_us=%u mic_block_us=%u cam_fps=%.1f "
-             "cam_us=%u audio_nan=%u stamina=%u%% travel=%udeg battery=%u%% head=%d,%d servo_packets=%u cmd_travel=%.0fdeg "
+             "cam_us=%u audio_nan=%u sleep_pressure=%.2f load=%.2f travel=%udeg battery=%u%% head=%d,%d servo_packets=%u cmd_travel=%.0fdeg "
              "real_rotation=%.0fdeg imu=%u/%u gyro_max=%.0f gyro_restarts=%u servo_repowers=%u face_fps=%u "
              "face_frame_max_us=%u mic_peak=%d/%d/%d voice=%s voice_gaps=%u voice_load=%u.%u%% touch_storms=%u diary=%u/%u",
              busy / 10, busy % 10, static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
@@ -398,7 +398,8 @@ void RobotRuntime::logStats(uint32_t now)
              static_cast<unsigned>(loop_.audioUs()), static_cast<unsigned>(mic_.audioFront().blockUs()),
              static_cast<double>(camera_.takeFrameCount() * 1e6f / static_cast<float>(window_us)),
              static_cast<unsigned>(camera_.frontUs()), static_cast<unsigned>(loop_.auditory().nanCount()),
-             pct(motion_.staminaLevel()), static_cast<unsigned>(motion_.travelledDeg()),
+             static_cast<double>(loop_.body().pressure()), static_cast<double>(loop_.body().load()),
+             static_cast<unsigned>(motion_.travelledDeg()),
              pct(power_status_.batteryLevel01()), static_cast<int>(head_yaw), static_cast<int>(head_pitch),
              static_cast<unsigned>(servo_sent), motion_.travelledDeg() - last_travel_deg_, imu_.takeRotationDeg(),
              static_cast<unsigned>(imu_reads), static_cast<unsigned>(imu_fails), static_cast<double>(gyro_max),

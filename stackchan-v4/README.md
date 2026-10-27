@@ -34,6 +34,7 @@ face):
 | [docs/HARDWARE.md](docs/HARDWARE.md) | the board, servos, sensors, memory, flashing and recovery, known limits |
 | [docs/CREATIVITY.md](docs/CREATIVITY.md) | the Muse: a chaotic reservoir network that gives the robot ideas (built 2026-10-26) |
 | [docs/CONTINGENCY.md](docs/CONTINGENCY.md) | concept: the sense of "I did that" - noticing being answered, the still face, turn-taking |
+| [docs/BODY.md](docs/BODY.md) | the body and its needs: what the diary says the body feels (step 0), sleep pressure (step 1, built), the body budget next |
 | [docs/FOUNDATIONS.md](docs/FOUNDATIONS.md) | what we take from the study of people: Panksepp, Barrett, Damasio, Oudeyer, infant research; how not to get buried |
 | [docs/HISTORY.md](docs/HISTORY.md) | how the project got here (v1 .. v4, platform B), what was learned, where the old code lives |
 | [BRAIN_V4_PLAN.txt](BRAIN_V4_PLAN.txt), [BRAIN_V4_INPUT_SCALES.txt](BRAIN_V4_INPUT_SCALES.txt) | the owner's design of v4 and the sense scales (in Russian) |
@@ -127,6 +128,14 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   - Step 2 cleaned the ears: the ear's "speech" was the robot's own
   voice tail and its servos, ~250 times an hour; now speech must be a voice (periodic at 80-400 Hz above the room):
   ~290 -> ~35 onsets an hour. Its microphone can be recorded on the PC (`tools/robot/listen.py`).
+- The body (2026-10-27, step 1 of [BODY](docs/BODY.md)): the diary showed the needs were a clock and a timer
+  (hunger 0 on USB, the servo stamina never below 1.00, tired only by the hour; lonely was kept at 0 by the robot's
+  own voice until the voice check). Now tiredness is a sleep pressure (Borbely's process S) that builds with what the
+  robot does (head travel, calls, arousal) and drains in sleep or a nap; only pressure above a usual day's is felt. A
+  busy day makes it tired and sleepy in the dark, a usual day is as before.
+- The orienting reflex no longer runs away (2026-10-27, the owner: "it jerks its head far left and back"): it
+  re-aimed every tick from the turning head while the picture stood still, and a lamp at the picture's edge drove the
+  head after a glance on to -88..-100° (the servos hung there). Now it aims once and again only from a still head.
 - The Muse (2026-10-26): a small chaotic reservoir network next to the main one. It gives the main network its
   "random" pacemakers (now coloured by the mood) and five ideas (play, show, still, social, surprise), which the
   robot acts when nothing calls for a reaction. It gets bored of its own ideas and learns at night which ones the

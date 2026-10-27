@@ -21,11 +21,13 @@ Raw inputs (dict of float32 arrays [T], missing ones default to 0):
   frame_ok    1 in a tick with a fresh, usable camera frame (not blind, not during our own motion); 0.5: a fresh frame
               good for the bright spot only (the head turning slowly, 2026-10-26)
   light_x, light_y, light_str   the picture's brightest spot (-1..1) and its excess over the frame (0..1)
-  battery     0..1, stamina 0..1 (the servos' tiredness), hour 0..24, clock_ok 1 when the clock is synced
+  battery     0..1, stamina 0..1 (1 - the sleep pressure, body.py; until 2026-10-27 the servos' travel: 1),
+  hour        0..24, clock_ok 1 when the clock is synced
 """
 import numpy as np
 from numba import njit
 
+import body
 from spec_v4 import CHANNELS, RAW, SNN_IN
 
 DT = 0.05
@@ -44,6 +46,7 @@ SPOT_CAM_HALF_DEG, SPOT_PLACE_DEG, SPOT_FORGET_TAU, SPOT_PLACES = 30.0, 15.0, 90
 SPOT_FALL_TAU, SPOT_MARGIN = 120.0, 0.15  # a place keeps its usual peak
 LONELY_TAU, LONELY_MOTION_CAP, LONELY_START = 2400.0, 300.0, 600.0
 CONTACT_SPEECH, CONTACT_NEAR, CONTACT_MOTION = 0.5, 0.3, 0.1
+TIRED_FELT = body.TIRED_FELT  # the sleep pressure above a usual day's at this hour -> tired (0.25 * (1 - stamina) before)
 
 
 
@@ -59,6 +62,7 @@ def night_ramp(h):
 
 
 _night_ramp = njit(cache=True)(night_ramp)
+_usual = njit(cache=True)(body.usual)
 
 
 @njit(cache=True)
@@ -164,7 +168,8 @@ def _encode(R, out, state):
             ly *= 0.98
 
         hunger = _clamp(1.0 - battery)
-        tired = _clamp(0.75 * (_night_ramp(hour) if clock_ok > 0 else 0.0) + 0.25 * (1.0 - stamina))
+        felt = max(0.0, (1.0 - stamina) - _usual(hour)) if clock_ok > 0 else 0.0
+        tired = _clamp(0.75 * (_night_ramp(hour) if clock_ok > 0 else 0.0) + TIRED_FELT * felt)
         lonely_t += DT
         if head_ev > 0 or screen_ev > 0 or head_hold > 0 or speech > CONTACT_SPEECH or near > CONTACT_NEAR:
             lonely_t = 0.0

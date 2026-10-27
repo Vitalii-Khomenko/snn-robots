@@ -200,7 +200,7 @@ void BrainLoop::updateChannels(uint32_t now, float sharpEv, const Env& env)
     float pitch_now = 0.0f;
     e_.motion.getCurrentDeg(r.headYaw, pitch_now);
     r.battery = e_.power.batteryLevel01();
-    r.stamina = e_.motion.staminaLevel();
+    r.stamina = 1.0f - body_.pressure();  // the last tick's (BodyV4 steps after the executor)
     r.hour = env.hour;
     r.clockOk = env.timeSynced;
     encoder_.update(r, channels_);
@@ -255,6 +255,21 @@ void BrainLoop::tick(uint32_t now, const Env& env)
             ESP_LOGI(kTag, "contingency: %s answered by %s after %.1f s (agency %.2f)", ContingencyV4::actName(credit.act),
                      ContingencyV4::answerName(credit.answer), static_cast<double>(credit.latencyMs) / 1000.0,
                      static_cast<double>(contingency_out_[CT_AGENCY]));
+    }
+    {
+        // the sleep pressure (docs/BODY.md): what this tick cost, as the diary logs it (tools/v4/body.py replays it)
+        float yaw = 0.0f, pitch = 0.0f;
+        e_.motion.getCurrentDeg(yaw, pitch);
+        BodyV4::In in;
+        in.dtS = std::min(1.0f, static_cast<float>(tick_period_ms_) / 1000.0f);
+        in.clockOk = env.timeSynced;
+        in.hour = env.hour;
+        in.movedDeg = body_head_ ? std::fabs(yaw - body_yaw_) + std::fabs(pitch - body_pitch_) : 0.0f;
+        in.said = said_tick_;
+        in.arousal = brain_.snn()[SO_AROUSAL];
+        in.asleep = night_ || (brain_.trained() && exec_.shownEmotion() == NO_EMO_SLEEPY - NO_EMO_NORMAL);
+        body_.step(in);
+        body_yaw_ = yaw, body_pitch_ = pitch, body_head_ = true;
     }
     if (decided) {
         if (!brain_.trained()) {
