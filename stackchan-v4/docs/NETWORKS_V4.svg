@@ -1,21 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1500" width="2400" height="1500">
 <defs>
-<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
-<marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
-<marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
-<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
-<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
-<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
-<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
-<marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
-<marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
-<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
 <marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
+<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
+<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
+<marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
+<marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
+<marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
+<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
 <marker id="a26a6a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#26a6a6"/></marker>
+<marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
+<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
 <marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
+<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
+<marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
 </defs>
 <rect width="2400" height="1500" fill="#0f1420"/>
-<text x="40" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="32" fill="#e6ebf5" font-weight="bold" text-anchor="start">Brain v4: inside the two networks</text>
+<text x="40" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="32" fill="#e6ebf5" font-weight="bold" text-anchor="start">Brain v4: inside the networks</text>
 <text x="40" y="82" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#9aa6bf" font-weight="normal" text-anchor="start">left: how a channel's number becomes spikes and zone activity; right: what the main network chooses</text>
 <rect x="40" y="130" width="1120" height="560" rx="10" fill="#171e2e" stroke="#d9534f" stroke-width="2.5"/>
 <rect x="40" y="130" width="1120" height="30" rx="10" fill="#d9534f"/>
@@ -303,6 +303,17 @@
 <path d="M920,830 L958,830" stroke="#2f6fdd" stroke-width="2.2" fill="none" marker-end="url(#a2f6fdd)"/>
 <path d="M640,880 L940,880 L958,880" stroke="#2f6fdd" stroke-width="2.2" fill="none" stroke-dasharray="7 5" marker-end="url(#a2f6fdd)"/>
 <text x="380" y="910" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">31549 float parameters, 10 Hz</text>
+<rect x="380" y="940" width="260" height="200" rx="8" fill="#1d1a30" stroke="#d9534f" stroke-width="1.5"/>
+<text x="392" y="964" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#e2c4f2" font-weight="bold" text-anchor="start">the Muse (muse_v4.cpp)</text>
+<text x="392" y="986" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">64 leaky tanh neurons, a chaotic</text>
+<text x="392" y="1004" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">reservoir (0.5 s / 3 s / 60 s groups),</text>
+<text x="392" y="1022" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">pushed by 8 of the SNN's moods</text>
+<text x="392" y="1040" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">-&gt; 3 pacemakers + 5 ideas:</text>
+<text x="392" y="1058" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">play, show, still, social, surprise</text>
+<text x="392" y="1076" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">bored of its own ideas (90 s);</text>
+<text x="392" y="1094" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">the night learns one bias per idea</text>
+<text x="392" y="1112" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">(answered ideas + curiosity)</text>
+<path d="M378,1040 L322,1040" stroke="#d9534f" stroke-width="2.2" fill="none" marker-end="url(#ad9534f)"/>
 <text x="660" y="970" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#a9c6ff" font-weight="bold" text-anchor="start">emotions</text>
 <text x="660" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">normal</text>
 <text x="755" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">happy</text>
@@ -363,8 +374,8 @@
 <text x="80" y="1270" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      (surrogate gradients, TBPTT; the last 30 % of the epochs with int8 fake quantisation, as on the robot).</text>
 <text x="80" y="1296" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Data: 1400 synthetic 5-minute lives (quiet nights, play, being alone, rough handling) + 400 slices of the real diary.</text>
 <text x="80" y="1322" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">NN: a behaviour teacher with memory (teacher_nn.py) acts on the SNN's numbers and the network imitates it; then DAgger: the network acts, its own choices</text>
-<text x="80" y="1348" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      feed back into its inputs and the teacher labels the states it really visits. Emotion agreement acting alone: 0.90 (real lives 0.92).</text>
+<text x="80" y="1348" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      feed back into its inputs and the teacher labels the states it really visits. Emotion agreement acting alone: 0.84 (real lives 0.82), three DAgger rounds since the Muse.</text>
 <text x="80" y="1374" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Checks: C++ on the robot gives the same numbers as PyTorch (parity tests); simulator behaviour tests: every touch answered, petting is not annoying,</text>
 <text x="80" y="1400" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      pokes are, nights are silent, play shows many faces, a lonely robot talks, shakes and claps frighten.</text>
-<text x="80" y="1426" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Life (stage 6): every night the action heads are fine-tuned on the robot's real days with AWR, rewarded by how people answered; the zones of the environment channels shift by experience.</text>
+<text x="80" y="1426" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Life (stage 6): every night the action heads are fine-tuned on the robot's real days with AWR, rewarded by how people answered; the zones of the environment channels shift by experience; the Muse's idea biases follow what was answered.</text>
 </svg>
