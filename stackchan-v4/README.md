@@ -143,8 +143,10 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   - a servo that missed the position-mode limits at power-on read the goal time as motor power;
   - after a hang the first goal was far from the real head.
 
-  Now the limits go out twice and the goal before the torque, and the first move after a switch-on is slow. Hangs
-  rose to ~20 an hour with the slow glances of 10-26 evening; glances are back to a 20°/s peak as a test. See
+  Now the limits go out twice and the goal before the torque, the first move after a switch-on is slow, and since
+  19:06 position mode is also saved in the servos' EEPROM (the first 3 switch-ons of a boot), so a servo that misses
+  every packet still wakes in position mode. Jerks: 2.0 % of the switch-ons in the hour before, 0.7 % in the hour
+  after. Hangs (~20 an hour) do not depend on the glance speed (12 and 20°/s gave the same). See
   [HARDWARE](docs/HARDWARE.md#servos) and `tools/v4/jerks.py`.
 - The Muse (2026-10-26): a small chaotic reservoir network next to the main one. It gives the main network its
   "random" pacemakers (now coloured by the mood) and five ideas (play, show, still, social, surprise), which the

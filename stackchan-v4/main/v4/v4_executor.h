@@ -73,6 +73,8 @@ public:
     // 2026-10-27: the jerks were the servos' own (docs/HARDWARE.md, the head's own jerks), not the glances. The slow
     // glances came with ~20 hangs an hour instead of 0-3 (a third of them within 8 s of a glance's start, 6x the
     // chance): back to a 20 deg/s peak (kGlanceSpeedDegS 40, halved by the eased move), 40-70 deg - a test.
+    // 18:00-19:00 at 20 deg/s: 20 hangs (8.6 % of the switch-ons), as at 12 deg/s - the glance speed does not cause them
+    // (a glance's start is simply where the rail comes on). Kept.
     static constexpr uint32_t kGlanceGapMinMs = 40000, kGlanceGapMaxMs = 150000, kGlanceHoldMinMs = 4000,
                               kGlanceHoldMaxMs = 9000;
     static constexpr float kGlanceYawMinDeg = 40.0f, kGlanceYawMaxDeg = 70.0f, kGlanceSpeedDegS = 40.0f;

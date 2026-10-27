@@ -116,6 +116,8 @@ private:
     uint32_t packets_sent_ = 0;
     bool force_write_ = false;
     bool limits_written_[2] = {false, false};  // position-mode limits sent since power-on
+    int eeprom_writes_ = 0;                    // position mode saved in the servos' EEPROM since boot (kEepromWrites)
+    static constexpr int kEepromWrites = 3;
     static constexpr uint32_t kTorqueRefreshMs = 3000;
     // Sparse writes (2026-10-20): one packet per move with the destination and the time to get there (the servo
     // glides there by itself), one more when the move has settled, a new one only when the destination moves by

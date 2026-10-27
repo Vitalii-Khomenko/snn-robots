@@ -133,6 +133,16 @@ by itself, in the 5 s `stats:` windows: a peak over 300°/s with 40° more real 
   glance's start, 6 times the chance. Glances are back to a 20°/s peak (`kGlanceSpeedDegS` 40), 40-70°, as a test.
 - **After the first fix** (17:15-17:36): 1 jerk window in 56 switch-ons. **After the second** (from 17:36): the only
   jerk came right after a hang (340°/s logged).
+- **The hour that followed** (18:01-19:00, glances at 20°/s): 5 jerk windows in 245 switch-ons (2.0 %), 11 logged at
+  a switch-on, 8 of them with no hang; 21 hangs (8.6 %), the same as with the 12°/s glances. So the glance speed
+  does not cause the hangs: a glance's start is simply where the rail comes on. The 20°/s glances are kept.
+- **Position mode in the EEPROM** (19:06): two copies of the limits 4 ms apart are lost together when a servo is not
+  up yet. Position mode now also goes into the servos' EEPROM (unlock, limits 0/1000, lock: `eeprom_writes_`, at
+  the first `kEepromWrites` = 3 switch-ons of each boot, ~10 EEPROM writes a day). A servo that misses every
+  packet after a power-on then still wakes in position mode. The hour after: 2 jerk windows in 271 switch-ons
+  (0.7 %), 4 logged at a switch-on (2 after a hang); 17 hangs (6.3 %). Fewer, not none; a whole day will tell.
+- **Still open: the hangs themselves**, ~20 an hour since 10-26 evening (0-3 that day). Nothing in the firmware
+  timing explains them so far; the supply (`vbus_min` dips to ~4.8 V at a switch-on) and the cable are next.
 
 **2026-10-25 evening, eased moves** (the owner, sitting next to it: "a short whizz of the motors every few seconds -
 it should move slowly and smoothly"): the diary showed 11 moves a minute, one every ~4.4 s, each ~14° in ~1.3 s, and an

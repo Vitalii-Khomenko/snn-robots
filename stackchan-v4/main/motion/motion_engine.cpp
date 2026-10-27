@@ -126,6 +126,20 @@ void MotionEngine::writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_
         // motor mode, took the torque, and read the goal time as motor power - since the eased waypoints (2026-10-25
         // evening) that is ~500, half power, not the old creep - until the next power-on put it back in position mode.
         // Now the limits go out twice, then the goal where the head is now, and only then the torque.
+        // 19:00 the same evening: still 2 % of the switch-ons (11 in an hour, 8 with no hang) - two copies 4 ms apart
+        // are lost together when a servo is not up yet. So position mode goes into the servos' EEPROM too, once per
+        // boot, at the first kEepromWrites switch-ons in case one is missed (~10 writes a day): a servo that misses every packet after a power-on still wakes in position mode.
+        if (eeprom_writes_ < kEepromWrites && (!limits_written_[0] || !limits_written_[1])) {
+            bus_.unLockEprom(kBroadcast);
+            esp_rom_delay_us(5000);
+            bus_.writeWord(kBroadcast, SCSCL_MIN_ANGLE_LIMIT_L, 0);
+            esp_rom_delay_us(5000);
+            bus_.writeWord(kBroadcast, SCSCL_MAX_ANGLE_LIMIT_L, 1000);
+            esp_rom_delay_us(5000);
+            bus_.LockEprom(kBroadcast);
+            esp_rom_delay_us(5000);
+            ++eeprom_writes_;
+        }
         if (!limits_written_[0] || !limits_written_[1]) {
             for (int k = 0; k < 2; ++k) {
                 bus_.writeWord(kBroadcast, SCSCL_MIN_ANGLE_LIMIT_L, 0);

@@ -10,6 +10,8 @@ public:
     int Level = 1;
     uint8_t getState() { return 0; }
     int writeWord(uint8_t, uint8_t, uint16_t) { return 1; }
+    int unLockEprom(uint8_t) { return 1; }
+    int LockEprom(uint8_t) { return 1; }
     int readWord(uint8_t, uint8_t) { return -1; }
     bool begin(int uart, int baud, int tx, int rx);
     int WritePos(uint8_t id, int16_t position, uint16_t time_ms, uint16_t speed);
