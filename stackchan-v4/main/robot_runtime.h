@@ -68,6 +68,10 @@ private:
     float unseen_deg_ = 0.0f;  // commanded degrees the gyro has not confirmed since it last saw the head turn
     static constexpr float kUnseenDeg = 25.0f;
     uint32_t servo_repowers_ = 0;
+    // the head's own jerks (2026-10-27): the gyro's peak in the first 1.5 s after each rail switch-on
+    bool rail_was_on_ = true;
+    uint32_t rail_on_at_ms_ = 0, servo_jerks_ = 0;
+    float rail_peak_ = 0.0f;
     uint32_t panel_recover_ms_ = 0, next_panel_refresh_ms_ = 60000;
     uint32_t repower_times_[3] = {0, 0, 0};
     int series_level_ = 0;

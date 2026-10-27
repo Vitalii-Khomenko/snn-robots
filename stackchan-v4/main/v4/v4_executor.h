@@ -70,9 +70,12 @@ public:
     // decides what the robot feels and wants, this only how its idle head moves.)
     // 2026-10-26 evening, the owner: "sometimes it jerks its head far to the side and back" - 55-90 deg at a 20 deg/s
     // peak and back after 3-7 s: now 40-70 deg at 12 deg/s, looking 4-9 s.
+    // 2026-10-27: the jerks were the servos' own (docs/HARDWARE.md, the head's own jerks), not the glances. The slow
+    // glances came with ~20 hangs an hour instead of 0-3 (a third of them within 8 s of a glance's start, 6x the
+    // chance): back to a 20 deg/s peak (kGlanceSpeedDegS 40, halved by the eased move), 40-70 deg - a test.
     static constexpr uint32_t kGlanceGapMinMs = 40000, kGlanceGapMaxMs = 150000, kGlanceHoldMinMs = 4000,
                               kGlanceHoldMaxMs = 9000;
-    static constexpr float kGlanceYawMinDeg = 40.0f, kGlanceYawMaxDeg = 70.0f, kGlanceSpeedDegS = 24.0f;
+    static constexpr float kGlanceYawMinDeg = 40.0f, kGlanceYawMaxDeg = 70.0f, kGlanceSpeedDegS = 40.0f;
     // the flinch: at most one every kFlinchGapMs by day (2026-10-26: 9 in 13 minutes at the owner's sounds)
     static constexpr uint32_t kFlinchGapMs = 15000;
     static constexpr uint32_t kGestureGapMs = 4000;    // nod / shake at most every 4 s

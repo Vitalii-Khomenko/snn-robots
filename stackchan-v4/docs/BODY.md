@@ -136,12 +136,21 @@ Live after the flash (16:55): the robot equals the twin (budget 0.0002), load 0.
 
 1. **Watch steps 1-2 for a few days** (`body.py DAY`: the twin against `raw_stamina` and `raw_budget`, hour by
    hour): the load of real days, the felt pressure, naps, the budget's lows and what refilled it.
-2. **A low budget in behaviour.** Now it only lowers the analyzer's valence. The teacher could make it visible:
-   - seeking comfort (bids towards someone near);
-   - quieter, slower;
-   - "unwell" only when really low.
-
-   That means a retrain, with lives where the budget runs low.
+2. **A low budget in behaviour.** Now it only lowers the analyzer's valence. **Tried 2026-10-27 evening, not
+   deployed.** The attempt is saved as `tools/v4/out/body_step3_attempt_2026-10-27.patch`, its training log as
+   `out/retrain_nn_2026-10-27_body.log`.
+   - **Teacher rules:**
+     - hunger_n > 0.4 with someone around: asking calls every 12 s, a look to them, a sad / shy face;
+     - the same alone: babbles half as often, bored or sleepy when nothing happens;
+     - sleepiness 0.35-0.65 by day: babbles up to half as often, gestures slower.
+   - **Training lives:** 20 % of the synthetic lives got a tired day and 20 % a low budget.
+   - **The network learned it worse than the old one:**
+     - agreement with the teacher 0.83 -> 0.74 (real lives 0.78 -> 0.65);
+     - the still face failed (low faces 0.17, wanted >= 0.2), and "very happy" crowded the faces;
+     - in `hard_day` the robot did not get quieter (calls 4.9 against 4.4 a minute).
+   - **The analyzer itself is fine:** a budget of 0.26 reads hunger_n 0.70. Above 0.8 of the channel it falls
+     back (1.0 -> 0.46): it has never seen that. The next try needs fewer, clearer rules and a retrain of the
+     analyzer with real lows.
 3. **Real interoception.** The hung servos are already an ache in the budget; the USB sag too. The heat is flat: no
    signal there. The hangs themselves are a hardware problem worth its own look: ~20 an hour.
 4. **Needs drive behaviour.** Lonely already makes the robot seek and bid. Rest-seeking (dim, quieter, slower head

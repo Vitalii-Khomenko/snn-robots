@@ -1,0 +1,130 @@
+diff --git i/stackchan-v4/tools/v4/teacher_nn.py w/stackchan-v4/tools/v4/teacher_nn.py
+index 5a134e3..b49fd60 100644
+--- i/stackchan-v4/tools/v4/teacher_nn.py
++++ w/stackchan-v4/tools/v4/teacher_nn.py
+@@ -117,6 +117,12 @@ WATCH_S = 10.0
+ ANSWER_ON, GAME_REPS, GAME_END_S = 0.55, 3, 30.0
+ BID_ON, WITHDRAW_ON, BID_SAY_S = 0.45, 0.75, 5.0
+ AGENCY_WAIT, WAIT_S = 0.15, 2.5
++# The body (docs/BODY.md step 3, 2026-10-27): the analyzer's drives. A low body budget (hunger_n above LOW_ON) with
++# someone around (loneliness below COMPANY) seeks comfort - asking calls every COMFORT_SAY_S, a look to whoever was
++# there, a soft sad / shy face (Coan: a depleted creature turns to its people); alone it saves itself - babbles half as
++# often, bored or sleepy when nothing happens. Tired by day (sleepiness above TIRED_ON, still below sleep's 0.65):
++# babbles up to half as often and gestures slower, and drifts into a sleepy face when nothing happens.
++LOW_ON, COMPANY, COMFORT_SAY_S, TIRED_ON = 0.4, 0.3, 12.0, 0.35
+ JOY_FACES = ["happy", "very_happy", "laughing", "wink"]
+ 
+ 
+@@ -258,6 +264,10 @@ class Teacher:
+             return "sleepy", False
+         if hunger > 0.75:
+             return pick(["sick", "sleepy", "sad"], ps), False
++        if hunger > LOW_ON and under > 0.25:  # a low budget, nothing going on: saving itself
++            return pick(["bored", "sad", "sleepy", "bored"], ps), False
++        if sleepy > TIRED_ON + 0.1 and under > 0.25:  # tired by day, nothing going on: dozing off
++            return pick(["sleepy", "bored", "sleepy"], ps), False
+         if under > 0.42 and lonely > 0.5:
+             return pick(["sad", "bored", "sad", "crying"] if under > 0.6 else ["bored", "sad", "bored"], ps), False
+         if under > 0.3:
+@@ -333,6 +343,11 @@ class Teacher:
+         joy = not urgent and not night and self.since_answer < 2.5
+         bid = not urgent and not night and not joy and BID_ON < ignored <= WITHDRAW_ON
+         withdraw = not urgent and not night and not joy and ignored > WITHDRAW_ON
++        # the body: a low budget seeks comfort from whoever is around (or saves itself alone); tired by day: slower
++        low = not urgent and not night and s[S["hunger_n"]] > LOW_ON
++        comfort = low and not joy and not withdraw and s[S["loneliness"]] < COMPANY
++        tired_k = 0.0 if night else float(np.clip((s[S["sleepiness"]] - TIRED_ON) / (0.65 - TIRED_ON), 0, 1))
++        slow = (2.0 if low and not comfort else 1.0) * (1.0 + tired_k)
+         if joy:
+             # the joy of control (Watson 1972): stronger the more the world answers; after being ignored, a repair
+             want = "very_happy" if repaired else pick(JOY_FACES if agency > 0.1 else ["happy", "surprised", "happy"],
+@@ -341,6 +356,8 @@ class Teacher:
+             want = pick(["sad", "bored", "sad"], pace[1])  # the still face: withdrawn, never angry (Tronick 1978)
+         elif bid and want not in ("sleepy",):
+             want = pick(["curious", "confused", "curious", "happy"], pace[1])  # bids: asking, inviting
++        elif comfort and want not in ("sleepy", "sick"):
++            want = pick(["sad", "shy", "sad", "curious"], pace[1])  # low: turning to its people
+         if do_repeat == "face":
+             # the same act a little different (Piaget's tertiary circular reaction): another face of the joyful kind
+             others = [f for f in JOY_FACES + ["love", "surprised"] if f != self.emo]
+@@ -375,12 +392,15 @@ class Teacher:
+             say = True  # an answered call: again (Piaget's secondary circular reaction)
+         elif bid and self.since_sound > BID_SAY_S:
+             say = True  # a bid: an asking call
++        elif comfort and self.since_sound > COMFORT_SAY_S:
++            say = True  # low: asking for comfort
+         elif idea == "play" and self.since_sound > 2.0:
+             say = True  # a sound game: short calls in a row
+         elif idea in ("social", "surprise") and (idea_start or (idea == "social" and self.since_sound > 3.5)):
+             say = True
+         elif (idea != "still" and not withdraw and
+-              self.since_sound > (6.0 + 10.0 * (1 - aro)) * (0.6 if agency > 0.3 else 1.0) and pace[0] > 0.55 - 0.3 * aro):
++              self.since_sound > (6.0 + 10.0 * (1 - aro)) * (0.6 if agency > 0.3 else 1.0) * slow and
++              pace[0] > 0.55 - 0.3 * aro):
+             say = True  # idle babble: ~ every 8-25 s by day, more often while the world answers
+         if say:
+             self.speak_ticks = 3
+@@ -388,7 +408,7 @@ class Teacher:
+             y[O["say"]] = 1.0
+             self.speak_ticks -= 1
+         style = {"play": "play", "social": "ask", "surprise": "play"}.get(idea, style)
+-        if bid:
++        if bid or comfort:
+             style = "ask"
+         elif do_repeat == "call" or joy:
+             style = "play"
+@@ -465,8 +485,8 @@ class Teacher:
+                 mode = "look_down"  # the still face: turned down and away
+             elif emo in ("sad", "shy", "crying") and self.emo_age < 3:
+                 mode = "look_down"
+-            elif bid:
+-                mode, gaze = "look", (self.seen, -0.1)  # a bid: to whoever was there
++            elif bid or comfort:
++                mode, gaze = "look", (self.seen, -0.1)  # a bid, or asking for comfort: to whoever was there
+             elif agency > AGENCY_WAIT and self.since_sound < WAIT_S and self.last_act == "call":
+                 mode, gaze = "hold", self.head  # the world answers: wait for its answer
+             elif idea == "still":
+@@ -485,7 +505,7 @@ class Teacher:
+         y[O["gaze_yaw"]], y[O["gaze_pitch"]] = gaze
+         amp = {"nod": 0.4 + 0.5 * aro, "shake": 0.35 + 0.6 * aro if emo != "sad" else 0.3}.get(mode, 0.5)
+         y[O["gest_amp"]] = float(np.clip(amp, 0, 1))
+-        y[O["gest_speed"]] = float(np.clip(0.3 + 0.6 * aro, 0, 1)) * (0.5 if night else 1.0)
++        y[O["gest_speed"]] = float(np.clip(0.3 + 0.6 * aro, 0, 1)) * (0.5 if night else 1.0 - 0.4 * tired_k)
+         y[O["gest_reps"]] = float(np.clip(0.3 + 0.5 * aro, 0, 1))
+         if idea == "surprise" and mode == "nod":
+             y[O["gest_amp"]], y[O["gest_reps"]] = 0.8, 1.0
+diff --git i/stackchan-v4/tools/v4/train_nn_v4.py w/stackchan-v4/tools/v4/train_nn_v4.py
+index 49e31a5..a04febc 100644
+--- i/stackchan-v4/tools/v4/train_nn_v4.py
++++ w/stackchan-v4/tools/v4/train_nn_v4.py
+@@ -30,9 +30,29 @@ GAZE = [O["gaze_yaw"], O["gaze_pitch"]]
+ LOOKS = [O["head_look"], O["head_scan"]]
+ 
+ 
++# The body (docs/BODY.md step 3, 2026-10-27): the analyzer's dataset hardly has a tired day or a low body budget (the
++# synthetic stamina sat near 1, the battery runs low in 30 % of the lives only). A share of the synthetic lives gets a
++# felt tiredness by day (the tired channel at least TIRED_LO..HI) or a low budget (hunger at least HUNGER_LO..HI), so
++# the network sees the drives it has to answer.
++BODY_SHARE, TIRED_LO, TIRED_HI, HUNGER_LO, HUNGER_HI = 0.2, 0.15, 0.55, 0.3, 0.85
++
++
++def body_variety(X, real, rng):
++    from spec_v4 import SNN_IN
++    ti, hi = SNN_IN.index("tired"), SNN_IN.index("hunger")
++    X = X.copy()
++    for n in np.flatnonzero(~real):
++        u = rng.random()
++        if u < BODY_SHARE:
++            X[n, :, ti] = np.maximum(X[n, :, ti], rng.uniform(TIRED_LO, TIRED_HI))
++        elif u < 2 * BODY_SHARE:
++            X[n, :, hi] = np.maximum(X[n, :, hi], rng.uniform(HUNGER_LO, HUNGER_HI))
++    return X
++
++
+ def build():
+     d = np.load(os.path.join(OUT, "snn_data.npz"))
+-    X = d["X"]
++    X = body_variety(d["X"], d["real"], np.random.default_rng(27))
+     dev = "cuda" if torch.cuda.is_available() else "cpu"
+     m = SnnV4().to(dev)
+     m.load_state_dict(torch.load(os.path.join(DATA, "snn_v4.pt"), weights_only=False)["state"])

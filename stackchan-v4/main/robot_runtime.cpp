@@ -269,6 +269,23 @@ bool RobotRuntime::begin()
 // see kUpdateMs); this catches whatever is left.
 void RobotRuntime::superviseServos(uint32_t now)
 {
+    // The head's own jerks (2026-10-27, the owner): the commanded model never moves faster than ~40 deg/s, so a gyro
+    // peak over 300 deg/s in the first 1.5 s after the rail came on is the servo running off by itself.
+    if (motion_.railOn() && !rail_was_on_) rail_on_at_ms_ = now ? now : 1, rail_peak_ = 0.0f;
+    rail_was_on_ = motion_.railOn();
+    if (rail_on_at_ms_) {
+        float gx, gy, gz;
+        imu_.getGyro(gx, gy, gz);
+        rail_peak_ = std::max(rail_peak_, std::sqrt(gx * gx + gy * gy + gz * gz));
+        if (now - rail_on_at_ms_ >= 1500) {
+            if (rail_peak_ > 300.0f) {
+                ++servo_jerks_;
+                ESP_LOGW(kTag, "servos: a jerk of %.0f deg/s in the 1.5 s after the rail came on (%s)",
+                         static_cast<double>(rail_peak_), now - last_repower_ms_ < 60000 ? "after a hang" : "no hang");
+            }
+            rail_on_at_ms_ = 0;
+        }
+    }
     // (A planned power cycle 2 s after Wi-Fi association used to be here, a
     // workaround from before the real causes were found - PWM mode, then the
     // packet rate. Removed 2026-09-27: it only made the head go limp once.)
@@ -384,7 +401,7 @@ void RobotRuntime::logStats(uint32_t now)
              "stats: busy=%u.%u%% internal_free=%uB internal_min=%uB psram_free=%uB stack_headroom=%uB mic_stack=%uB wifi=%s time=%s "
              "owner=%s tick_us=%u tick_max_us=%u missed_ticks=%u tick_ms=%u audio_us=%u mic_block_us=%u cam_fps=%.1f "
              "cam_us=%u audio_nan=%u sleep_pressure=%.2f load=%.2f budget=%.2f travel=%udeg battery=%u%% head=%d,%d servo_packets=%u cmd_travel=%.0fdeg "
-             "real_rotation=%.0fdeg imu=%u/%u gyro_max=%.0f gyro_restarts=%u servo_repowers=%u face_fps=%u "
+             "real_rotation=%.0fdeg imu=%u/%u gyro_max=%.0f gyro_restarts=%u servo_repowers=%u servo_jerks=%u face_fps=%u "
              "face_frame_max_us=%u mic_peak=%d/%d/%d voice=%s voice_gaps=%u voice_load=%u.%u%% touch_storms=%u diary=%u/%u",
              busy / 10, busy % 10, static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
              static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
@@ -405,6 +422,7 @@ void RobotRuntime::logStats(uint32_t now)
              static_cast<unsigned>(servo_sent), motion_.travelledDeg() - last_travel_deg_, imu_.takeRotationDeg(),
              static_cast<unsigned>(imu_reads), static_cast<unsigned>(imu_fails), static_cast<double>(gyro_max),
              static_cast<unsigned>(imu_.gyroRestarts()), static_cast<unsigned>(servo_repowers_),
+             static_cast<unsigned>(servo_jerks_),
              static_cast<unsigned>(face_frames / 5), static_cast<unsigned>(face_max_us), mic_.takePhasePeak(0),
              mic_.takePhasePeak(1), mic_.takePhasePeak(2), vocal_.trained() ? "babble" : "silent",
              static_cast<unsigned>(vocal_.gaps()), voice_permille / 10, voice_permille % 10,

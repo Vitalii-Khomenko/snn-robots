@@ -141,6 +141,7 @@ tools/v4/py parity_contingency.py [DAY]       # C++ ContingencyV4 == the twin on
 tools/v4/py body.py --measure 2026-10-26      # the body's channels hour by hour, the sleep pressure's twin (docs/BODY.md)
 tools/v4/py body.py 2026-10-28                # the twin's sleep pressure and body budget against the robot's (raw_stamina, raw_budget)
 tools/v4/py parity_body.py [DAY]              # C++ BodyV4 == the twin on real diary days
+tools/v4/py jerks.py 2026-10-27 [--since HH:MM]  # the head's own jerks (gyro) and hangs per servo rail switch-on, by hour
 tools/v4/py contingency.py --self 2026-10-26  # me or not me: sense events that follow the robot's own acts at once
 python tools/robot/listen.py [SECONDS]        # record the robot's microphone (24 kHz, ms-stamped) -> data/sound/<day>/<time>.wav
 tools/v4/py sound_check.py data/sound/DAY/TIME  # every speech onset of the ear vs the sound and the robot's own acts, + .png

@@ -107,6 +107,33 @@ rotation (30-38 % between 08:00 and 11:00 the same day), dead windows 12 % (57-6
 hour in the morning), VBUS never under 4.74 V. Open: whether the head sinks under its own weight with the rail off
 (`servo_rail=ons/ms` in the `power:` line).
 
+**2026-10-27, the head's own jerks** (the owner: "sometimes it jerks its head hard to one side and back"). The diary's
+head angles are the commanded model's, which never moves faster than ~40°/s. Only the gyro sees the servo running off
+by itself, in the 5 s `stats:` windows: a peak over 300°/s with 40° more real rotation than commanded (`jerks.py`).
+- **How often:** 7-13 such windows a day until 2026-10-25, then 103 on 10-26 and 59 by 17:00 on 10-27. About 2 % of
+  the rail switch-ons, none with the rail off. Each comes with a clipped "loud sound" (`peak=32768 own-motion`): the
+  head hitting its stop.
+- **Two causes, both at a switch-on:**
+  - **Motor mode.** The limits went out 200 ms after power-on with the torque right behind them. A servo still
+    starting missed them and stayed in motor mode (its EEPROM holds 0/0 from the official firmware). It took the
+    torque and read the goal time as motor power. Since the eased waypoints (10-25 evening) that time is ~500, half
+    power instead of the old creep - hence the jump on 10-26. 10-25 had 0.1 % jerks but 12.8 % "hangs": the creep.
+  - **A goal far from the real head.** The board cannot hear the servos (the RX line is dead). After a hang the model
+    moved on, a limp head sags, a hand turns it; the first goal at the waypoint's time was then a dash. Example: 17:30,
+    170° at 426°/s right after two hangs.
+- **The fixes:**
+  - the limits go out twice;
+  - then the goal where the model is, and only then the torque;
+  - the first packet after a switch-on takes at least 0.6 s (`kFirstMoveMs`), 1.5 s after the watchdog cut the
+    power (`kFirstAfterCutMs`).
+- **Diagnostics:** every switch-on now logs the gyro's peak of the next 1.5 s when it is over 300°/s
+  (`servos: a jerk of N deg/s ... (after a hang | no hang)`, `servo_jerks=` in `stats:`).
+- **Hangs** (the watchdog's "commanded motion but the gyro saw none") went from 0-3 an hour on 10-26 by day to ~20
+  an hour from that evening on, when the glances slowed to a 12°/s peak (19:42). A third of them came within 8 s of a
+  glance's start, 6 times the chance. Glances are back to a 20°/s peak (`kGlanceSpeedDegS` 40), 40-70°, as a test.
+- **After the first fix** (17:15-17:36): 1 jerk window in 56 switch-ons. **After the second** (from 17:36): the only
+  jerk came right after a hang (340°/s logged).
+
 **2026-10-25 evening, eased moves** (the owner, sitting next to it: "a short whizz of the motors every few seconds -
 it should move slowly and smoothly"): the diary showed 11 moves a minute, one every ~4.4 s, each ~14° in ~1.3 s, and an
 SCS servo given one destination and a time runs there at one constant speed - every move started and stopped with a

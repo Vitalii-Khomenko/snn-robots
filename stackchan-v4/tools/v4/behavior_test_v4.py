@@ -267,6 +267,16 @@ def check(case):
     if len(budget) >= 31:  # per minute; [k] is the end of minute k + 1
         m["budget_low"] = min(budget[11:24])
         m["budget_refill"] = budget[30] - budget[23]
+        # the quiet stretch after it (minutes 15-24): calls a minute and the share of low faces (BODY step 3)
+        m["calls_quiet"] = sum(1 for t, tag, x, _ in ev if tag == "v4" and x.startswith("call") and 900 <= t < 1440) / 9.0
+        fl = [(t, x.split()[1]) for t, tag, x, _ in ev if tag == "v4" and x.startswith("face:")]
+        low = tot = 0.0
+        for i, (t, f) in enumerate(fl):
+            a, b = max(t, 900.0), min(fl[i + 1][0] if i + 1 < len(fl) else 1440.0, 1440.0)
+            if b > a:
+                tot += b - a
+                low += (b - a) if f in ("Sad", "Bored", "Sleepy", "Sick", "Crying") else 0.0
+        m["low_quiet"] = low / tot if tot else None
     if name in CT_CASES:  # the mean over the seeds (angry: the sum)
         runs = [contingency_metrics(ev, minutes)] + [seeded(name, minutes, s) for s in CT_SEEDS]
         for k in ("joy_after_answer", "again_after_answer", "acts_per_min", "low_after_still", "angry_after_still"):
@@ -280,10 +290,12 @@ if __name__ == "__main__":
     if len(sys.argv) > 2 and sys.argv[1] == "--learned":
         LEARNED = os.path.abspath(sys.argv[2])
     failed = []
-    acts = {}
+    acts, quiet = {}, {}
     with ThreadPoolExecutor(os.cpu_count() or 4) as ex:
         for name, m, checks in ex.map(check, CASES):
             acts[name] = m["acts_per_min"]
+            if "calls_quiet" in m:
+                quiet[name] = (m["calls_quiet"], m["low_quiet"])
             extra = (f"   answers {m['answers']} credits {m['credits']} acts/min {m['acts_per_min']:.2f}"
                      if m["answers"] else "")
             print(f"== {name}   faces {', '.join(f'{k} {v:.0f}s' for k, v in sorted(m['faces'].items(), key=lambda kv: -kv[1])[:6])}"
@@ -306,6 +318,12 @@ if __name__ == "__main__":
           f"the same pets at random, 3 seeds)")
     if not ok:
         failed.append(f"contingent vs control: acts_ratio = {ratio:.2f}, wanted >= 1.05")
+    # the body (BODY step 3): after a hard stretch, alone and low, it saves itself - report until the robot's diary shows
+    # real low budgets
+    if "hard_day" in quiet and "hard_day_control" in quiet:
+        (ch, lh), (cc, lc) = quiet["hard_day"], quiet["hard_day_control"]
+        print(f"== hard_day vs control, the quiet minutes 15-24: calls {ch:.2f} vs {cc:.2f} a minute, low faces "
+              f"{lh:.2f} vs {lc:.2f}  (report: a low body budget alone saves itself)")
     if failed:
         print("\nFAILED:\n  " + "\n  ".join(failed))
         sys.exit(1)

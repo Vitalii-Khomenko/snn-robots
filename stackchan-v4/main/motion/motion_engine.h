@@ -137,6 +137,12 @@ private:
     bool rail_on_ = true;
     uint32_t rail_change_ms_ = 0, rail_idle_ms_ = 0;
     uint32_t rail_ons_ = 0, rail_on_ms_ = 0, rail_count_ms_ = 0;
+    // The first packet after the rail comes on goes slowly: where the servo really is nobody knows (the RX line is
+    // dead) - the head hung while the model moved on, or it went limp and sagged, or a hand turned it - and a goal
+    // far from it at the waypoint's time was a jerk (2026-10-27: 170 deg of real rotation at 426 deg/s right after two
+    // hangs). kFirstMoveMs at least, kFirstAfterCutMs after the watchdog cut the power.
+    static constexpr uint16_t kFirstMoveMs = 600, kFirstAfterCutMs = 1500;
+    bool first_after_rail_ = false, after_cut_ = false;
 
     // A gesture can request a large jump in one call. Keep that command as a
     // destination and slew the spring's target in small increments in update().

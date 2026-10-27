@@ -103,6 +103,13 @@ void MotionEngine::getCurrentDeg(float& yaw_deg, float& pitch_deg) const
 void MotionEngine::writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_deg, uint16_t time_ms)
 {
     constexpr uint8_t kBroadcast = 0xFE;
+    if (first_after_rail_) {
+        time_ms = std::max(time_ms, after_cut_ ? kFirstAfterCutMs : kFirstMoveMs);
+        first_after_rail_ = after_cut_ = false;
+        // the rail stays on until the servo should have arrived (railReady)
+        const uint32_t now = static_cast<uint32_t>(esp_timer_get_time() / 1000);
+        if (static_cast<int32_t>(now + time_ms - arrive_ms_) > 0) arrive_ms_ = now + time_ms;
+    }
     if ((yaw && !yaw_torque_enabled_) || (pitch && !pitch_torque_enabled_)) {
         // Force POSITION mode. These SCS servos also have a motor (PWM) mode,
         // selected by angle limits 0/0 - the official StackChan firmware
@@ -111,9 +118,28 @@ void MotionEngine::writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_
         // motor power: the head creeps one way and stops. Written once per
         // power-on (EEPROM-backed registers; repeating them every 3 s, as
         // before, risked EEPROM wear and kept the servo busy).
+        //
+        // 2026-10-27, the owner: "it jerks its head hard to one side and back". The gyro saw 74-211 deg of real
+        // rotation at up to 755 deg/s in 5 s windows where 11-27 deg were commanded - ~100 a day since 2026-10-26,
+        // 7-13 a day before; 1.5 % of the windows with a servo rail switch-on, none with the rail off. The limits went
+        // out 200 ms after power-on (kRailBootMs) and the torque right behind them: a servo that missed them stayed in
+        // motor mode, took the torque, and read the goal time as motor power - since the eased waypoints (2026-10-25
+        // evening) that is ~500, half power, not the old creep - until the next power-on put it back in position mode.
+        // Now the limits go out twice, then the goal where the head is now, and only then the torque.
         if (!limits_written_[0] || !limits_written_[1]) {
-            bus_.writeWord(kBroadcast, SCSCL_MIN_ANGLE_LIMIT_L, 0);
-            bus_.writeWord(kBroadcast, SCSCL_MAX_ANGLE_LIMIT_L, 1000);
+            for (int k = 0; k < 2; ++k) {
+                bus_.writeWord(kBroadcast, SCSCL_MIN_ANGLE_LIMIT_L, 0);
+                esp_rom_delay_us(2000);
+                bus_.writeWord(kBroadcast, SCSCL_MAX_ANGLE_LIMIT_L, 1000);
+                esp_rom_delay_us(2000);
+            }
+            uint8_t ids[2] = {kYawId, kPitchId};
+            uint16_t pos[2] = {
+                static_cast<uint16_t>(std::clamp(kYawZeroPos + static_cast<int>(yaw_spring_.value * kRawPerDeg), 0, 1000)),
+                static_cast<uint16_t>(std::clamp(kPitchZeroPos + static_cast<int>(pitch_spring_.value * kRawPerDeg), 0, 1000))};
+            uint16_t time[2] = {time_ms, time_ms}, speed[2] = {0, 0};
+            bus_.SyncWritePos(ids, 2, pos, time, speed);
+            esp_rom_delay_us(2000);
             limits_written_[0] = limits_written_[1] = true;
         }
         bus_.EnableTorque(kBroadcast, 1);
@@ -322,6 +348,7 @@ void MotionEngine::setRail(bool on, uint32_t now)
     if (on) {
         ++rail_ons_;
         rail_idle_ms_ = now;
+        first_after_rail_ = true;
         resyncAfterPowerCycle();  // position mode, torque and both positions again
     }
 }
@@ -331,4 +358,5 @@ void MotionEngine::cutPower()
     const uint32_t now = static_cast<uint32_t>(esp_timer_get_time() / 1000);
     if (rail_on_) setRail(false, now);
     unlatched_[0] = unlatched_[1] = false;
+    after_cut_ = true;
 }

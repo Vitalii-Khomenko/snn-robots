@@ -138,6 +138,14 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
 - The orienting reflex no longer runs away (2026-10-27, the owner: "it jerks its head far left and back"): it
   re-aimed every tick from the turning head while the picture stood still, and a lamp at the picture's edge drove the
   head after a glance on to -88..-100° (the servos hung there). Now it aims once and again only from a still head.
+- The head's own jerks (2026-10-27): only the gyro sees them (the diary logs the commanded model). They began on
+  10-26, 2 % of the servo rail switch-ons:
+  - a servo that missed the position-mode limits at power-on read the goal time as motor power;
+  - after a hang the first goal was far from the real head.
+
+  Now the limits go out twice and the goal before the torque, and the first move after a switch-on is slow. Hangs
+  rose to ~20 an hour with the slow glances of 10-26 evening; glances are back to a 20°/s peak as a test. See
+  [HARDWARE](docs/HARDWARE.md#servos) and `tools/v4/jerks.py`.
 - The Muse (2026-10-26): a small chaotic reservoir network next to the main one. It gives the main network its
   "random" pacemakers (now coloured by the mood) and five ideas (play, show, still, social, surprise), which the
   robot acts when nothing calls for a reaction. It gets bored of its own ideas and learns at night which ones the
