@@ -128,6 +128,52 @@ def metrics(ev, minutes, moves=0):
     }
 
 
+JOYFUL = {"Happy", "VeryHappy", "Laughing", "Wink", "Love"}
+LOW = {"Sad", "Bored", "Crying"}
+
+
+def contingency_metrics(ev, minutes):
+    """The sense of "I did that" (docs/CONTINGENCY.md) from the log: the detector's credits ("contingency: gesture
+    answered by pet after 1.2 s"), the faces, calls and gestures around them, the scenario's answers ("responder:")."""
+    faces = [(t, x.split()[1]) for t, tag, x, _ in ev if tag == "v4" and x.startswith("face:")]
+    calls = [t for t, tag, x, _ in ev if tag == "v4" and x.startswith("call")]
+    gestures = [t for t, tag, x, _ in ev if tag == "v4" and x.startswith("gesture:")]
+    credits = [(t, x.split()[1]) for t, tag, x, _ in ev if tag == "runtime" and x.startswith("contingency:")]
+    answers = [t for t, tag, x, _ in ev if tag == "world" and x.startswith("responder:")]
+
+    def face_at(t):
+        f = None
+        for tf, name in faces:
+            if tf > t:
+                break
+            f = name
+        return f
+
+    acts = {"call": calls, "gesture": gestures, "face": [t for t, _ in faces]}
+    joy = [face_at(t + 1.5) in JOYFUL for t, _ in credits]
+    # the answered act again within 8 s, against the same act within 8 s of any moment (calls are frequent anyway)
+    again = [any(t + 0.5 < x <= t + 8.0 for x in acts[a]) for t, a in credits]
+    grid = [50.0 + 0.5 * i for i in range(int((minutes * 60 - 60) / 0.5))]
+    chance = {a: sum(any(t + 0.5 < x <= t + 8.0 for x in xs) for t in grid) / max(len(grid), 1) for a, xs in acts.items()}
+    again_chance = [chance[a] for _, a in credits]
+    end = minutes * 60.0
+    late = [(t, f) for t, f in faces]
+    low = total = 0.0
+    for i, (t, f) in enumerate(late):  # the share of low faces in 7:00 .. 11:00 (the still face, before the repair)
+        t1 = faces[i + 1][0] if i + 1 < len(faces) else end
+        a, b = max(t, 420.0), min(t1, 660.0)
+        if b > a:
+            total += b - a
+            low += (b - a) if f in LOW else 0.0
+    social = [t for t in calls + gestures if t > 50.0]
+    return {"answers": len(answers), "credits": len(credits),
+            "joy_after_answer": sum(joy) / len(joy) if joy else None,
+            "again_after_answer": (sum(again) - sum(again_chance)) / len(again) if again else None,
+            "acts_per_min": len(social) / max(minutes - 50 / 60.0, 1e-6),
+            "low_after_still": low / total if total else None,
+            "angry_after_still": sum(1 for t, f in faces if t > 300.0 and f in ("Angry", "Annoyed"))}
+
+
 # (scenario, minutes, [(metric, min, max, why)])
 CASES = [
     ("touch_response", 9, [("touch_answered_frac", 0.9, 1.01, "answers every isolated touch (voice or gesture within 2 s)")]),
@@ -146,6 +192,12 @@ CASES = [
     # report only: the simulated walker is a 0.44 m figure as bright as the walls, it moves ~1/8 of what the robot's
     # camera saw of a real person (2026-10-24: frame share p90 0.135); over 5 seeds it is found as often as by chance
     # (0.37 / 0.37, 2026-10-25). The robot's diary is the test of the motion sense.
+    # the sense of "I did that" (docs/CONTINGENCY.md step 3, 2026-10-27)
+    ("contingent", 12, [("joy_after_answer", 0.35, 1.01, "an answer to its act brings joy"),
+                        ("again_after_answer", -1.0, 1.01, "report: the answered act again within 8 s, over chance")]),
+    ("control", 12, [("acts_per_min", 0, 100, "report: calls and gestures a minute when the same pets come at random")]),
+    ("still_face", 12, [("low_after_still", 0.2, 1.01, "ignored by someone close it gets quietly sad"),
+                        ("angry_after_still", 0, 0, "never angry at being ignored")]),
     ("seek_motion", 5, [("on_person", 0.0, 1.01, "report: how much of the time the head points at someone walking about")]),
     # 2026-10-26: the calm head (a place kept 5-11 s, slow turns) looks round less: 0.5 at the lamp was the old busy
     # head's level; what counts is the lamp against the same runs with it left off, over 3 seeds (SEEK_SEEDS)
@@ -177,6 +229,7 @@ def check(case):
     ev, minutes, moves, out = run(name, minutes)
     m = metrics(ev, minutes, moves)
     m.update(seek_metrics(name, out))
+    m.update(contingency_metrics(ev, minutes))
     if any(k == "lamp_over_chance" for k, *_ in checks):
         on = [m["on_lamp"]] + [lamp_share(name, minutes, s, True) for s in SEEK_SEEDS[1:]]
         off = [lamp_share(name, minutes, s, False) for s in SEEK_SEEDS]
@@ -188,11 +241,15 @@ if __name__ == "__main__":
     if len(sys.argv) > 2 and sys.argv[1] == "--learned":
         LEARNED = os.path.abspath(sys.argv[2])
     failed = []
+    acts = {}
     with ThreadPoolExecutor(os.cpu_count() or 4) as ex:
         for name, m, checks in ex.map(check, CASES):
+            acts[name] = m["acts_per_min"]
+            extra = (f"   answers {m['answers']} credits {m['credits']} acts/min {m['acts_per_min']:.2f}"
+                     if m["answers"] else "")
             print(f"== {name}   faces {', '.join(f'{k} {v:.0f}s' for k, v in sorted(m['faces'].items(), key=lambda kv: -kv[1])[:6])}"
                   f"   calls {m['calls']} nods {m['nods']} shakes {m['shakes']} touches {m['touches']} "
-                  f"head moves/min {m['moves_per_min']:.1f}")
+                  f"head moves/min {m['moves_per_min']:.1f}{extra}")
             if m["errors"]:
                 failed.append(f"{name}: firmware logged {m['errors']} error(s)")
             for key, lo, hi, why in checks:
@@ -201,6 +258,14 @@ if __name__ == "__main__":
                 print(f"   {'PASS' if ok else 'FAIL'}  {key} = {v if not isinstance(v, float) else round(v, 3)}  (want {lo}..{hi}: {why})")
                 if not ok:
                     failed.append(f"{name}: {key} = {v}, wanted {lo}..{hi} ({why})")
+    # the circular reaction at the level of behaviour: answered acts multiply, the same pets at random do not
+    ratio = acts["contingent"] / max(acts["control"], 1e-6)
+    ok = ratio >= 1.1
+    print(f"== contingent vs control: calls and gestures {acts['contingent']:.2f} vs {acts['control']:.2f} a minute")
+    print(f"   {'PASS' if ok else 'FAIL'}  acts_ratio = {ratio:.2f}  (want >= 1.1: answered acts come more often than with "
+          f"the same pets at random)")
+    if not ok:
+        failed.append(f"contingent vs control: acts_ratio = {ratio:.2f}, wanted >= 1.1")
     if failed:
         print("\nFAILED:\n  " + "\n  ".join(failed))
         sys.exit(1)

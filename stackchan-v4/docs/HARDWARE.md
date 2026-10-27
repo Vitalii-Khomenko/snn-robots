@@ -203,7 +203,9 @@ and skips the frame otherwise, so it never blocks on the display.
   and off core 0 so it never preempts the main loop.
 - Safety config: `CONFIG_ESP_TASK_WDT_PANIC=y` (a hung loop reboots),
   `CONFIG_COMPILER_STACK_CHECK_MODE_NORM=y`, brownout detector at level 7,
-  panic prints and reboots. `stack_headroom` in the stats (~15 KB margin now).
+  panic prints and reboots. `stack_headroom` in the stats is the main task's least free stack in bytes (~4.3 KB of
+  8 KB; until 2026-10-27 it was printed 4x too high, "~15 KB"), `mic_stack` the microphone task's (4 KB stack; the
+  voice check keeps its window in its object, not on that stack).
 - CPU 240 MHz, 64-byte data cache lines. The numeric files (`v4/snn_v4`, `v4/nn_v4`, `perception/*`,
   `voice/babble_net`, `voice/droid_synth`) are compiled with `-O3 -funroll-loops` (no fast-math).
 - `sdkconfig.defaults` is complete (16 MB flash, PSRAM pins / mode / 80 MHz,

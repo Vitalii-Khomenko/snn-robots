@@ -35,6 +35,7 @@ void BrainV4::prevInputs(float* x) const
     x[PV_LED_LEVEL] = led_level_;
     x[PV_TOUCH_ANSWERED] = touch_open_ ? 0.0f : 1.0f;
     for (int k = 0; k < muse_data::kOuts; ++k) x[PV_PACE_FAST + k] = muse_out_[k];  // pace_* then idea_* (v4_spec.h)
+    for (int k = 0; k < CT_COUNT; ++k) x[PV_AGENCY + k] = ct_[k];  // agency .. works_face, in CT order
 }
 
 bool BrainV4::tick(const ChannelEncoder::Out& channels)

@@ -1,0 +1,10 @@
+# Does it notice being answered? (docs/CONTINGENCY.md) Someone sits close in front of the robot and answers its calls
+# and gestures with a pet on the head, 0.8-2 s later, 85 % of the time - and nothing else. The robot should enjoy the
+# answers (a happy face after them) and do the answered act again (Piaget's circular reaction).
+duration 12:00
+clock 14:00
+seed 51
+room_light on
+owner home
+at 0:05 person owner enter 0 0.3
+at 0:50 responder call,gesture pet 0.85 0.8 2.0

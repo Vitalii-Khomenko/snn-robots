@@ -473,12 +473,46 @@ void World::stepPhysics(double dt_s)
     body_pitch_deg_ += (body_pitch_target_ - body_pitch_deg_) * std::min(1.0f, dt / 0.4f);
 }
 
+void World::robotActed(int kind)
+{
+    if (!responder_.on || responder_.random || kind < 0 || kind > 2 || !responder_.acts[kind]) return;
+    std::uniform_real_distribution<float> u(0.0f, 1.0f);
+    if (u(rng_) >= responder_.p) return;
+    const float lat = responder_.lat_lo + (responder_.lat_hi - responder_.lat_lo) * u(rng_);
+    pending_answers_.emplace_back(now_us_ + static_cast<uint64_t>(lat * 1e6), responder_.answer);
+}
+
+void World::answer(const std::string& what)
+{
+    Event e;
+    e.verb = what == "tap" ? "tap_screen" : what;
+    if (what == "pet") e.args = {"1200"};
+    if (what == "talk") e.args = {"0", "1.5", "1"};
+    ++answers_given_;
+    note("responder: %s", what.c_str());
+    applyEvent(e);
+}
+
 void World::advanceTo(uint64_t t_us)
 {
     constexpr uint64_t kStep = 1000;  // 1 ms physics step
     while (now_us_ < t_us) {
         while (next_event_ < sc_.events.size() && sc_.events[next_event_].at_us <= now_us_) {
             applyEvent(sc_.events[next_event_++]);
+        }
+        for (size_t i = 0; i < pending_answers_.size();) {
+            if (pending_answers_[i].first <= now_us_) {
+                const std::string what = pending_answers_[i].second;
+                pending_answers_.erase(pending_answers_.begin() + static_cast<long>(i));
+                answer(what);
+            } else {
+                ++i;
+            }
+        }
+        if (responder_.on && responder_.random && now_us_ >= responder_.next_random_us) {
+            if (responder_.next_random_us) answer(responder_.answer);
+            std::exponential_distribution<float> gap(1.0f / responder_.mean_s);
+            responder_.next_random_us = now_us_ + static_cast<uint64_t>(gap(rng_) * 1e6);
         }
         const uint64_t step = std::min(kStep, t_us - now_us_);
         now_us_ += step;
@@ -504,7 +538,27 @@ void World::applyEvent(const Event& e)
     const auto& a = e.args;
     auto argf = [&](size_t i, float def) { return i < a.size() ? std::stof(a[i]) : def; };
     const std::string& v = e.verb;
-    if (v == "touch_head") {
+    if (v == "responder") {
+        // responder off | responder random ANSWER MEAN_S | responder ACTS ANSWER P LAT_LO LAT_HI (ACTS: call,gesture,face)
+        responder_ = Responder{};
+        pending_answers_.clear();
+        if (!a.empty() && a[0] != "off") {
+            responder_.on = true;
+            responder_.answer = a.size() > 1 ? a[1] : "pet";
+            if (a[0] == "random") {
+                responder_.random = true;
+                responder_.mean_s = argf(2, 20.0f);
+            } else {
+                responder_.acts[0] = a[0].find("call") != std::string::npos;
+                responder_.acts[1] = a[0].find("gesture") != std::string::npos;
+                responder_.acts[2] = a[0].find("face") != std::string::npos;
+                responder_.p = argf(2, 0.8f);
+                responder_.lat_lo = argf(3, 0.8f);
+                responder_.lat_hi = argf(4, 2.0f);
+            }
+        }
+        note("responder %s", a.empty() ? "off" : a[0].c_str());
+    } else if (v == "touch_head") {
         touch_until_ = now_us_ + static_cast<uint64_t>(argf(0, 400) * 1000);
         note("touch_head %.0f ms", argf(0, 400));
     } else if (v == "pet") {

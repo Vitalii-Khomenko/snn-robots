@@ -9,12 +9,11 @@ constexpr uint32_t kQuietMs[ContingencyV4::kAnswers] = {2000, 2000, 2000, 3000, 
 constexpr uint32_t kWinLoMs = 500, kWinHiMs = 4000;  // an answer this long after an act is the act's
 constexpr uint32_t kReactMs = 3000;      // an act this soon after an answer is a reaction to it
 constexpr uint32_t kNoActMs = 5000;      // background: no act in the last 5 s
-constexpr uint32_t kAroundMs = 120000;   // somebody is around: a touch or someone near in the last 2 minutes
-constexpr uint32_t kOwnVoiceMs = 5000;   // speech this soon after our own call is its tail
+constexpr uint32_t kAroundMs = 120000;   // somebody is around: a touch, someone near or moving in view, last 2 min
 constexpr uint32_t kActQuietMs = 1000;   // a call / a gesture after this quiet is a new act
-constexpr float kTauNowS = 300.0f, kTauBgS = 1800.0f, kTauPulseS = 3.0f, kTauIgnoredS = 600.0f;
+constexpr float kTauNowS = 300.0f, kTauBgS = 1800.0f, kTauPulseS = 3.0f, kTauIgnoredS = 300.0f;
 constexpr float kPrior = 3.0f;           // acts' worth of "chance" before a kind of act means anything
-constexpr float kIgnoreStep = 0.15f;
+constexpr float kIgnoreStep = 0.1f;  // per unanswered call or gesture (a face is not a bid: nobody answers every face)
 constexpr float kWindowS = (kWinHiMs - kWinLoMs) / 1000.0f;
 
 bool within(bool seen, uint32_t now, uint32_t then, uint32_t ms) { return seen && now - then <= ms; }
@@ -42,7 +41,7 @@ void ContingencyV4::finish(Pending& p)
         h_[p.act][a] += p.answered[a] ? 1.0f : 0.0f;
         any = any || p.answered[a];
     }
-    if (!any) ignored_ += (1.0f - ignored_) * kIgnoreStep;
+    if (!any && p.act != kFace) ignored_ += (1.0f - ignored_) * kIgnoreStep;
 }
 
 void ContingencyV4::step(const In& in, Out& out, Credit& credit)
@@ -82,7 +81,7 @@ void ContingencyV4::step(const In& in, Out& out, Credit& credit)
     bool cond[kAnswers];
     cond[kPet] = in.headEv > 0.0f && in.touchHead < 0.7f;
     cond[kTap] = in.screenEv > 0.0f && in.touchScreen < 0.4f;
-    cond[kSpeech] = in.speech > 0.5f && !within(said_seen_, now, last_said_ms_, kOwnVoiceMs);
+    cond[kSpeech] = in.speech > 0.5f;  // the ear already holds back our own voice and its tail (BrainLoop::hear)
     cond[kNear] = in.nearRaw > 150.0f;
     cond[kMotion] = in.motion > 0.15f && std::fabs(in.headYaw - yaw_) < 0.3f;
     yaw_ = in.headYaw;
@@ -94,7 +93,7 @@ void ContingencyV4::step(const In& in, Out& out, Credit& credit)
             seen_[a] = true;
         }
     }
-    if (onset[kPet] || onset[kTap] || onset[kNear] || in.nearRaw > 50.0f) {
+    if (onset[kPet] || onset[kTap] || onset[kNear] || in.nearRaw > 50.0f || in.motion > 0.1f) {
         last_around_ms_ = now;
         around_seen_ = true;
     }
@@ -112,10 +111,10 @@ void ContingencyV4::step(const In& in, Out& out, Credit& credit)
                 if (p.live && now - p.ms >= kWinLoMs && now - p.ms <= kWinHiMs &&
                     (!best || p.ms > best->ms || (p.ms == best->ms && p.act > best->act)))
                     best = &p;  // the latest act (the same tick: call < gesture < face)
+            if (a == kPet || a == kTap || a == kSpeech) ignored_ = 0.0f;  // petted, tapped, talked to: not ignored
             if (best) {
                 best->answered[a] = true;
                 pulse_ = std::max(pulse_, kWeight[a]);
-                ignored_ = 0.0f;
                 if (!credit.any) credit = Credit{true, best->act, static_cast<Answer>(a), now - best->ms};
             } else if (around && no_act) {
                 bg_n_[a] += 1.0f;

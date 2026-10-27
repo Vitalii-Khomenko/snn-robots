@@ -115,9 +115,6 @@ void BrainLoop::hear(uint32_t now, float& sharpEv)
     // Our own servos click and whine loud enough to look like claps (peaks of 20-32k on hardware): while the head
     // moves, and just after, such events are mostly ourselves and are not passed on at all.
     if (ctx.ownMotion) loud_event_ = onset_event_ = 0.0f;
-    // The same for our own voice: a sharp sound in the first 0.5 s of a call was 15x more likely than at any moment
-    // (2026-10-26, contingency.py --self) - the speaker's start slips past the microphone's mute.
-    if (ctx.selfSpeaking) loud_event_ = onset_event_ = 0.0f;
     // A sharp sound that started this tick: the microphone's loud or onset event (the Auditory NN's clap / sharp
     // classes fire 20-40 times an hour on nothing - tools/v4/calibrate.py, 2026-10-24). Loud events come with
     // intensity 0.4 (peak ~2000: a tap on the table, a word) .. 1.0 (peak >= 20000, a clap at the robot); only peaks
@@ -225,6 +222,7 @@ void BrainLoop::tick(uint32_t now, const Env& env)
     using namespace v4;
     if (ear_[AUD_SPEECH] > 0.4f || channels_[CH_MOTION] > 0.1f || channels_[CH_NEAR] > 0.3f) last_somebody_ms_ = now;
 
+    brain_.setContingency(contingency_out_.data());  // the last tick's (it is computed after the executor)
     const bool decided = brain_.tick(channels_);
     decided_tick_ = decided;
     // the owner's sleep (21:45-06:00): the executor keeps silent and dim; before the clock is synced it might be night
@@ -315,10 +313,16 @@ int BrainLoop::useLearned(const learned::View& v)
     const float* a1b = v.find("nn.act1_b", NnV4::kAct1B);
     const float* a2w = v.find("nn.act2_w", NnV4::kAct2W);
     const float* a2b = v.find("nn.act2_b", NnV4::kAct2B);
-    if (a1w && a1b && a2w && a2b) {
+    // the heads only with the network they were made for (learned.nn_id; blobs before 2026-10-27 carry no id): a
+    // retrained network keeps its own innate heads until the night makes new ones for it
+    const float* id = v.find("nn.id", 2);
+    const bool ours = id && std::isfinite(id[0]) && std::isfinite(id[1]) &&
+                      ((static_cast<uint32_t>(id[0]) << 16) | static_cast<uint32_t>(id[1])) == NnV4::id();
+    if (a1w && a1b && a2w && a2b && ours) {
         brain_.network().useHeads(a1w, a1b, a2w, a2b);
         taken += 4;
     } else {
+        if (a1w && !ours) ESP_LOGW(kTag, "learned heads are for another network (id): the innate heads stay");
         brain_.network().useHeads(nullptr, nullptr, nullptr, nullptr);
     }
     zones_.shift.fill(0.0f);

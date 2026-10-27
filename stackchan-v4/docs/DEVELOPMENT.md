@@ -41,7 +41,7 @@ sensor engines) in a simulated room with scripted people, sounds, touches, light
 simulator/build.sh                                   # g++, no ESP-IDF needed
 simulator/run.sh simulator/scenarios/petting.scn [--minutes N] [--seed N] [--echo] [--voice-wav F] [--learned F] [--v4-dump F]
 # -> simulator/out/<scenario>/log.txt (the robot's log), trace.csv (10 Hz: head, face, channels, mood), summary.txt
-tools/v4/py behavior_test_v4.py                      # 10 scenarios in parallel, ~30 s
+tools/v4/py behavior_test_v4.py                      # 13 scenarios in parallel, ~40 s
 ```
 
 | Behaviour test | Scenario | Checks |
@@ -56,6 +56,9 @@ tools/v4/py behavior_test_v4.py                      # 10 scenarios in parallel,
 | hearing | claps and bangs | startled |
 | seek_motion | someone walks about the room (a few seconds at ~1 m/s, then stands), often outside the picture | report only: the share of the time the head points within 25° of them (the simulated walker is a low-contrast figure, found as often as by chance: 0.37 over 5 seeds, the same with nobody there; the robot's diary judges the motion sense) |
 | seek_light | a lamp switched on beside the desk (-55°), outside the picture | the head finds it within 2 minutes and points at it >= 0.05 more of the time than the same run with the lamp left off (`lamp_over_chance`; until 2026-10-26 >= 50 % absolute, the old busy head's level). 10 seeds, 2026-10-26: 45 % vs 16 %, found after 49-67 s |
+| contingent | someone close answers the robot's calls and gestures with a pet, 0.8-2 s later, 85 % of the time (`responder`) | joy after an answer (a joyful face 1.5 s later) >= 0.35; the answered act again within 6 s >= 0.4 (CONTINGENCY) |
+| control | the same person and as many pets, at random moments | report: calls and gestures a minute, against `contingent` |
+| still_face | answered for 4 minutes, then ignored by the same person close by, answered again at 11:00 | low faces (sad / bored) >= 20 % of 7:00-11:00; never angry or annoyed after 5:00 |
 
 **Time.** Firmware tasks (main loop, microphone, camera, voice) run on a virtual RTOS (`simulator/core/vrtos`): each
 in its own thread but strictly one at a time, and time advances only when all wait. The same scenario and seed always
@@ -90,9 +93,12 @@ at 6:30 thing ball enter 30 10 8 0.6      # a non-person object: azimuth, elevat
 at 6:31 thing ball move 60 10 2           # then move AZ EL SECONDS, leave
 at 7:00 shake 2    at 7:10 pick_up 25    at 7:20 put_down    at 7:30 owner home    at 7:40 log any text
 every 0:05 from 2:00 until 2:30 touch_head 300
+at 0:50 responder call,gesture pet 0.85 0.8 2.0   # a person who answers the robot's acts (call / gesture / face) with
+                                          # pet / talk / tap, p, latency s lo..hi (docs/CONTINGENCY.md)
+at 0:50 responder random pet 20           # ... or answers at random, every ~20 s (the control);  responder off
 ```
 
-Besides the eight test scenarios: `conversation`, `startle_and_orient`, `vision_motion`, `ignored`, `alone_dark_morning`,
+Besides the test scenarios (`behavior_test_v4.py` CASES; since 2026-10-27 also `contingent`, `control`, `still_face`): `conversation`, `startle_and_orient`, `vision_motion`, `ignored`, `alone_dark_morning`,
 `bright_door`, `idle_owner_home`, `idle_endurance`, `full_day` (15 min .. 24 h, for looking at the robot's life).
 
 ## 4. Training chain

@@ -1,8 +1,12 @@
 # Contingency: the sense of "I did that" (concept, 2026-10-27)
 
 The owner, 2026-10-27: *"work out the sense of causality."* Then: *"do step 1 and flash, then steps two and three."*
-Step 1 is built and on the robot since 2026-10-27 06:29, step 2 since 06:48 (ARCHITECTURE section 5); the rest is
-the plan. The
+Built and on the robot:
+- step 1 since 2026-10-27 06:29;
+- step 2 since 06:48;
+- step 3 since 07:53 (network 1d448676, blob 26102708; ARCHITECTURE sections 3 and 5).
+
+Steps 4-5 are the plan. The
 science behind it is in [FOUNDATIONS](FOUNDATIONS.md) (sections 5-7).
 
 ## 1. Why this, and why now
@@ -174,7 +178,7 @@ Per tick: a ring of 8 acts, about 20 leaky counters, a few comparisons, so micro
 | 0 | Measure ΔP from the diary | no (done, section 2) |
 | 1 | Detector in C++ and Python (parity), diary columns, daily reports; a few days of real numbers (built 2026-10-27: `contingency_v4.cpp`, `contingency.py`, `parity_contingency.py`; diary `ct_*`) | no |
 | 2 | Clean the answers: why speech fires 200+ times an hour (a short recording with the owner's OK), then self-contingency labelling of sense events (built 2026-10-27, below) | no, only cleaner senses |
-| 3 | 6 NN inputs, the teacher's rules (3.5), simulator scenarios (4), retrain, flash | yes |
+| 3 | 6 NN inputs, the teacher's rules (3.5), simulator scenarios (4), retrain, flash (built 2026-10-27, 6b) | yes |
 | 4 | The life scale in the learned blob; at night the Muse's idea biases and the AWR also see c_k | slowly |
 | 5 | Turn-taking with voice: answer within ~1 s, wait, no overlap | yes |
 
@@ -202,10 +206,40 @@ tail of its own voice:
 - a minute with nobody talking: speech 9.9 % -> 0.5 % of the time;
 - live: 14 % -> 5 %.
 
-**Me or not me** (`contingency.py --self`, the first learned self-link). A sharp sound came 0-0.5 s after the
-robot's own call 14-15x more often than at any moment (2026-10-25 and 10-26). About 5 % of calls startled the robot
-with its own speaker. Sharp sounds are now dropped while it speaks. The same table shows no other fast self-link
-large enough to act on: touch and near after a gesture are rare, and are its answers, not its echo.
+**Me or not me** (`contingency.py --self`) and a mistake made on the way. The first table showed a sharp sound 0-0.5 s
+after the robot's own call 14-15x more often than at any moment. That looked like the robot startled by its own
+speaker, and sharp sounds were dropped while it spoke (06:55). Wrong.
+- Those sharp sounds were in the call's own tick. The ear runs before the executor, so the sound came first and the
+  call was the robot's answer to it.
+- Counted strictly after the act, the link is gone (x0.3). The suppression was taken out again with step 3.
+- The lesson for self-contingency: "after" must mean a later tick. Otherwise every reaction looks like an echo.
+- No fast self-link is large enough to act on. Taps and someone near after a gesture are few (9-23 a day); they are
+  most likely a double tap or a hand still there after the robot nodded at the first.
+
+## 6b. What step 3 gave (2026-10-27)
+
+**Simulator** (`behavior_test_v4.py`, all pass):
+
+| Scenario | Result |
+|---|---|
+| contingent | 96 answers, 55 credited. A joyful face 1.5 s after an answer 42 % of the time |
+| contingent vs control | calls and gestures 9.3 vs 8.2 a minute (x1.13); nods 36 vs 24 |
+| still_face | sad or bored 30 % of 7:00-11:00, never angry, "Confused" bids before |
+
+**Not reached:** the same act again right after its answer (Piaget's repetition) is not above chance:
+- calls are at the voice budget in every scenario (70 in 12 min), so there is no room for an extra one;
+- the network learns the teacher's timed nod-again only weakly.
+
+The robot does more of what is answered, not the same act at once. Open.
+
+**Training lessons:**
+- An answer must be felt as well as counted (`contingency.inject`).
+- A simulated person answers at a person's pace.
+- Blobs carry the network's fingerprint (`nn.id`).
+
+**Watch on the robot:** the census of real-life slices showed sad 20 % and the head down 23 %. That world has
+someone silent 20 % of the time, so it is not the robot's real day. The diary will tell (`contingency.py DAY`:
+ignored > 0.5, faces).
 
 ## 7. Open questions
 

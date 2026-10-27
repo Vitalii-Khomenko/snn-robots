@@ -55,7 +55,7 @@ void VoiceCheck::feed(const int16_t* mono, size_t n)
 float VoiceCheck::frame()
 {
     // w[0] oldest .. w[kWin + kLagHi - 1] newest
-    float w[kWin + kLagHi];
+    float* w = win_.data();
     for (int j = 0; j < kWin + kLagHi; ++j) w[j] = ring_[(n_ - kWin - kLagHi + j) % kRing];
     const float* cur = w + kLagHi;
     float e0 = 0.0f;

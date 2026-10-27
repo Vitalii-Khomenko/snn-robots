@@ -381,7 +381,7 @@ void RobotRuntime::logStats(uint32_t now)
     const unsigned voice_permille = window_us ? static_cast<unsigned>(vocal_.takeRenderUs() * 1000ULL / window_us) : 0;
     // the machine: CPU, memory, timing, servos, sensors, links
     ESP_LOGI(kTag,
-             "stats: busy=%u.%u%% internal_free=%uB internal_min=%uB psram_free=%uB stack_headroom=%uB wifi=%s time=%s "
+             "stats: busy=%u.%u%% internal_free=%uB internal_min=%uB psram_free=%uB stack_headroom=%uB mic_stack=%uB wifi=%s time=%s "
              "owner=%s tick_us=%u tick_max_us=%u missed_ticks=%u tick_ms=%u audio_us=%u mic_block_us=%u cam_fps=%.1f "
              "cam_us=%u audio_nan=%u stamina=%u%% travel=%udeg battery=%u%% head=%d,%d servo_packets=%u cmd_travel=%.0fdeg "
              "real_rotation=%.0fdeg imu=%u/%u gyro_max=%.0f gyro_restarts=%u servo_repowers=%u face_fps=%u "
@@ -389,7 +389,9 @@ void RobotRuntime::logStats(uint32_t now)
              busy / 10, busy % 10, static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
              static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
              static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)),
-             static_cast<unsigned>(uxTaskGetStackHighWaterMark(NULL) * 4), wifi_.isConnected() ? "up" : "down",
+             // ESP-IDF counts stacks in bytes (until 2026-10-27 this was multiplied by 4: 17360 of an 8192 B stack)
+             static_cast<unsigned>(uxTaskGetStackHighWaterMark(NULL)), static_cast<unsigned>(mic_.stackHeadroom()),
+             wifi_.isConnected() ? "up" : "down",
              wifi_.isTimeSynced() ? "synced" : "unsynced", wifi_.knownDeviceNearby() ? "near" : "away",
              static_cast<unsigned>(loop_.tickLastUs()), static_cast<unsigned>(loop_.takeTickMaxUs()),
              static_cast<unsigned>(loop_.missedTicks()), static_cast<unsigned>(loop_.tickPeriodMs()),

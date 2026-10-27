@@ -8,6 +8,9 @@ random choices are read from the three pacemaker inputs (pace_fast / pace_slow /
 too - a random choice the network cannot see could not be learned (v3 lesson). Since 2026-10-26 they come from the
 Muse (muse.py, docs/CREATIVITY.md), with its five ideas (idea_*): when nothing calls for a reaction, an idea the Muse
 is having turns into a few seconds of play, show, stillness, a call to the owner or a little surprise (IDEA_ACTS).
+Since 2026-10-27 it sees the sense of "I did that" too (contingency_v4.cpp, docs/CONTINGENCY.md 3.5): an answer to its
+act brings joy and the act again (up to 3 times, then varied), being ignored by someone around brings bids and then a
+quiet sadness (never anger), an answer after that a repair, and while the world answers it waits for the answer.
 
 Training metadata only: the robot runs the trained network, never this code.
 """
@@ -106,6 +109,15 @@ CAM_HALF = 0.5
 # vanished from the motion sense in 1-4 s and the head wandered off; the simulator's walker was found less than by
 # chance). The network has the memory for it (its own head yaw + the GRU).
 WATCH_S = 10.0
+# The sense of "I did that" (CONTINGENCY 3.5): an answer pulse above ANSWER_ON is an answer to the robot's own act (a pet,
+# a tap, speech; motion 0.3 is too weak to count); the answered act comes again REPEAT_S later, at most GAME_REPS times
+# in a game (a game ends after GAME_END_S without an answer). Ignored above BID_ON: bids (asking calls every BID_SAY_S,
+# a look to whoever was seen); above WITHDRAW_ON: quiet and sad. AGENCY_WAIT: the world answers - after a call the head
+# holds still WAIT_S, as if waiting for the answer; idle babble comes more often.
+ANSWER_ON, GAME_REPS, GAME_END_S = 0.55, 3, 30.0
+BID_ON, WITHDRAW_ON, BID_SAY_S = 0.45, 0.75, 5.0
+AGENCY_WAIT, WAIT_S = 0.15, 2.5
+JOY_FACES = ["happy", "very_happy", "laughing", "wink"]
 
 
 def seen_yaw(head_yaw, ax):
@@ -173,9 +185,14 @@ class Teacher:
         self.idea, self.idea_t, self.since_idea = None, 0.0, IDEA_GAP  # the Muse's idea being acted, s left, s since one
         self.idea_face, self.idea_color = "normal", "white"
         self.seen = 0.0  # gaze yaw of where someone / something was last seen in view
+        # the sense of "I did that"
+        self.last_act, self.last_act_t = None, 99.0  # "call" / "gesture" / "face", s since
+        self.repeat, self.repeat_t = None, 0.0        # the answered act to do again, in s
+        self.game_reps, self.since_answer = 0, 99.0
+        self.prev_answered = self.prev_ignored = 0.0
 
     # ---- what the network sees of the past (PREV), from the executed state
-    def prev_inputs(self, muse):
+    def prev_inputs(self, muse, ct=None):
         v, a = EMO[self.emo][0], EMO[self.emo][1]
         x = np.zeros(len(PREV), np.float32)
         x[P["prev_valence"]], x[P["prev_arousal"]] = v, a
@@ -186,6 +203,8 @@ class Teacher:
         x[P["led_level"]] = self.led_level
         x[P["touch_answered"]] = 0.0 if self.touch_open else 1.0
         x[P["pace_fast"]:P["pace_fast"] + 8] = muse  # pace_* and idea_* (muse.py OUTS order)
+        if ct is not None:
+            x[P["agency"]:P["agency"] + 6] = ct  # contingency_v4 outputs (spec_v4.CONTINGENCY order)
         return x
 
     def idea_step(self, s, ideas, night, urgent):
@@ -262,13 +281,15 @@ class Teacher:
             return pick(["sad", "confused", "annoyed"], ps), False
         return pick(["normal", "normal", "thinking", "curious", "cool", "normal"], ps), False
 
-    def step(self, s, muse, executed=None):
-        """s: the SNN's 32 numbers, muse: the Muse's 8 outputs (3 pacemakers, 5 ideas). -> target NN_OUT vector.
+    def step(self, s, muse, ct=None, executed=None):
+        """s: the SNN's 32 numbers, muse: the Muse's 8 outputs (3 pacemakers, 5 ideas), ct: the contingency detector's 6
+        (agency, answered, ignored, works_call / gesture / face; None = nothing). -> target NN_OUT vector.
         `executed`: what the robot really did this tick (the network's decision during DAgger) - updates the memory
         instead of the target."""
         s = np.asarray(s)
         muse = np.asarray(muse)
         pace, ideas = muse[:3], muse[3:]
+        agency, answered, ignored = (0.0, 0.0, 0.0) if ct is None else (float(ct[0]), float(ct[1]), float(ct[2]))
         y = np.zeros(len(NN_OUT), np.float32)
         touch_now = max(s[S["sal_touch_head"]], s[S["sal_touch_screen"]])
         touch_onset = touch_now > 0.12 and touch_now - self.prev_touch > 0.04
@@ -288,13 +309,49 @@ class Teacher:
         night = s[S["sleepiness"]] > 0.65
 
         want, urgent = self.choose_emotion(s, pace, events)
-        idea, idea_start = self.idea_step(s, ideas, night, urgent)
+
+        # ---- the sense of "I did that" (CONTINGENCY 3.5)
+        answer = answered > ANSWER_ON and self.prev_answered <= ANSWER_ON
+        repaired = answer and self.prev_ignored > BID_ON
+        self.prev_answered, self.prev_ignored = answered, ignored
+        self.since_answer = 0.0 if answer else self.since_answer + DT
+        if answer and not night:
+            if self.last_act is not None and self.last_act_t < 4.5 and self.game_reps < GAME_REPS:
+                self.repeat, self.repeat_t = self.last_act, 1.5 + (pace[2] + 1.0)  # do it again, 1.5-3.5 s later
+                self.game_reps += 1
+        if self.since_answer > GAME_END_S:
+            self.game_reps = 0
+        do_repeat = None
+        if self.repeat is not None:
+            self.repeat_t -= DT
+            # a fright ends the game; a touch does not - on the robot the answer IS a touch (2026-10-27: cancelled by
+            # every urgent reaction, the answered act came again less often than by chance in the simulator)
+            if night or s[S["threat"]] > 0.45 or events["surprise_onset"] or events["over_onset"]:
+                self.repeat = None
+            elif self.repeat_t <= 0 and (self.repeat != "gesture" or self.since_gesture > 4.0 or self.repeat_t < -3.0):
+                do_repeat, self.repeat = self.repeat, None
+        joy = not urgent and not night and self.since_answer < 2.5
+        bid = not urgent and not night and not joy and BID_ON < ignored <= WITHDRAW_ON
+        withdraw = not urgent and not night and not joy and ignored > WITHDRAW_ON
+        if joy:
+            # the joy of control (Watson 1972): stronger the more the world answers; after being ignored, a repair
+            want = "very_happy" if repaired else pick(JOY_FACES if agency > 0.1 else ["happy", "surprised", "happy"],
+                                                      pace[2])
+        elif withdraw and want != "sleepy":
+            want = pick(["sad", "bored", "sad"], pace[1])  # the still face: withdrawn, never angry (Tronick 1978)
+        elif bid and want not in ("sleepy",):
+            want = pick(["curious", "confused", "curious", "happy"], pace[1])  # bids: asking, inviting
+        if do_repeat == "face":
+            # the same act a little different (Piaget's tertiary circular reaction): another face of the joyful kind
+            others = [f for f in JOY_FACES + ["love", "surprised"] if f != self.emo]
+            want = pick(others, pace[2])
+        idea, idea_start = self.idea_step(s, ideas, night, urgent or withdraw or joy)
         if idea is not None:
             want = self.idea_face
         min_show = MIN_SHOW.get(self.emo, DEFAULT_MIN_SHOW)
         emo = self.emo
-        if idea_start:
-            emo = want  # an idea shows at once
+        if idea_start or (joy and self.since_answer < DT * 1.5) or do_repeat == "face":
+            emo = want  # an idea, an answer's joy, a varied face show at once
         elif want != self.emo and (urgent or self.emo_age >= min_show):
             # a calm change of mood needs a while; reactions are at once
             if urgent or self.emo_age > 4.0 + 3.0 * (pace[1] + 1):
@@ -314,18 +371,27 @@ class Teacher:
             say = True
         elif (events["surprise_onset"] or events["threat_onset"] or events["over_onset"]) and self.since_sound > 0.7:
             say = True
+        elif do_repeat == "call" and self.since_sound > 0.7:
+            say = True  # an answered call: again (Piaget's secondary circular reaction)
+        elif bid and self.since_sound > BID_SAY_S:
+            say = True  # a bid: an asking call
         elif idea == "play" and self.since_sound > 2.0:
             say = True  # a sound game: short calls in a row
         elif idea in ("social", "surprise") and (idea_start or (idea == "social" and self.since_sound > 3.5)):
             say = True
-        elif idea != "still" and self.since_sound > 6.0 + 10.0 * (1 - aro) and pace[0] > 0.55 - 0.3 * aro:
-            say = True  # idle babble: ~ every 8-25 s by day
+        elif (idea != "still" and not withdraw and
+              self.since_sound > (6.0 + 10.0 * (1 - aro)) * (0.6 if agency > 0.3 else 1.0) and pace[0] > 0.55 - 0.3 * aro):
+            say = True  # idle babble: ~ every 8-25 s by day, more often while the world answers
         if say:
             self.speak_ticks = 3
         if self.speak_ticks > 0:
             y[O["say"]] = 1.0
             self.speak_ticks -= 1
         style = {"play": "play", "social": "ask", "surprise": "play"}.get(idea, style)
+        if bid:
+            style = "ask"
+        elif do_repeat == "call" or joy:
+            style = "play"
         y[O["style_" + style]] = 1.0
         y[O["snd_arousal"]] = float(np.clip(0.3 * a + 0.7 * aro, 0, 1)) * (0.5 if night else 1.0)
         y[O["snd_valence"]] = float(np.clip(v * 2 - 1, -1, 1))
@@ -384,6 +450,8 @@ class Teacher:
                 mode = "shake"
             elif nod_ok and idea == "surprise" and idea_start:
                 mode = "nod"  # the Muse's surprise: a nod dance
+            elif do_repeat == "gesture" and not night:
+                mode = "nod"  # an answered gesture: again
             if mode != "hold":
                 self.gesture = (mode, 12)  # ~1.2 s
         if mode == "hold":
@@ -393,8 +461,14 @@ class Teacher:
             elif self.touch_open and self.touch_age < 2.0 and emo not in ("angry", "annoyed", "scared", "sad"):
                 # a hand: the head lifts towards it (on the head pad) or looks at whoever tapped the face
                 mode, gaze = ("look_up", gaze) if head_touch else ("look", (0.0, -0.2))
+            elif withdraw:
+                mode = "look_down"  # the still face: turned down and away
             elif emo in ("sad", "shy", "crying") and self.emo_age < 3:
                 mode = "look_down"
+            elif bid:
+                mode, gaze = "look", (self.seen, -0.1)  # a bid: to whoever was there
+            elif agency > AGENCY_WAIT and self.since_sound < WAIT_S and self.last_act == "call":
+                mode, gaze = "hold", self.head  # the world answers: wait for its answer
             elif idea == "still":
                 mode, gaze = "hold", self.head
             elif idea == "social":
@@ -422,13 +496,16 @@ class Teacher:
 
     def apply(self, y):
         emo = EMOTIONS[int(np.argmax([y[O["emo_" + e]] for e in EMOTIONS]))]
+        self.last_act_t += DT
         if emo != self.emo:
             self.emo, self.emo_age = emo, 0.0
+            self.last_act, self.last_act_t = "face", 0.0
         else:
             self.emo_age += DT
         if y[O["say"]] > 0.5:
             if self.since_sound > 0.7:
                 self.touch_open = False
+                self.last_act, self.last_act_t = "call", 0.0
             self.since_sound = 0.0
         else:
             self.since_sound += DT
@@ -436,6 +513,7 @@ class Teacher:
         if mode in ("nod", "shake", "flinch"):
             if self.since_gesture > 0.5:
                 self.touch_open = False
+                self.last_act, self.last_act_t = "gesture", 0.0
             self.since_gesture = 0.0
         else:
             self.since_gesture += DT
@@ -462,18 +540,36 @@ def pacemakers(rng, T):
     return out
 
 
-def rollout(snn_seq, rng):
-    """Teacher on a 10 Hz sequence of SNN outputs -> (inputs [T, 49], targets [T, 61])."""
+GESTURES = [O["head_nod"], O["head_shake"], O["head_flinch"]]
+HEAD_IDX = [O["head_" + m] for m in HEAD_MODES]
+EMO_IDX = [O["emo_" + e] for e in EMOTIONS]
+
+
+def acts_of(y):
+    """What an output vector does, as the contingency detector sees acts: (says, gestures, shown emotion index)."""
+    head = HEAD_IDX[int(np.argmax(y[HEAD_IDX]))]
+    return bool(y[O["say"]] > 0.5), head in GESTURES, int(np.argmax(y[EMO_IDX]))
+
+
+def rollout(snn_seq, rng, world_rng=None):
+    """Teacher on a 10 Hz sequence of SNN outputs, with people who answer or not (contingency.AnswerWorld)
+    -> (inputs [T, 55], targets [T, 61])."""
+    import contingency as C
     import muse as M
     T = len(snn_seq)
     pace = M.run(np.asarray(snn_seq, np.float32)[None], rng)[0]
     tch = Teacher()
+    world = C.AnswerWorld(world_rng or np.random.default_rng())  # its own draws: the lives stay as they were
+    snn_seq = np.array(snn_seq, np.float32)  # a copy: the answers are written into it
     X = np.zeros((T, len(SNN_OUT) + len(PREV)), np.float32)
     Y = np.zeros((T, len(NN_OUT)), np.float32)
     for t in range(T):
+        ct = world.out
         X[t, :len(SNN_OUT)] = snn_seq[t]
-        X[t, len(SNN_OUT):] = tch.prev_inputs(pace[t])
-        Y[t] = tch.step(snn_seq[t], pace[t])
+        X[t, len(SNN_OUT):] = tch.prev_inputs(pace[t], ct)
+        Y[t] = tch.step(snn_seq[t], pace[t], ct)
+        world.step(*acts_of(Y[t]))
+        C.inject(snn_seq, t + 1, world.answers)
     return X, Y
 
 

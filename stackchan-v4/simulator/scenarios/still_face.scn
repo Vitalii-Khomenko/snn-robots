@@ -1,0 +1,12 @@
+# The still face (Tronick 1978; docs/CONTINGENCY.md): for four minutes someone close answers the robot's calls and
+# gestures with a pet, then stops answering and stays. The robot should bid for the answer (asking calls, looks), then
+# become quietly sad - never angry - and be glad at once when answered again (at 11:00).
+duration 12:00
+clock 14:00
+seed 52
+room_light on
+owner home
+at 0:05 person owner enter 0 0.3
+at 0:50 responder call,gesture pet 0.85 0.8 2.0
+at 5:00 responder off
+at 11:00 responder call,gesture pet 0.9 0.8 2.0

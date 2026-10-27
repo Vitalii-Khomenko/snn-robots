@@ -33,6 +33,7 @@ private:
     };
     std::array<Biquad, 3> stages_{};
     std::array<float, kRing> ring_{};
+    std::array<float, kWin + kLagHi> win_{};  // frame()'s window: here, not on the microphone task's 4 KB stack
     uint32_t n_ = 0;
     int phase_ = 0;
     bool floor_set_ = false;

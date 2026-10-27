@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <functional>
 #include <esp_codec_dev.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 #include "../perception/audio_frontend.h"
 #include "../perception/voice_check.h"
@@ -39,6 +41,8 @@ public:
     // or the own-motion threshold was on. Called on the microphone task; it must not block.
     using Tap = void (*)(const int16_t* lr, size_t frames, uint32_t ms, bool muted, bool ownMotion);
     void setTap(Tap tap) { tap_.store(tap); }
+    // the microphone task's least free stack so far, bytes (the stats line)
+    uint32_t stackHeadroom() const { return task_ ? uxTaskGetStackHighWaterMark(task_) : 0; }
     // Is it a voice (perception/voice_check.h): ~250 ms share of voiced 25 ms frames, 0..1.
     float voice() const { return voice_check_.voice(); }
     // The filter-bank frames the Auditory NN reads (perception/audio_frontend.h).
@@ -70,6 +74,7 @@ private:
     static constexpr size_t kChunkSamplesPerChannel = 128;
 
     esp_codec_dev_handle_t mic_ = nullptr;
+    TaskHandle_t task_ = nullptr;
     std::function<void()> on_loud_sound_;
 
     AudioFrontEnd front_;

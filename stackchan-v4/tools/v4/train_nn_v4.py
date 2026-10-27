@@ -17,8 +17,9 @@ import torch.nn.functional as F
 from nn_v4 import ACT_IDX, EMO_IDX, GROUPS, SIG, SIGNED, STRENGTH, NnV4, activate
 from snn_v4 import SnnV4
 from spec_v4 import EMOTIONS, HEAD_MODES, NN_OUT, PREV, SNN_OUT
+import contingency as C
 import muse as M
-from teacher_nn import Teacher
+from teacher_nn import Teacher, acts_of
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "out")
@@ -51,27 +52,34 @@ def build():
 
 def label(S, rng, policy=None, dev="cpu"):
     """Teacher rollouts over SNN output sequences S [N, T, 32]. policy=None: the teacher acts itself (imitation);
-    else the network acts (DAgger) and the teacher labels. -> inputs [N, T, 49], targets [N, T, 61]."""
+    else the network acts (DAgger) and the teacher labels. People answer what is really done or not
+    (contingency.AnswerWorld, one per life). -> inputs [N, T, 55], targets [N, T, 61]."""
     N, T, _ = S.shape
+    S = np.array(S, np.float32)  # a copy: the people's answers are written into it (contingency.inject)
     X = np.zeros((N, T, len(SNN_OUT) + len(PREV)), np.float32)
     Y = np.zeros((N, T, len(NN_OUT)), np.float32)
     teachers = [Teacher() for _ in range(N)]
+    worlds = [C.AnswerWorld(np.random.default_rng(int(rng.integers(1 << 31)))) for _ in range(N)]
     pace = M.run(S.astype(np.float32), rng)  # the Muse: pacemakers + ideas, driven by each life's mood
     h = None
     for t in range(T):
         for n in range(N):
             X[n, t, :32] = S[n, t]
-            X[n, t, 32:] = teachers[n].prev_inputs(pace[n, t])
+            X[n, t, 32:] = teachers[n].prev_inputs(pace[n, t], worlds[n].out)
         if policy is None:
             for n in range(N):
-                Y[n, t] = teachers[n].step(S[n, t], pace[n, t])
+                Y[n, t] = teachers[n].step(S[n, t], pace[n, t], worlds[n].out)
+                worlds[n].step(*acts_of(Y[n, t]))
+                C.inject(S[n], t + 1, worlds[n].answers)
         else:
             with torch.no_grad():
                 raw, h = policy(torch.tensor(X[:, t:t + 1], device=dev), h)
                 act = activate(raw)[:, 0].cpu().numpy()
             for n in range(N):
                 executed = decisive(act[n])
-                Y[n, t] = teachers[n].step(S[n, t], pace[n, t], executed=executed)
+                Y[n, t] = teachers[n].step(S[n, t], pace[n, t], worlds[n].out, executed=executed)
+                worlds[n].step(*acts_of(executed))
+                C.inject(S[n], t + 1, worlds[n].answers)
     return X, Y
 
 

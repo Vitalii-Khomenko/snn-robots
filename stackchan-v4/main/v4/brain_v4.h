@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <cstdint>
 
@@ -35,6 +36,8 @@ public:
     SnnV4& analyzer() { return snn_; }
     MuseV4& muse() { return muse_; }
     const MuseV4::Out& ideas() const { return muse_out_; }
+    // the sense of "I did that" (contingency_v4.h, CT order): the main network sees it from the next decision on
+    void setContingency(const float* ct) { std::copy(ct, ct + v4::CT_COUNT, ct_.begin()); }
     NnV4& network() { return nn_; }
     // the own-state inputs (v4_spec.h Prev) of the main network's last decision: the diary keeps them (stage 6)
     const std::array<float, v4::PV_COUNT>& lastPrev() const { return prev_; }
@@ -58,6 +61,7 @@ private:
     uint32_t ticks_ = 0, nn_faults_ = 0, rng_ = 0x2545f491u;
     MuseV4 muse_;
     MuseV4::Out muse_out_{};
+    std::array<float, v4::CT_COUNT> ct_{};
     // the past, as teacher_nn.Teacher keeps it
     int emo_ = 0;
     float emo_age_ = 10.0f, since_sound_ = 10.0f, since_gesture_ = 30.0f, touch_age_ = 0.0f, prev_touch_ = 0.0f;

@@ -38,6 +38,10 @@ public:
 
     // Advances physics and applies scenario events up to `t_us`.
     void advanceTo(uint64_t t_us);
+    // The robot did something a person may answer ("responder" in a scenario; docs/CONTINGENCY.md):
+    // 0 a call, 1 a gesture, 2 a face change.
+    void robotActed(int kind);
+    int answersGiven() const { return answers_given_; }
     uint64_t now() const { return now_us_; }
 
     // --- clock ------------------------------------------------------------
@@ -173,6 +177,19 @@ private:
     std::deque<Pulse> clicks_;
     float prev_yaw_vel_ = 0, prev_pitch_vel_ = 0;
     float yaw_accel_ = 0, pitch_accel_ = 0;
+
+    // a person who answers the robot's acts (responder MODE ANSWER P LAT_LO LAT_HI) or at random (responder random
+    // ANSWER MEAN_S), with what: pet / talk / tap
+    struct Responder {
+        bool on = false, random = false;
+        bool acts[3] = {false, false, false};
+        std::string answer = "pet";
+        float p = 0.8f, lat_lo = 0.8f, lat_hi = 2.0f, mean_s = 20.0f;
+        uint64_t next_random_us = 0;
+    } responder_;
+    std::vector<std::pair<uint64_t, std::string>> pending_answers_;
+    int answers_given_ = 0;
+    void answer(const std::string& what);
 
     // body handling
     uint64_t touch_until_ = 0;

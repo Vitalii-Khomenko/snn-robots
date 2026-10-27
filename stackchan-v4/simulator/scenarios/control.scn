@@ -1,0 +1,9 @@
+# The control of contingent.scn: the same person as close, petting the robot about as often, but at random moments -
+# whatever the robot does. Its acts should not multiply the way they do when they are answered.
+duration 12:00
+clock 14:00
+seed 51
+room_light on
+owner home
+at 0:05 person owner enter 0 0.3
+at 0:50 responder random pet 20

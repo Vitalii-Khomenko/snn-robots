@@ -6,7 +6,7 @@
 
 // The sense of "I did that" (docs/CONTINGENCY.md, step 1; tools/v4/contingency.py - its twin): does the world answer
 // the robot's acts? Every tick it takes what the robot just did (a call, a gesture, a face change) and what came from
-// outside (a gentle pet or tap, a new speech onset that is not its own voice, someone coming near, motion seen while
+// outside (a gentle pet or tap, a new speech onset (the ear holds back the robot's own voice), someone coming near, motion seen while
 // the head is still). An answer 0.5-4 s after an act is credited to the latest act; how often each kind of act is
 // answered is set against the chance of an answer landing in such a window anyway (the background rate at moments
 // without acts). Acts within 3 s after an answer are reactions and do not count; nothing counts at night or while the

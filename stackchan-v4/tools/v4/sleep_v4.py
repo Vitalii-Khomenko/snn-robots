@@ -125,7 +125,8 @@ def base_model():
     version, shift, mbias = 0, np.zeros(len(CHANNELS), np.float32), np.zeros(len(MU.OUTS), np.float32)
     if os.path.exists(LIVE):
         version, arrays = LR.unpack(open(LIVE, "rb").read())
-        if "nn.act1_w" in arrays:
+        # the live heads only if they were made for this network (a retrained one starts from its own innate heads)
+        if "nn.act1_w" in arrays and LR.id_of(arrays) == LR.nn_id(m.state_dict()):
             with torch.no_grad():
                 m.act1.weight.copy_(torch.tensor(arrays["nn.act1_w"]).view_as(m.act1.weight))
                 m.act1.bias.copy_(torch.tensor(arrays["nn.act1_b"]))
@@ -384,7 +385,7 @@ def main():
     version = int(dt.datetime.now().strftime("%y%m%d%H"))
     os.makedirs(STORE, exist_ok=True)
     blob_path = os.path.join(STORE, f"v{version}.bin")
-    open(blob_path, "wb").write(LR.pack(version, heads_new, new_shift, new_mbias))
+    open(blob_path, "wb").write(LR.pack(version, heads_new, new_shift, new_mbias, nn=LR.nn_id(m.state_dict())))
     say(lines, f"  candidate {os.path.relpath(blob_path, ROOT)} (version {version})")
     if not behaviour_gate(blob_path, lines):
         return finish(lines, started, "gate failed: the robot keeps what it has")

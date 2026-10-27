@@ -23,6 +23,7 @@ cd "$root"
 # Firmware files are compiled exactly as they are; warnings there belong to
 # the firmware build, so only the simulator's own files use -Werror.
 objs=()
+pids=()
 for src in "${firmware[@]}" "${simulator[@]}"; do
   obj="$here/build/$(echo "$src" | tr '/' '_' | sed 's/\.cpp$/.o/')"
   objs+=("$obj")
@@ -31,8 +32,15 @@ for src in "${firmware[@]}" "${simulator[@]}"; do
     [[ "$src" == simulator/* ]] && flags+=(-Werror)
     g++ -std=c++17 -O2 -g "${flags[@]}" -pthread -Isimulator/shims -Icomponents/si12t/include \
         -DSIM_DEFAULT_OUT="\"$here/out\"" -c "$src" -o "$obj" &
+    pids+=($!)
   fi
 done
-wait
+# every compile must succeed: a failed one would leave its old object behind and the link would use it
+failed=0
+for pid in "${pids[@]}"; do wait "$pid" || failed=1; done
+if (( failed )); then
+  echo "simulator build failed" >&2
+  exit 1
+fi
 g++ -pthread -o "$here/build/stackchan_sim" "${objs[@]}"
 echo "built $here/build/stackchan_sim"

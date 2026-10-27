@@ -10,7 +10,8 @@ not its own voice, someone coming near, motion seen while the head is still). An
 credited to the latest act; how often each kind of act is answered (leaky counts, ~5 min) is set against the chance of
 an answer landing in such a window anyway (the background rate at moments with nobody acting, ~30 min). Acts within
 3 s after an answer are reactions and do not count; nothing counts at night or when the networks do not drive.
-Outputs (diary ct_*): agency, answered (a pulse, ~3 s), ignored (acts unanswered with someone around, fades ~10 min),
+Outputs (diary ct_*): agency, answered (a pulse, ~3 s), ignored (+0.1 per unanswered call or gesture with someone
+around, an answer resets it, fades ~5 min),
 and per act kind (call, gesture, face) how much more often than chance it is answered (answers weighted).
 
 Step 0 (--measure): for every spontaneous act (nothing answered in the 10 s before) with someone around,
@@ -30,9 +31,9 @@ ANSWERS = ["pet", "tap", "speech", "near", "motion"]
 WEIGHT = [1.0, 0.8, 0.6, 0.5, 0.3]
 QUIET_MS = [2000, 2000, 2000, 3000, 3000]
 WIN_LO_MS, WIN_HI_MS = 500, 4000
-REACT_MS, NO_ACT_MS, AROUND_MS, OWN_VOICE_MS, ACT_QUIET_MS = 3000, 5000, 120000, 5000, 1000
-TAU_NOW, TAU_BG, TAU_PULSE, TAU_IGNORED = 300.0, 1800.0, 3.0, 600.0
-PRIOR, IGNORE_STEP = 3.0, 0.15
+REACT_MS, NO_ACT_MS, AROUND_MS, ACT_QUIET_MS = 3000, 5000, 120000, 1000
+TAU_NOW, TAU_BG, TAU_PULSE, TAU_IGNORED = 300.0, 1800.0, 3.0, 300.0
+PRIOR, IGNORE_STEP = 3.0, 0.1
 WINDOW_S = (WIN_HI_MS - WIN_LO_MS) / 1000.0
 F = np.float32
 INPUTS = ["active", "said", "gesture", "face", "raw_head_ev", "raw_screen_ev", "ch_touch_head", "ch_touch_screen",
@@ -66,7 +67,7 @@ class Detector:
         self.n[k] += 1.0
         for a in range(5):
             self.h[k][a] += 1.0 if a in answered else 0.0
-        if not answered:
+        if not answered and k != 2:  # a face is not a bid
             self.ignored += (1.0 - self.ignored) * IGNORE_STEP
 
     def step(self, now, row):
@@ -93,7 +94,7 @@ class Detector:
         self.face = face
 
         cond = [head_ev > 0 and touch_head < F(0.7), screen_ev > 0 and touch_screen < F(0.4),
-                speech > F(0.5) and not self._within(self.last_said, now, OWN_VOICE_MS), near > F(150),
+                speech > F(0.5), near > F(150),
                 motion > F(0.15) and abs(F(yaw) - F(self.yaw)) < F(0.3)]
         self.yaw = yaw
         onset = [False] * 5
@@ -101,7 +102,7 @@ class Detector:
             onset[a] = cond[a] and not self._within(self.last_true[a], now, QUIET_MS[a])
             if cond[a]:
                 self.last_true[a] = now
-        if onset[0] or onset[1] or onset[3] or near > F(50):
+        if onset[0] or onset[1] or onset[3] or near > F(50) or motion > F(0.1):
             self.last_around = now
         around = self._within(self.last_around, now, AROUND_MS)
 
@@ -118,10 +119,11 @@ class Detector:
                 for p in self.pending:
                     if WIN_LO_MS <= now - p[0] <= WIN_HI_MS and (best is None or (p[0], p[1]) > (best[0], best[1])):
                         best = p
+                if a in (0, 1, 2):  # petted, tapped, talked to: not ignored
+                    self.ignored = 0.0
                 if best is not None:
                     best[3].add(a)
                     self.pulse = max(self.pulse, WEIGHT[a])
-                    self.ignored = 0.0
                     if credit is None:
                         credit = (best[1], a, now - best[0])
                 elif around and no_act:
@@ -154,6 +156,97 @@ class Detector:
             c.append(min(max(s, -1.0), 1.0))
         out = [min(max(max(c), 0.0), 1.0), self.pulse, self.ignored] + c
         return out, credit
+
+
+class AnswerWorld:
+    """For training the main network (teacher_nn.rollout, train_nn_v4.label; CONTINGENCY step 3): people who answer the
+    robot's acts or not, in stretches of 1-5 minutes, seen through the Detector at 10 Hz -> the 6 inputs it gets.
+      away        nobody there
+      random      someone there, answering now and then whatever the robot does (the control)
+      responsive  someone there who answers some kinds of act (a call / a gesture / a face) with p 0.5-0.9 after 0.6-3 s,
+                  at most once in ANSWER_GAP_S (a person's pace: not every call of a ping-pong of calls and pets)
+      still       someone there who never answers (the still face)
+    The answers are a pet, speech or a tap. The lives are recorded, so an answer is also written into the analyzer's
+    numbers that follow (inject: the mean trace of a touch / a voice onset in the analyzer's dataset) - on the robot an
+    answer is felt as well as counted, and the network must learn to keep its game going through the touch."""
+    KINDS, SHARE = ["away", "random", "responsive", "still"], [0.35, 0.15, 0.3, 0.2]
+    ANSWER_GAP_S = 6.0
+
+    def __init__(self, rng):
+        self.rng = rng
+        self.det = Detector()
+        self.ms = 0
+        self.pending = []
+        self.prev_say, self.prev_gesture, self.prev_emo = False, False, -1
+        self.out = [0.0] * len(CONTINGENCY)
+        self.answers = (False, False, False)
+        self.next_answer_ms = 0
+        self._stretch()
+
+    def _stretch(self):
+        r = self.rng
+        self.kind = self.KINDS[int(r.choice(len(self.KINDS), p=self.SHARE))]
+        self.left = r.uniform(60.0, 300.0)
+        self.p = r.uniform(0.5, 0.9)
+        self.acts = set(r.choice(3, size=int(r.integers(1, 4)), replace=False).tolist())
+        self.lat = (r.uniform(0.6, 1.2), r.uniform(1.5, 3.0))
+        self.rate = 1.0 / r.uniform(15.0, 60.0)
+        self.answer_p = r.dirichlet([2.0, 2.0, 1.0])  # pet, speech, tap
+
+    def step(self, said, gesture, emo):
+        """What the robot did this 10 Hz step (a call starts, a gesture starts, the shown emotion) -> the 6 numbers."""
+        r = self.rng
+        self.left -= 0.1
+        if self.left <= 0:
+            self._stretch()
+            self.pending = []
+        call = said and not self.prev_say
+        gest = gesture and not self.prev_gesture
+        face = self.prev_emo >= 0 and emo != self.prev_emo
+        self.prev_say, self.prev_gesture, self.prev_emo = said, gesture, emo
+        if self.kind == "responsive":
+            for k, did in enumerate((call, gest, face)):
+                if did and k in self.acts and self.ms >= self.next_answer_ms and not self.pending and r.random() < self.p:
+                    at = self.ms + int(1000 * r.uniform(*self.lat))
+                    self.pending.append((at, int(r.choice(3, p=self.answer_p))))
+                    self.next_answer_ms = at + int(1000 * self.ANSWER_GAP_S)
+        due = [a for t, a in self.pending if t <= self.ms]
+        self.pending = [(t, a) for t, a in self.pending if t > self.ms]
+        if self.kind == "random" and r.random() < self.rate * 0.1:
+            due.append(int(r.choice(3, p=self.answer_p)))
+        pet, speech, tap = (0 in due), (1 in due), (2 in due)
+        self.answers = (pet, speech, tap)
+        near = 80.0 if self.kind != "away" else 0.0
+        row = (True, call, gest, int(emo), 1.0 if pet else 0.0, 1.0 if tap else 0.0, 0.3 if pet else 0.0,
+               0.2 if tap else 0.0, near, 0.9 if speech else 0.0, 0.0, 0.0)
+        self.out, _ = self.det.step(self.ms, row)
+        self.ms += 100
+        return self.out
+
+
+# what an answer looks like to the analyzer, 10 Hz from the onset (the mean of 2900 head / 700 screen touch onsets in
+# out/nn_snn.npz, 2026-10-27, rounded and made to fade; a voice onset by analogy): {output: trace}, applied as a maximum
+_FADE = [1.0, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3]
+TRACES = {
+    "pet": {"sal_touch_head": [0.35 * f for f in _FADE], "hed_touch_head": [0.68] * 15,
+            "surprise": [0.55, 0.5, 0.42, 0.35, 0.3]},
+    "tap": {"sal_touch_screen": [0.37 * f for f in _FADE], "hed_touch_screen": [0.6] * 15,
+            "surprise": [0.5, 0.45, 0.38, 0.32, 0.28]},
+    "speech": {"sal_voice": [0.3 * f for f in _FADE], "hed_voice": [0.6] * 15},
+}
+
+
+def inject(S, t, answers):
+    """Write the answers of AnswerWorld.step (pet, speech, tap) into one life's analyzer numbers S [T, 32] from t on."""
+    from spec_v4 import SNN_OUT
+    for did, kind in zip(answers, ("pet", "speech", "tap")):
+        if not did:
+            continue
+        for name, trace in TRACES[kind].items():
+            j = SNN_OUT.index(name)
+            n = min(len(trace), len(S) - t)
+            if n > 0:
+                S[t:t + n, j] = np.maximum(S[t:t + n, j], np.asarray(trace[:n], S.dtype))
 
 
 def inputs(ticks):
@@ -259,9 +352,11 @@ def measure(days):
 
 
 def self_links(days):
-    """Me or not me (CONTINGENCY 3.6): for every kind of sense event, how often it comes 0-0.5 s after the robot's own
-    act (a call, a gesture, a head move starting) against any moment. A link far above chance and that fast is the
-    robot itself (its voice, its servos), not the world."""
+    """Me or not me (CONTINGENCY 3.6): for every kind of sense event, how often it comes in the 0.5 s after the robot's
+    own act (a call, a gesture, a head move starting) against any moment. A link far above chance and that fast is the
+    robot itself (its voice, its servos), not the world. Strictly after: an event in the act's own tick came first
+    (the ear runs before the executor) and the act was the answer to it (2026-10-27: "a sharp sound after a call", x15,
+    were sharp sounds the robot answered with a call in the same tick)."""
     def ahead(x, a, b):
         cs = np.concatenate([[0], np.cumsum(x)])
         i = np.arange(len(x))
@@ -282,13 +377,13 @@ def self_links(days):
               "sharp": onsets(c("raw_sharp_ev") > 0, int(1 / DT)),
               "pet": onsets(c("raw_head_ev") > 0, int(2 / DT)), "tap": onsets(c("raw_screen_ev") > 0, int(2 / DT)),
               "near": onsets(c("raw_near_raw") > 150, int(3 / DT)), "motion": onsets(c("ch_motion") > 0.15, int(3 / DT))}
-        print(f"{day}: P(event in 0-0.5 s after the act) / P(at any moment); >> 1 and fast = the robot itself")
+        print(f"{day}: P(event in the 0.5 s after the act) / P(at any moment); >> 1 and fast = the robot itself")
         print("  event        " + "".join(f"{k:>14s}" for k in acts))
         for name, e in ev.items():
             if e is None:
                 continue
             e = e & valid
-            fast = ahead(e, 0, int(0.5 / DT))
+            fast = ahead(e, 1, int(0.5 / DT) + 1)  # ticks i+1 .. i+10
             base = fast[valid].mean()
             cells = []
             for a in acts.values():

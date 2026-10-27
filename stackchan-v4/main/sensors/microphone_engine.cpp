@@ -39,7 +39,7 @@ bool MicrophoneEngine::begin()
     // without this boost (see docs/HARDWARE.md "microphones: done").
     esp_codec_dev_set_in_gain(mic_, 60.0f);
 
-    BaseType_t ok = xTaskCreatePinnedToCore(&MicrophoneEngine::taskEntry, "mic_engine", 4096, this, 3, nullptr, 1);
+    BaseType_t ok = xTaskCreatePinnedToCore(&MicrophoneEngine::taskEntry, "mic_engine", 4096, this, 3, &task_, 1);
     if (ok != pdPASS) {
         ESP_LOGE(kTag, "failed to start mic task");
         return false;

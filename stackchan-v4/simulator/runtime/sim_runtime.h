@@ -48,6 +48,7 @@ private:
 
     RunOptions opt_;
     FaceEngine face_;
+    int last_face_ = -1;
     LedEngine led_;
     AudioOutput audio_;
     BabbleVoice vocal_{audio_};

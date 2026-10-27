@@ -14,7 +14,8 @@ senses -> 13 channels, each a number 0..1 with innate zones (boredom, comfort, i
 ```
 
 Everything runs on the robot. The home PC receives the diary of every tick (statistics, analysis, debugging) and
-trains the networks; nothing else leaves the robot (no frames, no sound).
+trains the networks; nothing else leaves the robot: no camera frames, and sound only when the home PC asks for a
+recording (`tools/robot/listen.py`, with the robot's token, for checking the ear).
 
 Inside the two networks: [docs/png/NETWORKS_V4.png](docs/png/NETWORKS_V4.png). Both pictures are drawn from the code
 (`tools/v4_map.py`, SVG in `docs/`).
@@ -118,11 +119,14 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
 - Curious glances (2026-10-26): at random moments every 40-150 s the idle head turns slowly to one side (40-70°),
   looks a few seconds and comes back - the room's edges get looked at and no two minutes are alike; a new light is turned to
   quickly. See ARCHITECTURE section 4.
-- The sense of "I did that" (2026-10-27, step 1 of [CONTINGENCY](docs/CONTINGENCY.md)): a detector notices when a
-  call, a gesture or a face is answered (a pet, a tap, speech, someone coming near) more often than by chance, and
-  writes it to the diary. Nothing acts on it yet. Step 2 cleaned the ears: the ear's "speech" was the robot's own
-  voice tail and its servos, ~250 times an hour; now speech must be a voice (periodic at 80-400 Hz above the room),
-  and its own speaker no longer startles it. Its microphone can be recorded on the PC (`tools/robot/listen.py`).
+- The sense of "I did that" (2026-10-27, steps 1-3 of [CONTINGENCY](docs/CONTINGENCY.md)): a detector notices when a
+  call, a gesture or a face is answered (a pet, a tap, speech, someone coming near) more often than by chance.
+  - The main network sees it. An answer brings joy, and answered acts come more often.
+  - Ignored by someone close, the robot first bids (asking calls, looks), then turns quietly sad. Never angry.
+  - While the world answers, it waits for the answer after a call.
+  - Step 2 cleaned the ears: the ear's "speech" was the robot's own
+  voice tail and its servos, ~250 times an hour; now speech must be a voice (periodic at 80-400 Hz above the room):
+  ~290 -> ~35 onsets an hour. Its microphone can be recorded on the PC (`tools/robot/listen.py`).
 - The Muse (2026-10-26): a small chaotic reservoir network next to the main one. It gives the main network its
   "random" pacemakers (now coloured by the mood) and five ideas (play, show, still, social, surprise), which the
   robot acts when nothing calls for a reaction. It gets bored of its own ideas and learns at night which ones the

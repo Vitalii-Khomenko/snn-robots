@@ -16,6 +16,10 @@ constexpr int kEmo = NnV4::kEmo;
 constexpr int kAct = NnV4::kAct;
 static_assert(sizeof(nnv4::kWAct1) / sizeof(float) == NnV4::kAct1W && sizeof(nnv4::kWAct2) / sizeof(float) == NnV4::kAct2W,
               "action heads' shape (tools/v4/nn_v4.py)");
+// the GRU's input weights must match the spec's input count: a new input (spec_v4.PREV) needs a retrained, re-exported
+// network, or the GRU reads past kWih (2026-10-27: 55 inputs in the spec, 49 in the old weights)
+static_assert(sizeof(nnv4::kWih) / sizeof(float) == 3 * NnV4::kHidden * NnV4::kIn,
+              "GRU input weights' shape: retrain and export_nn_v4.py after a change of spec_v4.PREV");
 float sigmoidf(float x) { return 1.0f / (1.0f + std::exp(-x)); }
 
 void denseF(const float* w, const float* b, const float* x, int rows, int cols, float* y)
@@ -30,6 +34,7 @@ void denseF(const float* w, const float* b, const float* x, int rows, int cols, 
 }  // namespace
 
 bool NnV4::trained() const { return nnv4::kTrained; }
+uint32_t NnV4::id() { return nnv4::kNnId; }
 
 NnV4::NnV4()
     : wih_(nnv4::kWih), whh_(nnv4::kWhh), wemo_(nnv4::kWEmo), act1_w_(nnv4::kWAct1), act1_b_(nnv4::kBAct1),

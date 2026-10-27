@@ -207,6 +207,12 @@ void SimRuntime::run(uint64_t until_us)
         const auto host_start = std::chrono::steady_clock::now();
         loop_.step(now, env);
         if (loop_.tickCount() != ticks_before) {
+            // what a person in the scenario may answer (World "responder")
+            if (loop_.saidThisTick()) World::get().robotActed(0);
+            if (loop_.gestureThisTick()) World::get().robotActed(1);
+            const int face = loop_.executor().shownEmotion();
+            if (last_face_ >= 0 && face != last_face_) World::get().robotActed(2);
+            last_face_ = face;
             host_tick_s_ += std::chrono::duration<double>(std::chrono::steady_clock::now() - host_start).count();
             ++host_ticks_;
             // The tick costs ESP32-S3 CPU time: the main task stays busy for it while the camera/mic tasks keep running.

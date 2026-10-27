@@ -19,6 +19,8 @@ public:
 
     void reset() { h_.fill(0.0f); }
     bool trained() const;
+    // the compiled-in trunk's fingerprint (tools/v4/learned.py nn_id): which network learned heads belong to
+    static uint32_t id();
     // false (out unchanged) without trained weights or on a non-finite result (the state is reset then)
     bool step(const In& in, Out& out);
     // The action heads learned from the robot's life (stage 6, learned_blob.h); all nullptr = the compiled-in ones.

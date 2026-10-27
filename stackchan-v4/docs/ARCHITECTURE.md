@@ -81,15 +81,40 @@ which channel each comes from; it does not choose emotions.
 One network decides everything (the owner's choice: one decider, the voice is only a synthesizer):
 
 ```
-input 49 = 32 SNN numbers + 17 own state -> GRU 64 -> emotion head: 21 emotions (softmax) + strength
+input 55 = 32 SNN numbers + 23 own state -> GRU 64 -> emotion head: 21 emotions (softmax) + strength
                                                     -> [GRU state, emotion] -> hidden 64 -> action heads (39)
             SNN mood --> Muse (64-neuron reservoir) --> 3 pacemakers + 5 ideas (part of the own state)
+   acts + answers --> contingency detector (section 5) --> agency, answered, ignored, what works (own state)
 ```
 
-- **Own state (17):** last valence and arousal, how long the face has been shown, time since a sound and since a
+- **Own state (23):** last valence and arousal, how long the face has been shown, time since a sound and since a
   gesture, head yaw and pitch, LED level, whether the last touch was answered, three pacemakers (slow, fast,
-  jitter: random processes the network can see, so its "spontaneous" choices are learnable and reproducible) and
-  the Muse's five ideas (below).
+  jitter: random processes the network can see, so its "spontaneous" choices are learnable and reproducible), the
+  Muse's five ideas (below) and, since 2026-10-27, the six numbers of the sense of "I did that" (section 5,
+  [CONTINGENCY](CONTINGENCY.md)).
+- **The sense of "I did that"** (CONTINGENCY step 3, 2026-10-27). The teacher (`teacher_nn.py`) does the following,
+  and the network learned it:
+  - **Joy of control:** an answer to its own act brings joy: happy, very happy, laughing or wink; "very happy" when
+    it comes after being ignored (the repair).
+  - **Circular reaction:** the answered act comes again 1.5-3.5 s later, at most 3 times in a game; an answered face
+    comes back as another joyful face (varied).
+  - **Still face, bids first:** ignored by someone around (above 0.45), it bids: an asking call every 5 s, a look
+    to where someone was seen.
+  - **Still face, then withdrawal:** above 0.75 it goes quiet and sad with the head down. Never angry. Not while
+    sleepy.
+  - **Waiting for the answer:** while the world answers (agency above 0.15), after a call the head holds still
+    2.5 s, as if waiting. Idle babble comes 1.7x more often.
+  - **Training:** the people who answer are simulated (`contingency.AnswerWorld`), in stretches of 1-5 minutes:
+    nobody (35 %), random answers (15 %), answers to some kinds of act with p 0.5-0.9 after 0.6-3 s (30 %), and
+    someone who never answers (20 %). They are seen through the same detector as on the robot, in a closed loop
+    with what the network really does (DAgger).
+  - **An answer is felt too:** its mean trace in the analyzer's numbers (touch salience ~0.35 fading, pleasant,
+    a short surprise) is written into the recorded life (`contingency.inject`).
+  - **A person's pace:** someone answers at most once in 6 s, not every call of a ping-pong.
+  - **Two lessons from the first attempt the same morning:**
+    - Without the felt trace, every touch reaction cancelled the game. The answered act came again less often
+      than by chance, because on the robot an answer *is* a touch. Now only a fright ends the game.
+    - Without the pace, the teacher called 412 times an hour.
 - **The Muse** (2026-10-26, the owner: "for creativity and unpredictability an additional network that gives new
   signals"; `main/v4/muse_v4.cpp`, twin `tools/v4/muse.py`, concept [CREATIVITY](CREATIVITY.md)). It has 64 leaky tanh
   neurons in three time scales (16 x 0.5 s, 24 x 3 s, 24 x 60 s), fixed seeded weights a little past the edge of
@@ -186,9 +211,7 @@ are not touch_screen events for the brain; a tap on the face above the open bar 
   and 700 ms after (the servo glides on after the motion model has arrived); camera frames taken while the head turns are not used; the servos' own share is taken off the
   shake channel; the IMU is ignored for 3 s after a servo power cycle. The servo rail is on only while the head moves
   (HARDWARE.md); its switching on or off raises the microphone threshold for 400 ms (the camera keeps looking).
-- **Own voice:** the microphone is muted while the voice plays; the ear is told when the robot itself speaks. Sharp
-  sounds are dropped while it speaks and 300 ms after: a sharp sound in the first 0.5 s of a call was 15x more likely
-  than at any moment (the speaker's start slipped past the mute; `contingency.py --self`, 2026-10-27).
+- **Own voice:** the microphone is muted while the voice plays; the ear is told when the robot itself speaks.
 - **Speech must be a voice** (2026-10-27, CONTINGENCY step 2). The ear's speech class fired ~250 times an hour, on the
   tail of the robot's own voice and on the servos' whine (~6 kHz) and clicks (recordings, `tools/v4/sound_check.py`).
   - `perception/voice_check.cpp` (twin `tools/v4/voice_check.py`) runs on the microphone task:
@@ -206,20 +229,22 @@ are not touch_screen events for the brain; a tap on the face above the open bar 
   a bang.
 
 **The sense of "I did that"** (`main/v4/contingency_v4.cpp`, twin `tools/v4/contingency.py`, concept
-[CONTINGENCY](CONTINGENCY.md); step 1, 2026-10-27: it only writes the diary, nothing acts on it yet). After the executor,
-every tick:
+[CONTINGENCY](CONTINGENCY.md); step 1 2026-10-27 06:29 wrote the diary only; since step 3 the main network sees it,
+section 3). After the executor, every tick:
 - **Acts:** what the robot did: a call, a gesture, a face change.
-- **Answers:** what came from outside: a gentle pet (weight 1.0) or tap (0.8), a new speech onset not within 5 s of
-  its own call (0.6), someone near (0.5), motion while the head is still (0.3).
+- **Answers:** what came from outside: a gentle pet (weight 1.0) or tap (0.8), a new speech onset (0.6; the ear
+  already holds back the robot's own voice and its tail, below), someone near (0.5), motion while the head is still
+  (0.3).
 - **Credit:** an answer 0.5-4 s after an act goes to the latest act. Acts within 3 s after an answer are reactions
   and do not count.
 - **Contingency per act kind:** answered acts (leaky, ~5 min, with a prior of 3 acts at chance), minus the chance of
   an answer in such a window anyway. The chance comes from the background rate at moments without acts while
-  someone is around (a touch or someone near in the last 2 minutes; leaky, ~30 min).
+  someone is around (a touch, someone near or moving in view in the last 2 minutes; leaky, ~30 min).
 - **Outputs (diary `ct_*`):**
   - agency (the best kind, 0..1);
   - answered (a pulse that fades in ~3 s);
-  - ignored (rises by 0.15 per unanswered act with someone around; an answer resets it; fades in ~10 min);
+  - ignored (rises by 0.1 per unanswered call or gesture with someone around: a face is not a bid; a pet, a tap
+    or speech resets it; fades in ~5 min);
   - call, gesture, face contingency (-1..1).
 - **Log:** `contingency: face answered by pet after 1.9 s (agency 0.00)`.
 - **First measurements:** 2026-10-26 replayed by the twin: 613 credits, 594 of them by speech (noise), all kinds
@@ -230,7 +255,7 @@ every tick:
 Every tick goes to the home PC over UDP (`main/net/life_log.*`, kind 3 datagrams, four ticks each, float16), with
 every log line. Columns (`spec_v4.DIARY`, 167): the 26 raw readings the channels are made from, the 18 channel values
 (after the zone shift: what the analyzer saw), the 32 SNN numbers, the 61 network outputs, what the body did (head
-yaw / pitch, shown face, said, gestured) the main network's 17 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), and the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got). With the raw
+yaw / pitch, shown face, said, gestured) the main network's 23 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), and the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got). With the raw
 readings any day can be re-encoded after a change of the channels; with the own state every decision can be replayed
 exactly on the PC (stage 6). Flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided
 this tick. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it (also the older layouts by column name: 135
@@ -249,6 +274,11 @@ Learning happens on the PC at night; the robot only receives the result, without
 - **The learned blob** (`main/v4/learned_blob.h`, made by `tools/v4/learned.py`): new weights of the main network's
   action heads (voice, LEDs, head: `act1`, `act2`, 8039 floats), one zone shift per channel and the Muse's idea
   biases (`muse.bias`, 8). The GRU, the emotion head, the spiking analyzer and the Muse's reservoir stay innate.
+  The heads carry the fingerprint of the network they belong to (`nn.id`: CRC-32 of the GRU and the emotion head,
+  `learned.nn_id`; the firmware has it compiled in as `nnv4::kNnId`). The robot and the night use them only with
+  that network: after a retrained network is flashed, it starts from its own innate heads, keeps the zone shift and
+  the Muse's biases, and the next night trains heads for it (2026-10-27: until then a retrained network silently
+  took the old one's heads).
 - **The Muse's ideas** (`sleep_v4.learn_muse`, since 2026-10-26): for each idea, its episodes by day (above 0.5,
   at least 10 s apart). An idea after which people answered more than usual over 20 s (reward_v4, in units of
   its spread) comes a little more often. So does one after which the world turned out other than the robot
