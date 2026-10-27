@@ -186,7 +186,20 @@ are not touch_screen events for the brain; a tap on the face above the open bar 
   and 700 ms after (the servo glides on after the motion model has arrived); camera frames taken while the head turns are not used; the servos' own share is taken off the
   shake channel; the IMU is ignored for 3 s after a servo power cycle. The servo rail is on only while the head moves
   (HARDWARE.md); its switching on or off raises the microphone threshold for 400 ms (the camera keeps looking).
-- **Own voice:** the microphone is muted while the voice plays; the ear is told when the robot itself speaks.
+- **Own voice:** the microphone is muted while the voice plays; the ear is told when the robot itself speaks. Sharp
+  sounds are dropped while it speaks and 300 ms after: a sharp sound in the first 0.5 s of a call was 15x more likely
+  than at any moment (the speaker's start slipped past the mute; `contingency.py --self`, 2026-10-27).
+- **Speech must be a voice** (2026-10-27, CONTINGENCY step 2). The ear's speech class fired ~250 times an hour, on the
+  tail of the robot's own voice and on the servos' whine (~6 kHz) and clicks (recordings, `tools/v4/sound_check.py`).
+  - `perception/voice_check.cpp` (twin `tools/v4/voice_check.py`) runs on the microphone task:
+    high-pass 70 Hz, low-pass 900 Hz twice, 4 kHz;
+  - every 25 ms it takes the periodicity at 80-400 Hz (normalized autocorrelation) and the level against the
+    room's floor;
+  - a voiced frame needs periodicity > 0.6 and the level 6 dB above the floor; voice = a ~250 ms average.
+  - Speech below voice 0.3, or within 1.5 s after the robot's own phrase, is held at 0.3 (below the voice
+    channel's 0.4).
+  - On recordings the owner's speech passes and the robot's own sounds do not. Speech time: 9.9 % -> 0.5 % of a
+    minute with nobody talking, 14 % -> 5 % live. The robot equals the twin: correlation 0.986.
 - **Head pad phantoms:** a touch during a fast move counts only if it is held (level 3 >= 120 ms, level 2 >= 250 ms);
   more than 8 touches in 10 minutes with nobody heard, moving or near in those 10 minutes are pad noise.
 - **Sharp sounds:** only loud peaks from ~6000 count (weak taps and words do not); the boot click (first 10 s) is not
@@ -215,14 +228,15 @@ every tick:
 ## 6. The diary
 
 Every tick goes to the home PC over UDP (`main/net/life_log.*`, kind 3 datagrams, four ticks each, float16), with
-every log line. Columns (`spec_v4.DIARY`, 165): the 26 raw readings the channels are made from, the 18 channel values
+every log line. Columns (`spec_v4.DIARY`, 167): the 26 raw readings the channels are made from, the 18 channel values
 (after the zone shift: what the analyzer saw), the 32 SNN numbers, the 61 network outputs, what the body did (head
-yaw / pitch, shown face, said, gestured) the main network's 17 own-state inputs of its last decision, and the 6 numbers of the contingency detector (`ct_*`, section 5). With the raw
+yaw / pitch, shown face, said, gestured) the main network's 17 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), and the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got). With the raw
 readings any day can be re-encoded after a change of the channels; with the own state every decision can be replayed
 exactly on the PC (stage 6). Flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided
 this tick. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it (also the older layouts by column name: 135
 values until 2026-10-24 14:30, 147 until the camera's bright spot and the head yaw as a raw reading came in on 2026-10-25, 154 until
-the Muse's ideas on 2026-10-26, 159 until the contingency detector on 2026-10-27; missing columns are NaN).
+the Muse's ideas on 2026-10-26, 159 until the contingency detector on 2026-10-27, 165 until the ear's columns the same morning; missing columns
+are NaN).
 
 Every 5 s the robot logs three lines: `stats:` (CPU, memory, timing, servos, sensors, voice, diary counters), `v4:`
 (raw light / proximity, the 13 channels, the SNN's mood, the network's state, face, calls, gestures) and `power:`

@@ -2,6 +2,7 @@
 
   ./py contingency.py 2026-10-27 [...]           the detector over the day (the twin), and the robot's own ct_* columns
   ./py contingency.py --measure 2026-10-25 [...] step 0: the plain statistics of acts and answers over whole days
+  ./py contingency.py --self 2026-10-27 [...]    me or not me: which sense events follow the robot's own acts at once
 
 Detector (step 1; main/v4/contingency_v4.cpp is the robot's, parity_contingency.py): every tick it takes what the
 robot did (a call, a gesture, a face change) and what came from outside (a gentle pet or tap, a new speech onset that is
@@ -257,9 +258,51 @@ def measure(days):
         print(f"{ac:8s} {an:7s}  {h / n:.3f}       {hb / nb:.3f}        {h / n - hb / nb:+.3f}  {n}")
 
 
+def self_links(days):
+    """Me or not me (CONTINGENCY 3.6): for every kind of sense event, how often it comes 0-0.5 s after the robot's own
+    act (a call, a gesture, a head move starting) against any moment. A link far above chance and that fast is the
+    robot itself (its voice, its servos), not the world."""
+    def ahead(x, a, b):
+        cs = np.concatenate([[0], np.cumsum(x)])
+        i = np.arange(len(x))
+        return (cs[np.minimum(i + b, len(x))] - cs[np.minimum(i + a, len(x))]) > 0
+
+    for day in days:
+        t, _ = D.load(day)
+        v = t["v"]
+        c = lambda n: np.nan_to_num(v[:, D.col(n)])
+        valid = ((t["flags"] & D.FLAG_DRIVES) > 0) & ((t["flags"] & D.FLAG_NIGHT) == 0)
+        yaw = c("head_yaw_deg") + c("head_pitch_deg")
+        moving = np.abs(np.diff(yaw, prepend=yaw[0])) > 0.05
+        acts = {"call": onsets(c("said") > 0, int(1 / DT)), "gesture": onsets(c("gesture") > 0, int(1 / DT)),
+                "head move": onsets(moving, int(1 / DT))}
+        ev = {"ear speech": onsets(c("ear_speech") > 0.5, int(2 / DT)) if not np.isnan(v[:, D.col("ear_speech")]).all()
+              else None,
+              "speech": onsets(c("raw_speech") > 0.5, int(2 / DT)),
+              "sharp": onsets(c("raw_sharp_ev") > 0, int(1 / DT)),
+              "pet": onsets(c("raw_head_ev") > 0, int(2 / DT)), "tap": onsets(c("raw_screen_ev") > 0, int(2 / DT)),
+              "near": onsets(c("raw_near_raw") > 150, int(3 / DT)), "motion": onsets(c("ch_motion") > 0.15, int(3 / DT))}
+        print(f"{day}: P(event in 0-0.5 s after the act) / P(at any moment); >> 1 and fast = the robot itself")
+        print("  event        " + "".join(f"{k:>14s}" for k in acts))
+        for name, e in ev.items():
+            if e is None:
+                continue
+            e = e & valid
+            fast = ahead(e, 0, int(0.5 / DT))
+            base = fast[valid].mean()
+            cells = []
+            for a in acts.values():
+                m = a & valid
+                p = fast[m].mean() if m.any() else np.nan
+                cells.append(f"{p:6.3f} x{p / base if base > 0 else 0:5.1f}")
+            print(f"  {name:12s} " + "".join(f"{s:>14s}" for s in cells) + f"   ({int(e.sum())} events)")
+
+
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--measure"]:
         measure(sys.argv[2:])
+    elif sys.argv[1:2] == ["--self"]:
+        self_links(sys.argv[2:])
     else:
         for d in sys.argv[1:]:
             report(d)

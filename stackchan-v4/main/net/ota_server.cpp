@@ -1,6 +1,9 @@
 #include "ota_server.h"
 
+#include <algorithm>
+#include <cstdlib>
 #include <cstring>
+#include <esp_timer.h>
 #include <esp_attr.h>
 #include <esp_http_server.h>
 #include <esp_log.h>
@@ -10,6 +13,7 @@
 #include <freertos/task.h>
 
 #include "learned_store.h"
+#include "sound_tap.h"
 
 #if __has_include("life_log_host.h")
 #include "life_log_host.h"  // secrets/: LIFE_OTA_TOKEN
@@ -103,6 +107,44 @@ esp_err_t touchHandler(httpd_req_t* req)
     return ESP_OK;
 }
 
+// GET /listen?s=N: the microphone for N seconds (1..600, default 30), as it is read - a header ("SND1", uint32 rate,
+// uint32 frames per block, uint32 ms since boot now), then sound_tap::Block after Block. The server answers nothing
+// else meanwhile.
+esp_err_t listenHandler(httpd_req_t* req)
+{
+    if (!authorized(req)) return ESP_OK;
+    char query[32] = {}, value[8] = {};
+    int seconds = 30;
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK &&
+        httpd_query_key_value(query, "s", value, sizeof(value)) == ESP_OK)
+        seconds = std::atoi(value);
+    seconds = std::clamp(seconds, 1, 600);
+    if (!sound_tap::start()) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "busy or no memory");
+        return ESP_OK;
+    }
+    ESP_LOGI(kTag, "listen: the microphone to the PC for %d s", seconds);
+    httpd_resp_set_type(req, "application/octet-stream");
+    const uint32_t head[4] = {0x31444e53u /* "SND1" */, sound_tap::kRate, sound_tap::kFrames,
+                              static_cast<uint32_t>(esp_timer_get_time() / 1000)};
+    bool ok = httpd_resp_send_chunk(req, reinterpret_cast<const char*>(head), sizeof(head)) == ESP_OK;
+    constexpr size_t kBatch = 16;  // blocks per chunk (~4 KB)
+    EXT_RAM_BSS_ATTR static sound_tap::Block batch[kBatch];
+    const int64_t end_us = esp_timer_get_time() + static_cast<int64_t>(seconds) * 1000000;
+    uint32_t blocks = 0;
+    while (ok && esp_timer_get_time() < end_us) {
+        size_t n = 0;
+        while (n < kBatch && sound_tap::take(&batch[n], sizeof(batch[n]), n ? 20 : 200) == sizeof(batch[n])) ++n;
+        if (n) ok = httpd_resp_send_chunk(req, reinterpret_cast<const char*>(batch), n * sizeof(batch[0])) == ESP_OK;
+        blocks += n;
+    }
+    sound_tap::stop();
+    ESP_LOGI(kTag, "listen: done, %u blocks sent, %u dropped%s", static_cast<unsigned>(blocks),
+             static_cast<unsigned>(sound_tap::dropped()), ok ? "" : ", the PC hung up");
+    if (ok) httpd_resp_send_chunk(req, nullptr, 0);
+    return ESP_OK;
+}
+
 esp_err_t firmwareHandler(httpd_req_t* req)
 {
     if (!authorized(req)) return ESP_OK;
@@ -140,7 +182,7 @@ bool OtaServer::begin(LearnedStore& learned, StatusFn status, SettingFn touchSen
     cfg.stack_size = 4608;  // internal RAM (it writes flash); 6 KB pushed the free internal RAM to 5 KB
     cfg.core_id = 0;
     cfg.task_priority = 2;
-    cfg.max_uri_handlers = 4;
+    cfg.max_uri_handlers = 5;
     cfg.recv_wait_timeout = 10;
     httpd_handle_t server = nullptr;
     if (httpd_start(&server, &cfg) != ESP_OK) {
@@ -152,6 +194,7 @@ bool OtaServer::begin(LearnedStore& learned, StatusFn status, SettingFn touchSen
         {"/firmware", HTTP_PUT, firmwareHandler, nullptr},
         {"/touch", HTTP_PUT, touchHandler, &touch_},
         {"/learned", HTTP_PUT, learnedHandler, learned_},
+        {"/listen", HTTP_GET, listenHandler, nullptr},
     };
     for (const auto& u : uris) httpd_register_uri_handler(server, &u);
     ESP_LOGI(kTag, "updates over Wi-Fi on port %d", cfg.server_port);

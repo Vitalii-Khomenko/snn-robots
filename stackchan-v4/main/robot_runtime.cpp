@@ -1,4 +1,5 @@
 #include "robot_runtime.h"
+#include "net/sound_tap.h"
 #include "core/ms_clock.h"
 
 #include <algorithm>
@@ -189,6 +190,7 @@ bool RobotRuntime::begin()
     if (!kMicrophoneEnabled) {
         ESP_LOGW(kTag, "microphone disabled (kMicrophoneEnabled = false)");
     } else if (mic_.begin()) {
+        if constexpr (kWifiEnabled) mic_.setTap(&sound_tap::feed);
         mic_.onLoudSound([this]() {
             // Heard while our own servos ran: mostly ourselves. (Their clicks
             // can clip the ADC too - 32664 seen on hardware - so the peak
@@ -481,8 +483,10 @@ void RobotRuntime::logTick()
     *p++ = loop_.gestureThisTick() ? 1.0f : 0.0f;
     p = std::copy(loop_.brain().lastPrev().begin(), loop_.brain().lastPrev().end(), p);
     p = std::copy(loop_.contingency().begin(), loop_.contingency().end(), p);
+    *p++ = loop_.earSpeech();
+    *p++ = loop_.voice();
     static_assert(v4::RAW_COUNT + v4::kSnnInputs + v4::SO_COUNT + v4::NO_COUNT + v4::BODY_COUNT + v4::PV_COUNT +
-                      v4::CT_COUNT == LifeLog::kValues,
+                      v4::CT_COUNT + v4::EAR_COUNT == LifeLog::kValues,
                   "diary order: tools/v4/spec_v4.py DIARY");
     // flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided this tick
     life_.tick(tick, nowMs(),

@@ -82,6 +82,9 @@ public:
     const ChannelEncoder::Out& channels() const { return channels_; }
     const AuditoryNet::Features& ear() const { return ear_; }
     const AuditoryNet& auditory() const { return auditory_; }
+    // the ear's own speech class before the voice check, and the voice check (diary ear_*)
+    float earSpeech() const { return ear_speech_; }
+    float voice() const { return voice_; }
     BrainV4& brain() { return brain_; }
     const BrainV4& brain() const { return brain_; }
     const V4Executor& executor() const { return exec_; }
@@ -138,6 +141,11 @@ private:
     // our own motion and voice
     bool was_moving_ = false;
     uint32_t motion_edge_ms_ = 0, own_motion_until_ms_ = 0, self_voice_until_ms_ = 0, imu_mask_until_ms_ = 0;
+    // speech must be a voice and not our own (hear())
+    static constexpr float kVoiceGate = 0.3f, kSpeechNoVoice = 0.3f;
+    static constexpr uint32_t kOwnVoiceTailMs = 1500;
+    uint32_t own_voice_tail_until_ms_ = 0;
+    float ear_speech_ = 0.0f, voice_ = 0.0f;
     std::array<float, 10> accel_{};  // |acceleration| of the last 10 ticks (0.5 s), g
     uint32_t accel_n_ = 0;
     // timing

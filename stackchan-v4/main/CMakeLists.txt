@@ -23,6 +23,6 @@ idf_component_register(
 # speed (-O3, unrolled loops). Plain floating point, no -ffast-math, so the
 # results stay bit-identical to the simulator's.
 set_source_files_properties(
-    perception/vision_frontend.cpp perception/auditory_net.cpp perception/audio_frontend.cpp voice/droid_synth.cpp
+    perception/vision_frontend.cpp perception/auditory_net.cpp perception/audio_frontend.cpp perception/voice_check.cpp voice/droid_synth.cpp
     voice/babble_net.cpp v4/snn_v4.cpp v4/nn_v4.cpp v4/muse_v4.cpp v4/contingency_v4.cpp
     PROPERTIES COMPILE_OPTIONS "-O3;-funroll-loops")

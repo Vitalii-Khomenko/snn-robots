@@ -11,6 +11,7 @@ class LearnedStore;
 //   PUT /touch     body "0".."7": the head pad's sensitivity, applied at once and kept (no reboot)
 //   PUT /learned   what the night sleep learned (v4/learned_blob.h) into the idle slot; the robot switches to it at once,
 //                  without a reboot, on trial for a minute (net/learned_store.h)
+//   GET /listen    ?s=N: the microphone for N seconds, streamed to the PC (net/sound_tap.h, tools/robot/listen.py)
 //   PUT /firmware  an app image into the idle app slot, booted on trial (bootloader rollback: RobotRuntime confirms
 //                  it after a healthy minute)
 //

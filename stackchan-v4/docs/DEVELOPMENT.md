@@ -130,6 +130,10 @@ tools/v4/py reward_v4.py 2026-10-25            # a day's reward events (pet, tap
 tools/v4/py contingency.py 2026-10-27          # the contingency detector's twin over a day: answered acts, agency, ignored, the robot's ct_* vs the twin
 tools/v4/py contingency.py --measure 2026-10-26  # step 0: P(answer | act) vs chance over whole days (docs/CONTINGENCY.md)
 tools/v4/py parity_contingency.py [DAY]       # C++ ContingencyV4 == the twin on real diary days
+tools/v4/py contingency.py --self 2026-10-26  # me or not me: sense events that follow the robot's own acts at once
+python tools/robot/listen.py [SECONDS]        # record the robot's microphone (24 kHz, ms-stamped) -> data/sound/<day>/<time>.wav
+tools/v4/py sound_check.py data/sound/DAY/TIME  # every speech onset of the ear vs the sound and the robot's own acts, + .png
+tools/v4/py voice_check.py data/sound/DAY/TIME  # the voice check over a recording;  parity_voice_check.py: C++ == twin
 tools/v4/py sleep_v4.py --dry-run              # the night without sending: replay, reward, AWR, zones, gates
 tools/v4/py sleep_v4.py --dry-run --min-hours 0.05   # the whole chain on a few minutes of life (a test)
 journalctl --user -u sleep-v4                  # last night; one line per night in data/life/sleep_v4.log

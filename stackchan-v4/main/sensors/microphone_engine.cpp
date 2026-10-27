@@ -87,11 +87,18 @@ void MicrophoneEngine::taskLoop()
         }
 
         front_.processBlock(buf.data(), kChunkSamplesPerChannel);
+        {
+            std::array<int16_t, kChunkSamplesPerChannel> mono;  // as net/sound_tap.cpp: (L + R) / 2
+            for (size_t i = 0; i < kChunkSamplesPerChannel; ++i)
+                mono[i] = static_cast<int16_t>((static_cast<int32_t>(buf[2 * i]) + static_cast<int32_t>(buf[2 * i + 1])) / 2);
+            voice_check_.feed(mono.data(), mono.size());
+        }
 
         const uint32_t now = static_cast<uint32_t>(esp_timer_get_time() / 1000);
         const bool own_motion = msWithin(now, raised_until_ms_.load());
         const int loud_threshold = own_motion ? kLoudThresholdOwnMotion : kLoudThreshold;
         const bool muted_now = muted(now);
+        if (const Tap tap = tap_.load()) tap(buf.data(), kChunkSamplesPerChannel, now, muted_now, own_motion);
         std::atomic<int>& peak_slot = phase_peak_[std::clamp(motion_phase_.load(), 0, 2)];
         if (!muted_now && peak > peak_slot.load()) peak_slot.store(peak);
 

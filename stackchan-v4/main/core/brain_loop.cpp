@@ -115,6 +115,9 @@ void BrainLoop::hear(uint32_t now, float& sharpEv)
     // Our own servos click and whine loud enough to look like claps (peaks of 20-32k on hardware): while the head
     // moves, and just after, such events are mostly ourselves and are not passed on at all.
     if (ctx.ownMotion) loud_event_ = onset_event_ = 0.0f;
+    // The same for our own voice: a sharp sound in the first 0.5 s of a call was 15x more likely than at any moment
+    // (2026-10-26, contingency.py --self) - the speaker's start slips past the microphone's mute.
+    if (ctx.selfSpeaking) loud_event_ = onset_event_ = 0.0f;
     // A sharp sound that started this tick: the microphone's loud or onset event (the Auditory NN's clap / sharp
     // classes fire 20-40 times an hour on nothing - tools/v4/calibrate.py, 2026-10-24). Loud events come with
     // intensity 0.4 (peak ~2000: a tap on the table, a word) .. 1.0 (peak >= 20000, a clap at the robot); only peaks
@@ -131,6 +134,14 @@ void BrainLoop::hear(uint32_t now, float& sharpEv)
     onset_event_ = loud_event_ = 0.0f;
     const int64_t t0 = esp_timer_get_time();
     auditory_.run(e_.mic.audioFront(), ctx, ear_);
+    // Speech must be a voice, and not our own (docs/CONTINGENCY.md step 2): the ear's speech class fired ~250 times an
+    // hour on the tail of our voice and on the servos' whine and clicks (recordings of 2026-10-27). Without a voice
+    // (perception/voice_check.h) or within kOwnVoiceTailMs of our own phrase it is held below the voice channel's 0.4.
+    if (e_.vocal.active()) own_voice_tail_until_ms_ = now + kOwnVoiceTailMs;
+    ear_speech_ = ear_[AUD_SPEECH];
+    voice_ = e_.mic.voice();
+    if (voice_ < kVoiceGate || msWithin(now, own_voice_tail_until_ms_))
+        ear_[AUD_SPEECH] = std::min(ear_[AUD_SPEECH], kSpeechNoVoice);
     const uint32_t us = static_cast<uint32_t>(esp_timer_get_time() - t0);
     audio_us_ = audio_us_ ? (audio_us_ * 7 + us) / 8 : us;
     // what the ear makes of it, once per sound (rising edge), for live tests

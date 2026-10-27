@@ -287,7 +287,7 @@ def brain_map():
     s.text(50, py0 + 280, "teacher-free on the robot:", 14, weight="bold")
     s.text(50, py0 + 300, "the teachers exist only on the PC", 13, C["dim"])
     s.text(50, py0 + 360, "The firmware holds only brain v4 and what it learned (zone shifts, action heads, idea biases); the PC records, "
-                          "analyses and trains. No camera frames or sound leave the robot.", 15, C["dim"])
+                          "analyses and trains. No camera frames leave the robot; its sound only on request, to the home PC.", 15, C["dim"])
     s.text(50, py0 + 388, "The simulator runs the real firmware code (channels, SNN, NN, executor) in a virtual room "
                           "with scripted people, sounds, touches and light.", 15, C["dim"])
     s.arrow([(ex + 60, ey + eh), (ex + 60, 1035), (185, 1035), (185, py0 + 58)], C["pc"],

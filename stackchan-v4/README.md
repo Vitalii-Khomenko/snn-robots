@@ -120,8 +120,9 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   quickly. See ARCHITECTURE section 4.
 - The sense of "I did that" (2026-10-27, step 1 of [CONTINGENCY](docs/CONTINGENCY.md)): a detector notices when a
   call, a gesture or a face is answered (a pet, a tap, speech, someone coming near) more often than by chance, and
-  writes it to the diary. Nothing acts on it yet. The first numbers say the robot's ears must get cleaner first:
-  speech fires ~200 times an hour on noise.
+  writes it to the diary. Nothing acts on it yet. Step 2 cleaned the ears: the ear's "speech" was the robot's own
+  voice tail and its servos, ~250 times an hour; now speech must be a voice (periodic at 80-400 Hz above the room),
+  and its own speaker no longer startles it. Its microphone can be recorded on the PC (`tools/robot/listen.py`).
 - The Muse (2026-10-26): a small chaotic reservoir network next to the main one. It gives the main network its
   "random" pacemakers (now coloured by the mood) and five ideas (play, show, still, social, surprise), which the
   robot acts when nothing calls for a reaction. It gets bored of its own ideas and learns at night which ones the

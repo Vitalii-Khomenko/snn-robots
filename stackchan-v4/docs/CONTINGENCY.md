@@ -1,7 +1,8 @@
 # Contingency: the sense of "I did that" (concept, 2026-10-27)
 
 The owner, 2026-10-27: *"work out the sense of causality."* Then: *"do step 1 and flash, then steps two and three."*
-Step 1 is built and on the robot since 2026-10-27 06:29 (ARCHITECTURE section 5); the rest is the plan. The
+Step 1 is built and on the robot since 2026-10-27 06:29, step 2 since 06:48 (ARCHITECTURE section 5); the rest is
+the plan. The
 science behind it is in [FOUNDATIONS](FOUNDATIONS.md) (sections 5-7).
 
 ## 1. Why this, and why now
@@ -172,13 +173,39 @@ Per tick: a ring of 8 acts, about 20 leaky counters, a few comparisons, so micro
 |---|---|---|
 | 0 | Measure ΔP from the diary | no (done, section 2) |
 | 1 | Detector in C++ and Python (parity), diary columns, daily reports; a few days of real numbers (built 2026-10-27: `contingency_v4.cpp`, `contingency.py`, `parity_contingency.py`; diary `ct_*`) | no |
-| 2 | Clean the answers: why speech fires 200+ times an hour (a short recording with the owner's OK), then self-contingency labelling of sense events | no, only cleaner senses |
+| 2 | Clean the answers: why speech fires 200+ times an hour (a short recording with the owner's OK), then self-contingency labelling of sense events (built 2026-10-27, below) | no, only cleaner senses |
 | 3 | 6 NN inputs, the teacher's rules (3.5), simulator scenarios (4), retrain, flash | yes |
 | 4 | The life scale in the learned blob; at night the Muse's idea biases and the AWR also see c_k | slowly |
 | 5 | Turn-taking with voice: answer within ~1 s, wait, no overlap | yes |
 
 Steps 1-2 are safe and show whether there is enough signal. If after two days an answered act is still rarer
 than one an hour, the robot first needs better ears (step 2) before step 3 can be felt.
+
+## 6a. What step 2 found (2026-10-27)
+
+**Recordings.** The robot streams its microphone to the home PC on request (`net/sound_tap.h`, `GET /listen`,
+`tools/robot/listen.py`), stamped with the diary's clock. `tools/v4/sound_check.py` lines every speech onset of the
+ear up with the sound and the robot's own acts.
+
+**Where the ear's speech came from.** In 5 minutes with the owner talking nearby, the ear started speech 31 times
+(373/h):
+- 16 were the robot's own voice: during a call, or its tail and echo in the 0.3-2 s after;
+- 8 were its servos: the whine at 5-6 kHz and the clicks of each eased step;
+- 6 were near-silence;
+- none was the owner.
+
+The owner's voice was there: harmonic stacks at 100-1500 Hz. But the ear's onsets fell on the robot's own sounds.
+
+**The voice check** (`perception/voice_check.cpp`, ARCHITECTURE section 5) asks for periodicity at 80-400 Hz above
+the room's floor. It lets the owner's speech through and holds the robot's own sounds back, with 1.5 s for the
+tail of its own voice:
+- a minute with nobody talking: speech 9.9 % -> 0.5 % of the time;
+- live: 14 % -> 5 %.
+
+**Me or not me** (`contingency.py --self`, the first learned self-link). A sharp sound came 0-0.5 s after the
+robot's own call 14-15x more often than at any moment (2026-10-25 and 10-26). About 5 % of calls startled the robot
+with its own speaker. Sharp sounds are now dropped while it speaks. The same table shows no other fast self-link
+large enough to act on: touch and near after a gesture are rare, and are its answers, not its echo.
 
 ## 7. Open questions
 

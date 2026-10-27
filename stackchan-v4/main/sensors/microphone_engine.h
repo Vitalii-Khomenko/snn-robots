@@ -6,6 +6,7 @@
 #include <esp_codec_dev.h>
 
 #include "../perception/audio_frontend.h"
+#include "../perception/voice_check.h"
 #include "../core/ms_clock.h"
 
 // Both ES7210 microphone channels at 24 kHz (the shared I2S bus), read by a
@@ -34,6 +35,12 @@ public:
     // block peak per phase, taken by the stats line.
     void setMotionPhase(int phase) { motion_phase_.store(phase); }
     int takePhasePeak(int phase) { return phase_peak_[phase].exchange(0); }
+    // A listener on the home PC (net/sound_tap.h): every block (interleaved L R), its time, whether the speaker mute
+    // or the own-motion threshold was on. Called on the microphone task; it must not block.
+    using Tap = void (*)(const int16_t* lr, size_t frames, uint32_t ms, bool muted, bool ownMotion);
+    void setTap(Tap tap) { tap_.store(tap); }
+    // Is it a voice (perception/voice_check.h): ~250 ms share of voiced 25 ms frames, 0..1.
+    float voice() const { return voice_check_.voice(); }
     // The filter-bank frames the Auditory NN reads (perception/audio_frontend.h).
     const AudioFrontEnd& audioFront() const { return front_; }
 
@@ -66,7 +73,9 @@ private:
     std::function<void()> on_loud_sound_;
 
     AudioFrontEnd front_;
+    VoiceCheck voice_check_;
     std::atomic<bool> loud_sound_pending_{false};
+    std::atomic<Tap> tap_{nullptr};
     std::atomic<uint32_t> ignore_until_ms_{0};
     // Speaker mute window open (wrap-safe; the longest mute is a song).
     bool muted(uint32_t now) const { return msWithin(now, ignore_until_ms_.load(), 60000); }
