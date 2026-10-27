@@ -34,7 +34,7 @@ face):
 | [docs/HARDWARE.md](docs/HARDWARE.md) | the board, servos, sensors, memory, flashing and recovery, known limits |
 | [docs/CREATIVITY.md](docs/CREATIVITY.md) | the Muse: a chaotic reservoir network that gives the robot ideas (built 2026-10-26) |
 | [docs/CONTINGENCY.md](docs/CONTINGENCY.md) | concept: the sense of "I did that" - noticing being answered, the still face, turn-taking |
-| [docs/BODY.md](docs/BODY.md) | the body and its needs: what the diary says the body feels (step 0), sleep pressure (step 1, built), the body budget next |
+| [docs/BODY.md](docs/BODY.md) | the body and its needs: what the diary says the body feels (step 0), sleep pressure (step 1), the body budget (step 2) |
 | [docs/FOUNDATIONS.md](docs/FOUNDATIONS.md) | what we take from the study of people: Panksepp, Barrett, Damasio, Oudeyer, infant research; how not to get buried |
 | [docs/HISTORY.md](docs/HISTORY.md) | how the project got here (v1 .. v4, platform B), what was learned, where the old code lives |
 | [BRAIN_V4_PLAN.txt](BRAIN_V4_PLAN.txt), [BRAIN_V4_INPUT_SCALES.txt](BRAIN_V4_INPUT_SCALES.txt) | the owner's design of v4 and the sense scales (in Russian) |
@@ -132,7 +132,9 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   (hunger 0 on USB, the servo stamina never below 1.00, tired only by the hour; lonely was kept at 0 by the robot's
   own voice until the voice check). Now tiredness is a sleep pressure (Borbely's process S) that builds with what the
   robot does (head travel, calls, arousal) and drains in sleep or a nap; only pressure above a usual day's is felt. A
-  busy day makes it tired and sleepy in the dark, a usual day is as before.
+  busy day makes it tired and sleepy in the dark, a usual day is as before. Step 2 (that evening): a body budget -
+  effort, fear and the hung servos spend it, sleep and a gentle hand refill it, someone near halves the costs; felt as
+  hunger only below 0.7 (simulator: 14 minutes of bangs and shaking 0.85 -> 0.26, six minutes of strokes back to 0.59).
 - The orienting reflex no longer runs away (2026-10-27, the owner: "it jerks its head far left and back"): it
   re-aimed every tick from the turning head while the picture stood still, and a lamp at the picture's edge drove the
   head after a glance on to -88..-100° (the servos hung there). Now it aims once and again only from a still head.

@@ -1,0 +1,7 @@
+# The control of hard_day.scn: the same quiet stretch and the same comfort, without the hard stretch.
+duration 36:00
+clock 14:00
+seed 41
+room_light on
+at 24:00 person v enter 0 0.3
+every 0:30 from 24:30 until 30:00 touch_head 700

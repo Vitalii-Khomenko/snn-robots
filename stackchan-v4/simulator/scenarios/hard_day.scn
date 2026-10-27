@@ -1,0 +1,13 @@
+# The body budget (docs/BODY.md step 2): a hard stretch spends it, comfort refills it. 14 minutes alone of bangs
+# from all sides and rough handling, 10 quiet minutes alone (it should stay low: the budget does not refill by
+# itself while awake), then someone sits close and strokes its head for 6 minutes (it should come back).
+# hard_day_control is the same without the hard stretch.
+duration 36:00
+clock 14:00
+seed 41
+room_light on
+every 0:20 from 0:10 until 13:50 clap 60 0.9
+every 0:20 from 0:20 until 14:00 clap -70 1
+every 1:00 from 0:40 until 14:00 shake 1.5
+at 24:00 person v enter 0 0.3
+every 0:30 from 24:30 until 30:00 touch_head 700

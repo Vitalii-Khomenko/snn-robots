@@ -201,6 +201,7 @@ void BrainLoop::updateChannels(uint32_t now, float sharpEv, const Env& env)
     e_.motion.getCurrentDeg(r.headYaw, pitch_now);
     r.battery = e_.power.batteryLevel01();
     r.stamina = 1.0f - body_.pressure();  // the last tick's (BodyV4 steps after the executor)
+    r.budget = body_.budget();
     r.hour = env.hour;
     r.clockOk = env.timeSynced;
     encoder_.update(r, channels_);
@@ -268,6 +269,15 @@ void BrainLoop::tick(uint32_t now, const Env& env)
         in.said = said_tick_;
         in.arousal = brain_.snn()[SO_AROUSAL];
         in.asleep = night_ || (brain_.trained() && exec_.shownEmotion() == NO_EMO_SLEEPY - NO_EMO_NORMAL);
+        const auto& so = brain_.snn();
+        in.threat = so[SO_THREAT];
+        in.over = so[SO_OVER];
+        // gentle, as ContingencyV4 counts a pet or a tap (a poke drives the touch channel up)
+        in.pet = (raw_.headEv > 0.0f && channels_[CH_TOUCH_HEAD] < 0.7f) ||
+                 (raw_.screenEv > 0.0f && channels_[CH_TOUCH_SCREEN] < 0.4f);
+        in.nearby = channels_[CH_NEAR] > 0.1f || channels_[CH_VOICE] > 0.05f;
+        in.hurt = hurt_;
+        hurt_ = false;
         body_.step(in);
         body_yaw_ = yaw, body_pitch_ = pitch, body_head_ = true;
     }

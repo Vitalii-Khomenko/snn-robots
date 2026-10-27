@@ -37,6 +37,7 @@ def random_raw(T, rng):
     r["light_x"], r["light_y"] = seen * np.sin(np.arange(T) / 400), seen * 0.3
     r["head_yaw"] = 50 * np.sin(np.arange(T) / 1300)  # the head looking round: the spot's place in the room moves
     r["battery"] = np.linspace(1, 0.3, T)
+    r["budget"] = 0.6 + 0.4 * np.cos(np.arange(T) / 500)  # the body budget, above and below the battery
     r["stamina"] = 1.0 - (0.55 + 0.4 * np.sin(np.arange(T) / 600))  # the sleep pressure, above and below usual
     r["hour"] = (20.5 + np.arange(T) * 0.05 / 3600 * 30) % 24
     r["clock_ok"] = np.ones(T)

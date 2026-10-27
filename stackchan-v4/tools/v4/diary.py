@@ -35,15 +35,17 @@ KIND_LINE, KIND_V4 = 2, 3
 #   159 values (until 2026-10-27 06:29): no contingency (ct_*)
 #   165 values (until 2026-10-27 06:48): no ear before the voice check (ear_*)
 #   167 values (until 2026-10-27 morning): the network did not see the contingency yet (no pv_agency .. pv_works_face)
+#   173 values (until 2026-10-27 evening): no body budget (raw_budget)
 _NEW_LIGHT = {"raw_light_x", "raw_light_y", "raw_light_str", "raw_head_yaw", "ch_light_x", "ch_light_y", "ch_light_spot"}
 _CT_PV = {"pv_agency", "pv_answered", "pv_ignored", "pv_works_call", "pv_works_gesture", "pv_works_face"}
-_L167 = [n for n in DIARY if n not in _CT_PV]
+_L173 = [n for n in DIARY if n != "raw_budget"]
+_L167 = [n for n in _L173 if n not in _CT_PV]
 _L165 = [n for n in _L167 if not n.startswith("ear_")]
 _L159 = [n for n in _L165 if not n.startswith("ct_")]
 _L154 = [n for n in _L159 if not n.startswith("pv_idea_")]
 _L147 = [n for n in _L154 if n not in _NEW_LIGHT]
 _L135 = [n for n in _L147 if not n.startswith("pv_")]
-LAYOUTS = {len(DIARY): DIARY, len(_L167): _L167, len(_L165): _L165, len(_L159): _L159, len(_L154): _L154, len(_L147): _L147, len(_L135): _L135}
+LAYOUTS = {len(DIARY): DIARY, len(_L173): _L173, len(_L167): _L167, len(_L165): _L165, len(_L159): _L159, len(_L154): _L154, len(_L147): _L147, len(_L135): _L135}
 KNOWN_LAYOUTS = tuple(LAYOUTS)
 _INDEX = {n: i for i, n in enumerate(DIARY)}
 FLAG_DRIVES, FLAG_NIGHT, FLAG_DECIDED = 1, 2, 4

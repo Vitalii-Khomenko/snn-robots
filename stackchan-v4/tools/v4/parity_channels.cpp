@@ -17,7 +17,7 @@ int main(int argc, char** argv)
         r.nearRaw = row[10]; r.nearOk = row[11] > 0; r.als = row[12]; r.alsOk = row[13] > 0; r.motionFrac = row[14];
         r.motionX = row[15]; r.motionY = row[16]; r.frameOk = row[17] > 0.75f; r.lightOk = row[17] > 0.25f; r.battery = row[18]; r.stamina = row[19];
         r.hour = row[20]; r.clockOk = row[21] > 0; r.lightX = row[22]; r.lightY = row[23]; r.lightStr = row[24];
-        r.headYaw = row[25];
+        r.headYaw = row[25]; r.budget = row[26];
         enc.update(r, out);
         std::fwrite(out.data(), sizeof(float), out.size(), g);
     }

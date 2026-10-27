@@ -201,6 +201,11 @@ CASES = [
     ("control", 12, [("acts_per_min", 0, 100, "report: calls and gestures a minute when the same pets come at random")]),
     ("still_face", 12, [("low_after_still", 0.2, 1.01, "ignored by someone close it gets quietly sad"),
                         ("angry_after_still", 0, 0, "never angry at being ignored")]),
+    # the body budget (docs/BODY.md step 2, 2026-10-27): 14 minutes of bangs and rough handling spend it, a gentle hand
+    # refills it; the same quiet stretch and hand without the hard part leave it as it was
+    ("hard_day", 32, [("budget_low", 0.0, 0.45, "a hard stretch spends the body budget (minutes 12-24)"),
+                      ("budget_refill", 0.15, 1.0, "a gentle hand refills it (minute 31 against minute 24)")]),
+    ("hard_day_control", 32, [("budget_low", 0.75, 1.0, "a quiet stretch costs little")]),
     ("seek_motion", 5, [("on_person", 0.0, 1.01, "report: how much of the time the head points at someone walking about")]),
     # 2026-10-26: the calm head (a place kept 5-11 s, slow turns) looks round less: 0.5 at the lamp was the old busy
     # head's level; what counts is the lamp against the same runs with it left off, over 3 seeds (SEEK_SEEDS)
@@ -257,6 +262,11 @@ def check(case):
         on = [m["on_lamp"]] + [lamp_share(name, minutes, s, True) for s in SEEK_SEEDS[1:]]
         off = [lamp_share(name, minutes, s, False) for s in SEEK_SEEDS]
         m["lamp_over_chance"] = sum(on) / len(on) - sum(off) / len(off)
+    budget = [float(l.split("|")[12]) for l in open(os.path.join(out, "summary.txt"))
+              if len(l.split("|")) > 12 and l.split("|")[0].strip().isdigit()]
+    if len(budget) >= 31:  # per minute; [k] is the end of minute k + 1
+        m["budget_low"] = min(budget[11:24])
+        m["budget_refill"] = budget[30] - budget[23]
     if name in CT_CASES:  # the mean over the seeds (angry: the sum)
         runs = [contingency_metrics(ev, minutes)] + [seeded(name, minutes, s) for s in CT_SEEDS]
         for k in ("joy_after_answer", "again_after_answer", "acts_per_min", "low_after_still", "angry_after_still"):

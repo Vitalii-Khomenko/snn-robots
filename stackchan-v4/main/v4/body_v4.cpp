@@ -34,4 +34,15 @@ void BodyV4::step(const In& in)
         s_ *= std::exp(-dt / (kTauSleepH * 3600.0));
     else
         s_ = 1.0 - (1.0 - s_) * std::exp(-dt * load() / (kTauWakeH * 3600.0));
+
+    // the body budget
+    if (in.hurt) b_ -= kHurt;
+    if (in.asleep) {
+        b_ += (1.0 - b_) * (1.0 - std::exp(-dt / (kRefillSleepH * 3600.0)));
+    } else {
+        const double stress = std::max(0.0, static_cast<double>(std::max(in.threat, in.over)) - kStressFrom) / (1.0 - kStressFrom);
+        b_ -= (load() / (kSpendH * 3600.0) * (in.nearby ? kNearShare : 1.0) + stress / kStressS) * dt;
+    }
+    if (in.pet) b_ += (1.0 - b_) * kPetShare;
+    b_ = std::clamp(b_, 0.0, 1.0);
 }

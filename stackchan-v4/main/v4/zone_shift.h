@@ -30,11 +30,12 @@ struct ZoneShift {
     // the alarm twice as wide where the scale allows it (sharp 0.35 -> 0.70, touch_screen 0.40 -> 0.76, shake
     // 0.20 -> 0.40, loud and touch_head 0.70 -> 0.88). The learned shift moves this border. Sharp sounds are not
     // warped: their channel saturated at one bang, so their tolerance is a twice wider scale in the encoder
-    // (channel_encoder.h kSharpFull).
+    // (channel_encoder.h kSharpFull). Hunger is not warped either (2026-10-27, BODY step 2): it is the body's own need,
+    // not something the world does to the robot; warped, a body budget of 0.25 read 0.41 instead of 0.64.
     static constexpr float kTolerance = 2.0f;
     static float tolerant(int c, float a)
     {
-        return c == v4::CH_SHARP ? a : std::min(kTolerance * a, a + 0.6f * (1.0f - a));
+        return c == v4::CH_SHARP || c == v4::CH_HUNGER ? a : std::min(kTolerance * a, a + 0.6f * (1.0f - a));
     }
 
     // the raw level m reads as a; 0 and 1 stay, linear in between

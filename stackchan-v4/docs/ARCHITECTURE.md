@@ -42,7 +42,7 @@ simulator 25 s of pokes every 0.8 s no longer anger it; the first annoyed face c
 | 8 | near | IR proximity over its baseline (600 counts = full) | boredom, comfort, interest, anxiety |
 | 9 | light | ambient light, log scale (20000 counts = full) | comfort, interest, anger |
 | 10 | motion | share of the picture that moves (head's own turn removed) x3, rising in 0.5 s, falling in 4 s (a 5 s average x1.5 until 2026-10-25: a person moving about read ~0.01) | boredom, interest, anxiety, anger |
-| 11 | hunger | 1 - battery (always 0 on USB: [BODY](BODY.md) step 0) | comfort, anxiety |
+| 11 | hunger | the larger of 1 - battery (always 0 on USB: [BODY](BODY.md) step 0) and 1 - body budget / 0.7 (section 5; not squeezed by the innate tolerance: the body's own need) | comfort, anxiety |
 | 12 | tired | 0.75 x the night ramp (21:00-21:45 up, 06:00-06:45 down) + 2 x the sleep pressure above a usual day's at this hour (section 5, [BODY](BODY.md); 0.25 x (1 - servo stamina) until 2026-10-27, and the stamina never fell) | comfort |
 | 13 | lonely | 1 - exp(-t / 40 min) since the last contact (touch, speech, near; motion caps it at 5 min) | comfort, boredom |
 | - | motion_x, motion_y | where the motion is (-1..1) | for attention |
@@ -230,14 +230,18 @@ are not touch_screen events for the brain; a tap on the face above the open bar 
 
 **The body** (`main/v4/body_v4.cpp`, twin `tools/v4/body.py`, concept [BODY](BODY.md), step 1 2026-10-27): after
 the executor, every tick, the sleep pressure (Borbely's process S):
-- **load:** a 10-minute average of head travel, calls and the analyzer's arousal against a usual day (2.5°/s, 4 a
-  minute, 0.15); load = 1 + 2 x (effort - 1), 0.25 .. 3;
+- **load:** a 10-minute average of head travel, calls and the analyzer's arousal against a usual day (2.3°/s, 5.5 a
+  minute, 0.16); load = 1 + 2 x (effort - 1), 0.25 .. 3;
 - **awake:** the pressure rises towards 1 with 12 h / load; **asleep** (night rules, or the sleepy face shown: a nap)
   it drains with 3 h;
 - **felt:** the tired channel takes only the pressure above `usual(hour)` (a usual day's curve: 0.05 at 06:00, 0.42 at
   noon, 0.74 at 21:45 - the clock's alerting signal), x2;
 - the next tick's `raw_stamina` = 1 - pressure (diary); the `stats:` line shows `sleep_pressure=` and `load=`; a
   reboot starts on the usual curve.
+- **the body budget** (step 2): 0..1, spent by the load (empty in 50 h at load 1, half as fast with someone near or
+  talking), by threat / over above 0.3 (10 min at full) and by every servo rail power cycle (-0.0007); refilled by
+  sleep or a nap (2 h) and by each gentle pet or tap (6 % of what is missing). The next tick's `raw_budget`; hunger
+  feels it below 0.7; `stats:` shows `budget=`; a reboot starts at 0.85.
 
 **The sense of "I did that"** (`main/v4/contingency_v4.cpp`, twin `tools/v4/contingency.py`, concept
 [CONTINGENCY](CONTINGENCY.md); step 1 2026-10-27 06:29 wrote the diary only; since step 3 the main network sees it,
@@ -264,14 +268,14 @@ section 3). After the executor, every tick:
 ## 6. The diary
 
 Every tick goes to the home PC over UDP (`main/net/life_log.*`, kind 3 datagrams, four ticks each, float16), with
-every log line. Columns (`spec_v4.DIARY`, 173): the 26 raw readings the channels are made from, the 18 channel values
+every log line. Columns (`spec_v4.DIARY`, 174): the 27 raw readings the channels are made from, the 18 channel values
 (after the zone shift: what the analyzer saw), the 32 SNN numbers, the 61 network outputs, what the body did (head
 yaw / pitch, shown face, said, gestured) the main network's 23 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), and the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got). `raw_stamina` is 1 - the sleep pressure since 2026-10-27 (1.0 before). With the raw
 readings any day can be re-encoded after a change of the channels; with the own state every decision can be replayed
 exactly on the PC (stage 6). Flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided
 this tick. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it (also the older layouts by column name: 135
 values until 2026-10-24 14:30, 147 until the camera's bright spot and the head yaw as a raw reading came in on 2026-10-25, 154 until
-the Muse's ideas on 2026-10-26, 159 until the contingency detector on 2026-10-27, 165 until the ear's columns the same morning; missing columns
+the Muse's ideas on 2026-10-26, 159 until the contingency detector on 2026-10-27, 165 until the ear's columns the same morning, 173 until the body budget (`raw_budget`) that evening; missing columns
 are NaN).
 
 Every 5 s the robot logs three lines: `stats:` (CPU, memory, timing, servos, sensors, voice, diary counters), `v4:`

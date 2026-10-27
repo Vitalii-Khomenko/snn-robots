@@ -23,6 +23,7 @@ Raw inputs (dict of float32 arrays [T], missing ones default to 0):
   light_x, light_y, light_str   the picture's brightest spot (-1..1) and its excess over the frame (0..1)
   battery     0..1, stamina 0..1 (1 - the sleep pressure, body.py; until 2026-10-27 the servos' travel: 1),
   hour        0..24, clock_ok 1 when the clock is synced
+  budget      the body budget 0..1 (body.py; missing = 1): hunger is the larger of 1 - battery and 1 - budget / 0.7
 """
 import numpy as np
 from numba import njit
@@ -46,6 +47,7 @@ SPOT_CAM_HALF_DEG, SPOT_PLACE_DEG, SPOT_FORGET_TAU, SPOT_PLACES = 30.0, 15.0, 90
 SPOT_FALL_TAU, SPOT_MARGIN = 120.0, 0.15  # a place keeps its usual peak
 LONELY_TAU, LONELY_MOTION_CAP, LONELY_START = 2400.0, 300.0, 600.0
 CONTACT_SPEECH, CONTACT_NEAR, CONTACT_MOTION = 0.5, 0.3, 0.1
+BUDGET_FELT = body.BUDGET_FELT  # the body budget below this is felt as hunger (docs/BODY.md step 2)
 TIRED_FELT = body.TIRED_FELT  # the sleep pressure above a usual day's at this hour -> tired (0.25 * (1 - stamina) before)
 
 
@@ -105,6 +107,7 @@ def _encode(R, out, state):
         mfrac, mxr, myr, frame_ok = R[t, 14], R[t, 15], R[t, 16], R[t, 17]
         battery, stamina, hour, clock_ok = R[t, 18], R[t, 19], R[t, 20], R[t, 21]
         lxr, lyr, lstr, head_yaw = R[t, 22], R[t, 23], R[t, 24], R[t, 25]
+        budget = R[t, 26]
 
         loud += (energy - loud) * a_loud
         sharp = sharp * k_sharp + (0.0 if sharp_ev <= 0 else 1.0 + 5.0 * _clamp((sharp_ev - 1.0) / 0.5))
@@ -167,7 +170,7 @@ def _encode(R, out, state):
             lx *= 0.98
             ly *= 0.98
 
-        hunger = _clamp(1.0 - battery)
+        hunger = _clamp(max(1.0 - battery, 1.0 - budget / BUDGET_FELT))  # off USB the battery; the budget below 0.7
         felt = max(0.0, (1.0 - stamina) - _usual(hour)) if clock_ok > 0 else 0.0
         tired = _clamp(0.75 * (_night_ramp(hour) if clock_ok > 0 else 0.0) + TIRED_FELT * felt)
         lonely_t += DT
@@ -221,6 +224,8 @@ def encode(raw, state=None):
         R[:, RAW.index("battery")] = 1.0
     if "stamina" not in raw:
         R[:, RAW.index("stamina")] = 1.0
+    # the body budget: missing or NaN (diaries before 2026-10-27 evening) is full
+    R[:, RAW.index("budget")] = np.nan_to_num(np.asarray(raw["budget"], np.float64), nan=1.0) if "budget" in raw else 1.0
     out = np.zeros((T, len(SNN_IN)), np.float64)
     _encode(R, out, new_state() if state is None else state)
     assert out.shape[1] == len(CHANNELS) + 5

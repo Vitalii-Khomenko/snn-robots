@@ -54,6 +54,8 @@ tools/v4/py behavior_test_v4.py                      # 13 scenarios in parallel,
 | day_alone | an empty room by day | babbles 40..600 calls/h, moods change |
 | learn_rough | shaken, picked up | frightened (scared / dizzy / surprised / flinch) |
 | hearing | claps and bangs | startled |
+| hard_day | 14 minutes alone of bangs (every 10 s) and shakes (every minute), 10 quiet minutes, then a person close strokes its head every 30 s for 6 minutes | the body budget falls to <= 0.45 (minutes 12-24) and the hand refills it by >= 0.15 (minute 31 against 24; [BODY](BODY.md) step 2) |
+| hard_day_control | the same without the hard stretch | the budget stays >= 0.75 |
 | seek_motion | someone walks about the room (a few seconds at ~1 m/s, then stands), often outside the picture | report only: the share of the time the head points within 25° of them (the simulated walker is a low-contrast figure, found as often as by chance: 0.37 over 5 seeds, the same with nobody there; the robot's diary judges the motion sense) |
 | seek_light | a lamp switched on beside the desk (-55°), outside the picture | the head finds it within 2 minutes and points at it >= 0.05 more of the time than the same run with the lamp left off (`lamp_over_chance`; until 2026-10-26 >= 50 % absolute, the old busy head's level). 10 seeds, 2026-10-26: 45 % vs 16 %, found after 49-67 s |
 | contingent | someone close answers the robot's calls and gestures with a pet, 0.8-2 s later, 85 % of the time (`responder`) | report over 3 seeds: joy after an answer (a joyful face 1.5 s later; 0.35 was a gate until 2026-10-27 evening - one seed's luck, 6 seeds gave 0.09-0.33), the answered act again within 8 s over chance (CONTINGENCY) |
@@ -137,7 +139,7 @@ tools/v4/py contingency.py 2026-10-27          # the contingency detector's twin
 tools/v4/py contingency.py --measure 2026-10-26  # step 0: P(answer | act) vs chance over whole days (docs/CONTINGENCY.md)
 tools/v4/py parity_contingency.py [DAY]       # C++ ContingencyV4 == the twin on real diary days
 tools/v4/py body.py --measure 2026-10-26      # the body's channels hour by hour, the sleep pressure's twin (docs/BODY.md)
-tools/v4/py body.py 2026-10-28                # the twin's sleep pressure against the robot's (1 - raw_stamina)
+tools/v4/py body.py 2026-10-28                # the twin's sleep pressure and body budget against the robot's (raw_stamina, raw_budget)
 tools/v4/py parity_body.py [DAY]              # C++ BodyV4 == the twin on real diary days
 tools/v4/py contingency.py --self 2026-10-26  # me or not me: sense events that follow the robot's own acts at once
 python tools/robot/listen.py [SECONDS]        # record the robot's microphone (24 kHz, ms-stamped) -> data/sound/<day>/<time>.wav

@@ -1,5 +1,5 @@
-// The sleep pressure's C++ twin over a stream: per tick float32 [7] (tools/v4/body.py inputs: dt, clock_ok, hour,
-// moved_deg, said, arousal, asleep; dt < 0 marks a new boot) -> pressure, load (float32). tools/v4/parity_body.py
+// BodyV4 over a stream: per tick float32 [12] (tools/v4/body.py COLUMNS; dt < 0 marks a new boot) -> pressure, load,
+// budget (float32). tools/v4/parity_body.py
 #include <cstdio>
 
 #include "body_v4.h"
@@ -11,8 +11,8 @@ int main(int argc, char** argv)
     FILE* g = std::fopen(argv[2], "wb");
     if (!f || !g) return 1;
     BodyV4 body;
-    float r[7];
-    while (std::fread(r, sizeof(float), 7, f) == 7) {
+    float r[12];
+    while (std::fread(r, sizeof(float), 12, f) == 12) {
         if (r[0] < 0) {  // a new boot: a fresh body
             body = BodyV4{};
             continue;
@@ -25,9 +25,14 @@ int main(int argc, char** argv)
         in.said = r[4] > 0;
         in.arousal = r[5];
         in.asleep = r[6] > 0;
+        in.threat = r[7];
+        in.over = r[8];
+        in.pet = r[9] > 0;
+        in.nearby = r[10] > 0;
+        in.hurt = r[11] > 0;
         body.step(in);
-        const float out[2] = {body.pressure(), body.load()};
-        std::fwrite(out, sizeof(float), 2, g);
+        const float out[3] = {body.pressure(), body.load(), body.budget()};
+        std::fwrite(out, sizeof(float), 3, g);
     }
     std::fclose(f);
     std::fclose(g);

@@ -108,6 +108,8 @@ It is not a literature review. Only what we can use is here. The last section sa
 - **Measured (BODY step 0, 2026-10-27):** the body's channels were a clock and a timer. Hunger was 0 on USB, the
   servo stamina never moved, tired came from the hour alone.
 - **Built (BODY step 1):** tiredness from what the robot did (sleep pressure, section 9a).
+- **Built (BODY step 2):** a body budget. Effort, fear and the hung servos spend it; sleep and a gentle hand refill
+  it; someone near halves the costs (Coan & Sbarra, *Social baseline theory*, 2015). It is felt as hunger when low.
 - **Next:**
   - a real body budget: effort and arousal spent, rest and people restoring it (BODY step 2), the hung servos as
     discomfort, all as interoception;

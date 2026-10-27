@@ -115,7 +115,8 @@ RAW = ["energy", "speech", "sharp_ev", "head_ev", "head_hold", "screen_ev", "acc
        "imu_ok", "near_raw", "near_ok", "als", "als_ok", "motion_frac", "motion_x", "motion_y",
        "frame_ok", "battery", "stamina", "hour", "clock_ok",
        "light_x", "light_y", "light_str",  # the camera's brightest spot (2026-10-25; older diaries: NaN)
-       "head_yaw"]  # where the head points, degrees: places the spot in the room
+       "head_yaw",  # where the head points, degrees: places the spot in the room
+       "budget"]  # the body budget 0..1 (main/v4/body_v4.h, docs/BODY.md step 2; 2026-10-27 evening, older: NaN = full)
 BODY = ["head_yaw_deg", "head_pitch_deg", "face", "said", "gesture"]
 # + the main network's own-state inputs (PREV) of the tick it last decided: with the SNN numbers they are its whole
 # input, so the PC can replay every decision exactly (stage 6, sleep_v4.py)

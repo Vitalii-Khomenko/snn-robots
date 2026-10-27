@@ -101,7 +101,8 @@ void ChannelEncoder::update(const Raw& r, Out& out)
         ly_ *= 0.98;
     }
 
-    const double hunger = clamp01(1.0 - r.battery);
+    // off USB the battery; the body budget only below kBudgetFelt (a usual day stays above it: hunger 0 as before)
+    const double hunger = clamp01(std::max(1.0 - r.battery, 1.0 - static_cast<double>(r.budget) / kBudgetFelt));
     // the clock, and the sleep pressure above a usual day's at this hour (stamina = 1 - pressure, BodyV4; docs/BODY.md)
     const double felt = r.clockOk ? std::max(0.0, (1.0 - r.stamina) - static_cast<double>(BodyV4::usual(r.hour))) : 0.0;
     const double tired = clamp01(0.75 * (r.clockOk ? nightRamp(r.hour) : 0.0) + kTiredFelt * felt);

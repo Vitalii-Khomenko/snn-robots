@@ -62,7 +62,8 @@ public:
     void vision(const CameraEngine::VisionFrame& f, uint32_t now);
     // The servo rail was power-cycled: the head jolts as the servos take hold again - not a shake (2026-10-24: shake
     // 0.33 right after a power cycle). The IMU channels are not read for the next 3 s.
-    void servoRepowered(uint32_t now) { imu_mask_until_ms_ = now + 3000; }
+    // (And it is the body's one real ache: BodyV4's budget pays for it.)
+    void servoRepowered(uint32_t now) { imu_mask_until_ms_ = now + 3000, hurt_ = true; }
     // What the robot learned from its life (stage 6): the main network's action heads and the zone shifts from a blob
     // (net/learned_store.h on the robot, --learned in the simulator); an empty view = innate. Between two ticks only.
     // Returns the number of arrays taken (0, 1 or 5).
@@ -128,7 +129,7 @@ private:
     ContingencyV4::Out contingency_out_{};
     BodyV4 body_;
     float body_yaw_ = 0.0f, body_pitch_ = 0.0f;
-    bool body_head_ = false;
+    bool body_head_ = false, hurt_ = false;
 
     // the camera's last frame (~7 fps): motion share and centre
     float motion_[3] = {0, 0, 0};

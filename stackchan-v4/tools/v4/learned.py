@@ -36,8 +36,9 @@ TOLERANCE = 2.0  # main/v4/zone_shift.h kTolerance (2026-10-25): every input twi
 
 def tolerant(c, a):
     """main/v4/zone_shift.h ZoneShift::tolerant: the raw level that reads as the alarm border a of channel c (sharp:
-    not warped, its tolerance is the encoder's wider scale, channels.py SHARP_FULL)."""
-    return a if CHANNELS[c] == "sharp" else min(TOLERANCE * a, a + 0.6 * (1 - a))
+    not warped, its tolerance is the encoder's wider scale, channels.py SHARP_FULL; hunger: the body's own need, not
+    warped since 2026-10-27, docs/BODY.md step 2)."""
+    return a if CHANNELS[c] in ("sharp", "hunger") else min(TOLERANCE * a, a + 0.6 * (1 - a))
 
 
 def warp(x, c, s):

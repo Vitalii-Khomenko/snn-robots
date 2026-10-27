@@ -33,6 +33,7 @@ public:
         float headYaw = 0;               // where the head points, degrees (MotionEngine): places the spot in the room
         float battery = 1, hour = 12;
         float stamina = 1;               // 1 - the sleep pressure (BodyV4; until 2026-10-27 the servos' travel)
+        float budget = 1;                // the body budget (BodyV4, docs/BODY.md step 2)
         bool clockOk = false;
     };
     using Out = std::array<float, v4::kSnnInputs>;
@@ -75,6 +76,8 @@ public:
     static constexpr float kContactSpeech = 0.5f, kContactNear = 0.3f, kContactMotion = 0.1f;
     // the sleep pressure above a usual day's at this hour -> tired (docs/BODY.md step 1; 0.25 * (1 - stamina) before)
     static constexpr float kTiredFelt = 2.0f;
+    // the body budget below this is felt as hunger (0.35 -> 0.5: valence lower; 0.17 -> 0.75: unwell; docs/BODY.md step 2)
+    static constexpr float kBudgetFelt = 0.7f;
 
     static float nightRamp(float hour);
 

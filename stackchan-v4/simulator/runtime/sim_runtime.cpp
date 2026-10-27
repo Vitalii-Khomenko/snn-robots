@@ -156,12 +156,12 @@ void SimRuntime::writeMinute(uint32_t now)
         return n;
     };
     if (opt_.summary) {
-        std::fprintf(opt_.summary, "%3u | %5.2f | %5.0f | %4d | %4d | %4d | %4d | %4d | %4d | %4.0f%% | %4.0f | %4.0f\n",
+        std::fprintf(opt_.summary, "%3u | %5.2f | %5.0f | %4d | %4d | %4d | %4d | %4d | %4d | %4.0f%% | %4.0f | %4.0f | %5.2f\n",
                      minute_index_ + 1, w.hourOfDay(vrtos::nowUs()), w.travelDeg() - minute_travel_start_,
                      w.movementsStarted() - minute_moves_start_, count("v4: face:"), count("v4: call"),
                      count("v4: gesture:"), count("runtime: loud sound"),
                      count("runtime: head touch (") + count("runtime: screen touch"), loop_.body().pressure() * 100.0f,
-                     w.headYawDeg(), w.headPitchDeg());
+                     w.headYawDeg(), w.headPitchDeg(), static_cast<double>(loop_.body().budget()));
         std::fflush(opt_.summary);
     }
     resetLogCounts();
@@ -175,7 +175,7 @@ void SimRuntime::writeMinute(uint32_t now)
 void SimRuntime::run(uint64_t until_us)
 {
     if (opt_.summary)
-        std::fprintf(opt_.summary, "min |  hour | travel | moves | faces | calls | gestures | loud | touches | sleep_p | yaw | pitch\n");
+        std::fprintf(opt_.summary, "min |  hour | travel | moves | faces | calls | gestures | loud | touches | sleep_p | yaw | pitch | budget\n");
     if (opt_.trace) {
         std::fprintf(opt_.trace, "t_s,hour,head_yaw,head_pitch,cmd_yaw,cmd_pitch,face,sound");
         for (const char* n : v4::kChannelNames) std::fprintf(opt_.trace, ",%s", n);
