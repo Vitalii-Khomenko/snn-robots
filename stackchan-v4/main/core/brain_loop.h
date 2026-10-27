@@ -17,6 +17,7 @@
 #include "../voice/babble_voice.h"
 #include "../v4/brain_v4.h"
 #include "../v4/channel_encoder.h"
+#include "../v4/contingency_v4.h"
 #include "../v4/learned_blob.h"
 #include "../v4/v4_executor.h"
 #include "../v4/zone_shift.h"
@@ -89,6 +90,8 @@ public:
     bool saidThisTick() const { return said_tick_; }
     bool decidedThisTick() const { return decided_tick_; }
     bool gestureThisTick() const { return gesture_tick_; }
+    // the sense of "I did that" (docs/CONTINGENCY.md): its numbers of the last tick (diary ct_*)
+    const ContingencyV4::Out& contingency() const { return contingency_out_; }
     // diagnostics
     uint64_t tickLastUs() const { return tick_last_us_; }
     uint64_t takeTickMaxUs() { const uint64_t m = tick_max_us_; tick_max_us_ = 0; return m; }
@@ -115,6 +118,8 @@ private:
     BrainV4::Executed done_{};
     bool night_ = false, said_tick_ = false, gesture_tick_ = false, decided_tick_ = false;
     ZoneShift zones_;
+    ContingencyV4 contingency_;
+    ContingencyV4::Out contingency_out_{};
 
     // the camera's last frame (~7 fps): motion share and centre
     float motion_[3] = {0, 0, 0};

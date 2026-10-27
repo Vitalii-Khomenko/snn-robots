@@ -118,6 +118,10 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
 - Curious glances (2026-10-26): at random moments every 40-150 s the idle head turns slowly to one side (40-70°),
   looks a few seconds and comes back - the room's edges get looked at and no two minutes are alike; a new light is turned to
   quickly. See ARCHITECTURE section 4.
+- The sense of "I did that" (2026-10-27, step 1 of [CONTINGENCY](docs/CONTINGENCY.md)): a detector notices when a
+  call, a gesture or a face is answered (a pet, a tap, speech, someone coming near) more often than by chance, and
+  writes it to the diary. Nothing acts on it yet. The first numbers say the robot's ears must get cleaner first:
+  speech fires ~200 times an hour on noise.
 - The Muse (2026-10-26): a small chaotic reservoir network next to the main one. It gives the main network its
   "random" pacemakers (now coloured by the mood) and five ideas (play, show, still, social, surprise), which the
   robot acts when nothing calls for a reaction. It gets bored of its own ideas and learns at night which ones the

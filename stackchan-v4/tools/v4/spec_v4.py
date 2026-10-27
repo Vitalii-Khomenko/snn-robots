@@ -116,11 +116,15 @@ RAW = ["energy", "speech", "sharp_ev", "head_ev", "head_hold", "screen_ev", "acc
 BODY = ["head_yaw_deg", "head_pitch_deg", "face", "said", "gesture"]
 # + the main network's own-state inputs (PREV) of the tick it last decided: with the SNN numbers they are its whole
 # input, so the PC can replay every decision exactly (stage 6, sleep_v4.py)
+# + the sense of "I did that" (docs/CONTINGENCY.md, main/v4/contingency_v4.cpp; 2026-10-27): how much the world answers
+# the robot now, an answer just came, being ignored, and per kind of act how much more often than chance it is answered
+CONTINGENCY = ["agency", "answered", "ignored", "call", "gesture", "face"]
 DIARY = (["raw_" + r for r in RAW] + ["ch_" + c for c in SNN_IN] + ["snn_" + o for o in SNN_OUT] +
-         ["nn_" + o for o in NN_OUT] + BODY + ["pv_" + p for p in PREV])
+         ["nn_" + o for o in NN_OUT] + BODY + ["pv_" + p for p in PREV] + ["ct_" + c for c in CONTINGENCY])
 
 GROUPS = [("Raw", "RAW", RAW), ("Body", "BODY", BODY), ("Channel", "CH", CHANNELS), ("Where", "WH", WHERE), ("SnnOut", "SO", SNN_OUT), ("Prev", "PV", PREV),
-          ("NnOut", "NO", NN_OUT), ("Zone", "ZONE", ZONES)]
+          ("NnOut", "NO", NN_OUT), ("Zone", "ZONE", ZONES),
+          ("Contingency", "CT", CONTINGENCY)]
 
 
 def idx(names, n):
@@ -159,7 +163,7 @@ def header():
                ", ".join("{%d, %d, %d}" % LED_RGB[c] for c in LED_COLORS) + "};")
     out.append(f"inline constexpr int kSnnInputs = {len(SNN_IN)};")
     out.append(f"inline constexpr int kNnInputs = {len(NN_IN)};")
-    out.append(f"inline constexpr int kDiaryValues = {len(DIARY)};  // RAW, channels, SO, NO, BODY, PV (tools/v4/diary.py)")
+    out.append(f"inline constexpr int kDiaryValues = {len(DIARY)};  // RAW, channels, SO, NO, BODY, PV, CT (tools/v4/diary.py)")
     out.append("}  // namespace v4")
     return "\n".join(out) + "\n"
 

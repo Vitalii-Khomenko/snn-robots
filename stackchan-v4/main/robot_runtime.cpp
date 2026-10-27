@@ -480,8 +480,9 @@ void RobotRuntime::logTick()
     *p++ = loop_.saidThisTick() ? 1.0f : 0.0f;
     *p++ = loop_.gestureThisTick() ? 1.0f : 0.0f;
     p = std::copy(loop_.brain().lastPrev().begin(), loop_.brain().lastPrev().end(), p);
-    static_assert(v4::RAW_COUNT + v4::kSnnInputs + v4::SO_COUNT + v4::NO_COUNT + v4::BODY_COUNT + v4::PV_COUNT ==
-                      LifeLog::kValues,
+    p = std::copy(loop_.contingency().begin(), loop_.contingency().end(), p);
+    static_assert(v4::RAW_COUNT + v4::kSnnInputs + v4::SO_COUNT + v4::NO_COUNT + v4::BODY_COUNT + v4::PV_COUNT +
+                      v4::CT_COUNT == LifeLog::kValues,
                   "diary order: tools/v4/spec_v4.py DIARY");
     // flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided this tick
     life_.tick(tick, nowMs(),

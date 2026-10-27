@@ -225,6 +225,28 @@ void BrainLoop::tick(uint32_t now, const Env& env)
     }
     said_tick_ = exec_.calls() != calls;
     gesture_tick_ = exec_.gestures() != gestures;
+    {
+        ContingencyV4::In in;
+        in.ms = now;
+        in.active = brain_.trained() && !night_;
+        in.said = said_tick_;
+        in.gesture = gesture_tick_;
+        in.face = exec_.shownEmotion();
+        in.headEv = raw_.headEv;
+        in.screenEv = raw_.screenEv;
+        in.touchHead = channels_[CH_TOUCH_HEAD];
+        in.touchScreen = channels_[CH_TOUCH_SCREEN];
+        in.nearRaw = raw_.nearRaw;
+        in.speech = raw_.speech;
+        in.motion = channels_[CH_MOTION];
+        in.headYaw = raw_.headYaw;
+        ContingencyV4::Credit credit;
+        contingency_.step(in, contingency_out_, credit);
+        if (credit.any)
+            ESP_LOGI(kTag, "contingency: %s answered by %s after %.1f s (agency %.2f)", ContingencyV4::actName(credit.act),
+                     ContingencyV4::answerName(credit.answer), static_cast<double>(credit.latencyMs) / 1000.0,
+                     static_cast<double>(contingency_out_[CT_AGENCY]));
+    }
     if (decided) {
         if (!brain_.trained()) {
             // untrained networks drive nothing: their own choices stand in for what was done

@@ -192,17 +192,37 @@ are not touch_screen events for the brain; a tap on the face above the open bar 
 - **Sharp sounds:** only loud peaks from ~6000 count (weak taps and words do not); the boot click (first 10 s) is not
   a bang.
 
+**The sense of "I did that"** (`main/v4/contingency_v4.cpp`, twin `tools/v4/contingency.py`, concept
+[CONTINGENCY](CONTINGENCY.md); step 1, 2026-10-27: it only writes the diary, nothing acts on it yet). After the executor,
+every tick:
+- **Acts:** what the robot did: a call, a gesture, a face change.
+- **Answers:** what came from outside: a gentle pet (weight 1.0) or tap (0.8), a new speech onset not within 5 s of
+  its own call (0.6), someone near (0.5), motion while the head is still (0.3).
+- **Credit:** an answer 0.5-4 s after an act goes to the latest act. Acts within 3 s after an answer are reactions
+  and do not count.
+- **Contingency per act kind:** answered acts (leaky, ~5 min, with a prior of 3 acts at chance), minus the chance of
+  an answer in such a window anyway. The chance comes from the background rate at moments without acts while
+  someone is around (a touch or someone near in the last 2 minutes; leaky, ~30 min).
+- **Outputs (diary `ct_*`):**
+  - agency (the best kind, 0..1);
+  - answered (a pulse that fades in ~3 s);
+  - ignored (rises by 0.15 per unanswered act with someone around; an answer resets it; fades in ~10 min);
+  - call, gesture, face contingency (-1..1).
+- **Log:** `contingency: face answered by pet after 1.9 s (agency 0.00)`.
+- **First measurements:** 2026-10-26 replayed by the twin: 613 credits, 594 of them by speech (noise), all kinds
+  of act ~0 above chance.
+
 ## 6. The diary
 
 Every tick goes to the home PC over UDP (`main/net/life_log.*`, kind 3 datagrams, four ticks each, float16), with
-every log line. Columns (`spec_v4.DIARY`, 154): the 26 raw readings the channels are made from, the 18 channel values
+every log line. Columns (`spec_v4.DIARY`, 165): the 26 raw readings the channels are made from, the 18 channel values
 (after the zone shift: what the analyzer saw), the 32 SNN numbers, the 61 network outputs, what the body did (head
-yaw / pitch, shown face, said, gestured) and the main network's 12 own-state inputs of its last decision. With the raw
+yaw / pitch, shown face, said, gestured) the main network's 17 own-state inputs of its last decision, and the 6 numbers of the contingency detector (`ct_*`, section 5). With the raw
 readings any day can be re-encoded after a change of the channels; with the own state every decision can be replayed
 exactly on the PC (stage 6). Flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided
 this tick. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it (also the older layouts by column name: 135
-values until 2026-10-24 14:30, 147 until the camera's bright spot and the head yaw as a raw reading came in on 2026-10-25; missing columns are
-NaN).
+values until 2026-10-24 14:30, 147 until the camera's bright spot and the head yaw as a raw reading came in on 2026-10-25, 154 until
+the Muse's ideas on 2026-10-26, 159 until the contingency detector on 2026-10-27; missing columns are NaN).
 
 Every 5 s the robot logs three lines: `stats:` (CPU, memory, timing, servos, sensors, voice, diary counters), `v4:`
 (raw light / proximity, the 13 channels, the SNN's mood, the network's state, face, calls, gestures) and `power:`

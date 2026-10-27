@@ -8,7 +8,7 @@ mkdir -p "$here/build"
 
 firmware=(
   main/perception/vision_frontend.cpp main/perception/audio_frontend.cpp main/perception/auditory_net.cpp
-  main/core/brain_loop.cpp main/v4/channel_encoder.cpp main/v4/snn_v4.cpp main/v4/nn_v4.cpp main/v4/brain_v4.cpp main/v4/muse_v4.cpp
+  main/core/brain_loop.cpp main/v4/channel_encoder.cpp main/v4/snn_v4.cpp main/v4/nn_v4.cpp main/v4/brain_v4.cpp main/v4/muse_v4.cpp main/v4/contingency_v4.cpp
   main/v4/v4_executor.cpp main/voice/droid_synth.cpp main/voice/babble_net.cpp main/voice/babble_voice.cpp
   main/motion/motion_engine.cpp main/ui/face_style.cpp main/sensors/microphone_engine.cpp main/sensors/camera_engine.cpp
   main/sensors/imu_engine.cpp main/sensors/touch_engine.cpp main/sensors/presence_engine.cpp

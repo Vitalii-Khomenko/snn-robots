@@ -127,7 +127,9 @@ behavior_test_v4.py          then build, flash, watch
 
 ```bash
 tools/v4/py reward_v4.py 2026-10-25            # a day's reward events (pet, tap, talk, near, shake, tilt, poke, left_alone)
-tools/v4/py contingency.py 2026-10-26          # does the world answer its acts? P(answer | act) vs chance (docs/CONTINGENCY.md)
+tools/v4/py contingency.py 2026-10-27          # the contingency detector's twin over a day: answered acts, agency, ignored, the robot's ct_* vs the twin
+tools/v4/py contingency.py --measure 2026-10-26  # step 0: P(answer | act) vs chance over whole days (docs/CONTINGENCY.md)
+tools/v4/py parity_contingency.py [DAY]       # C++ ContingencyV4 == the twin on real diary days
 tools/v4/py sleep_v4.py --dry-run              # the night without sending: replay, reward, AWR, zones, gates
 tools/v4/py sleep_v4.py --dry-run --min-hours 0.05   # the whole chain on a few minutes of life (a test)
 journalctl --user -u sleep-v4                  # last night; one line per night in data/life/sleep_v4.log

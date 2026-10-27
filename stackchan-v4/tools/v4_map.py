@@ -291,7 +291,7 @@ def brain_map():
     s.text(50, py0 + 388, "The simulator runs the real firmware code (channels, SNN, NN, executor) in a virtual room "
                           "with scripted people, sounds, touches and light.", 15, C["dim"])
     s.arrow([(ex + 60, ey + eh), (ex + 60, 1035), (185, 1035), (185, py0 + 58)], C["pc"],
-            label="diary: channels, SNN, NN", lx=195, ly=1028)
+            label="diary: channels, SNN, NN, contingency", lx=195, ly=1028)
     s.arrow([(2220, py0 + 58), (2220, 876)], C["pc"], label="OTA", lx=2230, ly=960)
     s.save("BRAIN_V4_MAP.svg")
 

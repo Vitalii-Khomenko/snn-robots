@@ -1,6 +1,7 @@
 # Contingency: the sense of "I did that" (concept, 2026-10-27)
 
-The owner, 2026-10-27: *"work out the sense of causality."* This is a concept, nothing of it is built yet. The
+The owner, 2026-10-27: *"work out the sense of causality."* Then: *"do step 1 and flash, then steps two and three."*
+Step 1 is built and on the robot since 2026-10-27 06:29 (ARCHITECTURE section 5); the rest is the plan. The
 science behind it is in [FOUNDATIONS](FOUNDATIONS.md) (sections 5-7).
 
 ## 1. Why this, and why now
@@ -170,7 +171,7 @@ Per tick: a ring of 8 acts, about 20 leaky counters, a few comparisons, so micro
 | Step | What | Changes behaviour? |
 |---|---|---|
 | 0 | Measure ΔP from the diary | no (done, section 2) |
-| 1 | Detector in C++ and Python (parity), diary columns, daily reports; a few days of real numbers | no |
+| 1 | Detector in C++ and Python (parity), diary columns, daily reports; a few days of real numbers (built 2026-10-27: `contingency_v4.cpp`, `contingency.py`, `parity_contingency.py`; diary `ct_*`) | no |
 | 2 | Clean the answers: why speech fires 200+ times an hour (a short recording with the owner's OK), then self-contingency labelling of sense events | no, only cleaner senses |
 | 3 | 6 NN inputs, the teacher's rules (3.5), simulator scenarios (4), retrain, flash | yes |
 | 4 | The life scale in the learned blob; at night the Muse's idea biases and the AWR also see c_k | slowly |
