@@ -31,6 +31,9 @@ face):
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | the brain: channels and zones, the spiking analyzer, the main network, the executor, the diary |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | build, flash, simulator and tests, the training chain, the diary on the PC, recipes |
 | [docs/HARDWARE.md](docs/HARDWARE.md) | the board, servos, sensors, memory, flashing and recovery, known limits |
+| [docs/CREATIVITY.md](docs/CREATIVITY.md) | the Muse: a chaotic reservoir network that gives the robot ideas (built 2026-10-26) |
+| [docs/CONTINGENCY.md](docs/CONTINGENCY.md) | concept: the sense of "I did that" - noticing being answered, the still face, turn-taking |
+| [docs/FOUNDATIONS.md](docs/FOUNDATIONS.md) | what we take from the study of people: Panksepp, Barrett, Damasio, Oudeyer, infant research; how not to get buried |
 | [docs/HISTORY.md](docs/HISTORY.md) | how the project got here (v1 .. v4, platform B), what was learned, where the old code lives |
 | [BRAIN_V4_PLAN.txt](BRAIN_V4_PLAN.txt), [BRAIN_V4_INPUT_SCALES.txt](BRAIN_V4_INPUT_SCALES.txt) | the owner's design of v4 and the sense scales (in Russian) |
 | `JOURNAL.txt` | the development journal (in Russian, newest first): what was done, seen, measured, left open |
