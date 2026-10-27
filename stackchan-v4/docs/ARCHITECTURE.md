@@ -113,9 +113,9 @@ input 49 = 32 SNN numbers + 17 own state -> GRU 64 -> emotion head: 21 emotions 
   rate); head 14 (9 modes: hold, look, scan, nod, shake, flinch, look down, look up, doze; gaze yaw / pitch; gesture
   amplitude, speed, repeats).
 - Float, ~31 k parameters, runs every second tick (10 Hz), the first 5 s after a boot only settle the SNN.
-- Trained by imitation of a behaviour teacher with memory (`tools/v4/teacher_nn.py`) on the SNN's outputs, then two
+- Trained by imitation of a behaviour teacher with memory (`tools/v4/teacher_nn.py`) on the SNN's outputs, then three
   rounds of DAgger (the network acts, its choices feed back into its own inputs, the teacher labels what it really
-  visits). Emotion agreement with the teacher when acting alone: 0.91 (real days 0.94). The head modes are
+  visits). Emotion agreement with the teacher when acting alone: 0.84 (real days 0.82; 0.91 / 0.94 before the Muse, whose idea acts are harder to imitate). The head modes are
   class-weighted in training (rare ones count more: without it the network looked around 8x less than its teacher).
 - **Every mood moves its head** (2026-10-25, the owner: angry or upset it did not move its head at all). By day the
   teacher gives each emotion its own manner (`teacher_nn.py MANNER`): calm looking around (normal), lively glances a

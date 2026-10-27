@@ -229,9 +229,10 @@ def brain_map():
         yy += hh + 18
     s.text(nx + 14, yy + 6, f"own state ({len(S.PREV)}):", 13, weight="bold")
     for k, ln in enumerate(["last mood, how long the face is shown,", "time since a sound / a gesture, head pose,",
-                            "LED level, was the touch answered,", "3 pacemakers (slow, fast, jitter): the",
-                            "randomness the network can see",
-                            "· trained: imitation of a teacher with", "· memory, then DAgger; agrees 0.90"]):
+                            "LED level, was the touch answered,", "from the MUSE (64-neuron chaotic reservoir,",
+                            "pushed by the mood): 3 pacemakers + 5 ideas",
+                            "(play, show, still, social, surprise)",
+                            "· trained: imitation of a teacher with", "· memory, then DAgger; agrees 0.84"]):
         s.text(nx + 14, yy + 26 + k * 18, ln, 12, C["dim"] if ln.startswith("·") else C["text"])
     s.arrow([(bx + bw, by + bh / 2), (nx - 2, by + bh / 2)], C["bus"], width=3)
 
@@ -280,12 +281,12 @@ def brain_map():
     s.text(440, py0 + 250, "6  Night sleep 03:30: learning from its own life (sleep_v4.py)", 17, "#e2c4f2", "bold")
     s.text(440, py0 + 276, "replay every decision from the diary -> reward by people's answers (petting, talk, coming close / "
                            "shaking, rough pokes, leaving) -> AWR on the action heads -> zones shift (habituation, "
-                           f"±{S.SHIFT_MAX})", 14)
+                           f"±{S.SHIFT_MAX}) -> the Muse's idea biases (answered ideas + curiosity)", 14)
     s.text(440, py0 + 300, "-> gates (behaviour tests in the simulator) -> learned blob to the robot, switched in without a "
                            "reboot; the SNN and the emotions stay innate", 13, C["dim"])
     s.text(50, py0 + 280, "teacher-free on the robot:", 14, weight="bold")
     s.text(50, py0 + 300, "the teachers exist only on the PC", 13, C["dim"])
-    s.text(50, py0 + 360, "The firmware holds only brain v4 and what it learned (zone shifts, action heads); the PC records, "
+    s.text(50, py0 + 360, "The firmware holds only brain v4 and what it learned (zone shifts, action heads, idea biases); the PC records, "
                           "analyses and trains. No camera frames or sound leave the robot.", 15, C["dim"])
     s.text(50, py0 + 388, "The simulator runs the real firmware code (channels, SNN, NN, executor) in a virtual room "
                           "with scripted people, sounds, touches and light.", 15, C["dim"])
@@ -298,7 +299,7 @@ def brain_map():
 # ====================================================================== inside the two networks
 def networks():
     s = Svg(2400, 1500)
-    s.text(40, 52, "Brain v4: inside the two networks", 32, weight="bold")
+    s.text(40, 52, "Brain v4: inside the networks", 32, weight="bold")
     s.text(40, 82, "left: how a channel's number becomes spikes and zone activity; right: what the main network chooses",
            16, C["dim"])
 
@@ -391,6 +392,16 @@ def networks():
     s.arrow([(640, y1 + 150), (940, y1 + 150), (958, y1 + 150)], C["nn"], dash=True)
     s.text(380, y1 + 180, f"{NN_PARAMS} float parameters, 10 Hz", 12, C["dim"])
 
+    # the Muse: where the pace_* and idea_* inputs come from
+    s.rect(380, y1 + 210, 260, 200, "#1d1a30", C["snn"], rx=8)
+    s.text(392, y1 + 234, "the Muse (muse_v4.cpp)", 15, "#e2c4f2", "bold")
+    for k, ln in enumerate(["64 leaky tanh neurons, a chaotic", "reservoir (0.5 s / 3 s / 60 s groups),",
+                            "pushed by 8 of the SNN's moods", "-> 3 pacemakers + 5 ideas:",
+                            "play, show, still, social, surprise", "bored of its own ideas (90 s);",
+                            "the night learns one bias per idea", "(answered ideas + curiosity)"]):
+        s.text(392, y1 + 256 + k * 18, ln, 12, C["dim"] if k >= 5 else C["text"])
+    s.arrow([(378, y1 + 310), (322, y1 + 310)], C["snn"])
+
     # emotions grid
     s.text(660, y1 + 240, "emotions", 16, "#a9c6ff", "bold")
     for i, e in enumerate(S.EMOTIONS):
@@ -432,12 +443,12 @@ def networks():
         "NN: a behaviour teacher with memory (teacher_nn.py) acts on the SNN's numbers and the network imitates it; then "
         "DAgger: the network acts, its own choices",
         "      feed back into its inputs and the teacher labels the states it really visits. Emotion agreement acting "
-        "alone: 0.90 (real lives 0.92).",
+        "alone: 0.84 (real lives 0.82), three DAgger rounds since the Muse.",
         "Checks: C++ on the robot gives the same numbers as PyTorch (parity tests); simulator behaviour tests: every touch "
         "answered, petting is not annoying,",
         "      pokes are, nights are silent, play shows many faces, a lonely robot talks, shakes and claps frighten.",
         "Life (stage 6): every night the action heads are fine-tuned on the robot's real days with AWR, rewarded by how people "
-        "answered; the zones of the environment channels shift by experience.",
+        "answered; the zones of the environment channels shift by experience; the Muse's idea biases follow what was answered.",
     ]
     for k, ln in enumerate(lines):
         s.text(80, ty + 64 + k * 26, ln, 14)

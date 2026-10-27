@@ -89,7 +89,7 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
 - Brain v4 drives the robot since 2026-10-24; the firmware holds nothing else (v3 and platform B were removed from it
   the same day: CPU busy 45 % -> 37 %, internal RAM minimum 14 -> 21 KB).
 - Spiking analyzer: correlation with its teacher 0.96-0.99 on synthetic and real days; 3-5 ms per tick on the robot.
-- Main network: emotion agreement with its teacher 0.90 when acting alone; ~210-260 calls an hour alone by day;
+- Main network: emotion agreement with its teacher 0.84 when acting alone (0.90 before the Muse added its idea acts); ~210-260 calls an hour alone by day;
   every touch answered; petting never angers; pokes do; silent at night; frightened by shakes and bangs
   (`tools/v4/behavior_test_v4.py`, all pass).
 - Stage 6, learning from its own life, runs since 2026-10-24: every night at 03:30 the PC replays the robot's decisions,
