@@ -153,6 +153,9 @@ and 19 % (10-28) of the sleepy-face time by day was such a rest.
 - **Restoring:** once the clock is known it takes them back, and counts the time it was off as rest.
   - The log line: `body: restored after N s off: saved pressure P budget B -> ...`.
   - The twin (`body.py`) reads it and does the same.
+- **On the robot** (16:53, a reboot 197 s after the save): `saved pressure 0.613279 budget 0.843280 -> pressure
+  0.602194 budget 0.847510`, as the twin computes; on the new firmware the twin equals the robot within 3e-4 (the
+  diary's float16).
 - **Not taken:** a state older than two days, or from the future.
 - **Lost:** the last minutes before a power loss.
 
