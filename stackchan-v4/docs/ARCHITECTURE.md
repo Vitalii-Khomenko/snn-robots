@@ -51,7 +51,15 @@ simulator 25 s of pokes every 0.8 s no longer anger it; the first annoyed face c
 A sensor counts as working only while it reads: the proximity and light sensor within the last 2 s, the IMU within
 0.5 s (since 2026-10-28, an audit: after an I2C failure the last values and the ok flags stayed - a frozen sensor read
 as someone near or a lit room, and a dead gyro's silence looked to the servo watchdog like a hung head). A channel
-whose sensor does not read holds its value (proximity, light) or reads no tilt and shake (IMU).
+whose sensor does not read holds its value (light: a room's light changes slowly), fades to nobody (proximity:
+2026-10-28, it held someone near for ever) or reads no tilt and shake (IMU). The simulator tests each of these
+(`fault imu|light|ntp`, DEVELOPMENT).
+
+**What the senses do not know** (2026-10-28, an audit): the camera gives motion and the brightest spot, not a person,
+a face or the owner; the ear gives loudness, sharp sounds and a voice, not words or whether the voice speaks to the
+robot; "someone near" is the IR proximity, which a hand or a cup also gives; "someone around" (contingency) is a touch,
+something near or motion in view in the last 2 minutes. So "the owner" in these documents means *whoever is there*:
+the robot does not tell one person from another, and a still person out of the IR's reach is nobody to it.
 
 Slow clocks (minutes, hours) are computed in code, not by the SNN: a spiking network cannot count minutes (v3's lesson,
 2026-10-03). `tools/v4/channels.py` is the same encoder for training; a parity test keeps them identical (error 0).
@@ -188,6 +196,14 @@ The network decides **what**; `V4Executor` decides only **how**, inside fixed ru
 | LEDs | colour, pattern, brightness, rate | brightness <= 6 % at night |
 | head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +6° at 60°/s, at most one every 15 s (12° at 160°/s until 2026-10-25 evening, 8° at 90°/s and every 1.5 s until 10-26: 9 flinches in 13 minutes at the owner's sounds) | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; gaze moves at most every 4 s and only for >= 12° yaw / 8° pitch (the servos hang more often the more packets they get; 2.5 s / 8° until 2026-10-25); with nothing attended for 10 s (attention <= 0.12) the wandering gaze keeps a place 5-11 s (shorter in a lively mood) and turns only for >= 20° (2026-10-25 evening, the owner: a whizz of the motors every few seconds - 11 moves a minute of ~14°); a turn of 0.8 s or more is eased (half a cosine, peak 7-20°/s; HARDWARE, servos); something new in view (attention > 0.12) is turned to 1.5x faster, still eased (at the wander's speed a lamp was no longer new when the head got there; 2.5x jerked right after a glance), aimed once (head yaw + attention x 30°, within ±75°) and again only after the head has been still 0.8 s - the picture is not renewed during a turn, and re-aiming every tick from the turning head ran after a lamp at the picture's edge to -88..-100° (2026-10-27, the owner: "it jerks its head far left and back"); curious glances (2026-10-26, the owner: "add creativity and unpredictability"): while it wanders by day, at a random moment every 40-150 s the head turns 40-70° to one side at 12°/s (the other side when it already looks aside), a little up or down, looks 4-9 s and goes back (55-90° at 20°/s for 3-7 s the first hours: the owner saw the head jerk far aside and back) - its own xorshift generator, so the simulator's world keeps its random numbers (simulator, a day alone: yaw -57..48°, beyond 30° 34 % of the time, 5.5 moves a minute); the hold of a place is drawn by chance too; at night the head only sinks into the doze (no look / scan); gesture keyframes <= 8 commands/s; yaw ±100°, pitch -20..35° |
 
+**What it held back** (2026-10-28, after an audit): every tick the executor reports which of the network's wishes it
+did not carry out, and why - the diary's `held` bits (`V4Executor::Held`): a call wanted (say above 0.55, the voice
+armed) but silent by night (1), with the call budget spent (2) or a phrase still sounding / too soon (4); a nod,
+shake or flinch wanted but not made by night (8) or too soon after the last (16); the head following its own reflex,
+a watch or a glance instead of the network's look / scan / hold (32). On 10-27 45 % of the stretches of a wanted call
+never sounded. The night learns only from what was carried out (section 7). `NO_EMO_STRENGTH`, the network's emotion
+strength, is not used by the face (the faces have one strength each): an output with no visible effect.
+
 What really happened (shown face, said, gestured, LED level) goes back into the network's own state. The head pose
 in it is the network's own gaze, eased (0.7 old + 0.3 new, in the decisions it chose look or scan), exactly as the
 teacher keeps it (`teacher_nn.Teacher.apply`): the only meaning these two inputs had in training. Until 2026-10-28 it
@@ -245,16 +261,19 @@ are not touch_screen events for the brain; a tap on the face above the open bar 
 the executor, every tick, the sleep pressure (Borbely's process S):
 - **load:** a 10-minute average of head travel, calls and the analyzer's arousal against a usual day (2.3°/s, 5.5 a
   minute, 0.16); load = 1 + 2 x (effort - 1), 0.25 .. 3;
-- **awake:** the pressure rises towards 1 with 12 h / load; **asleep** (night rules, or the sleepy face shown: a nap)
-  it drains with 3 h;
+- **awake:** the pressure rises towards 1 with 12 h / load; **asleep** (night rules, or a nap: the sleepy face shown
+  and the body quiet - no call, the head still - for 20 s; the face alone until 2026-10-28, BODY 4a) it drains with
+  3 h;
 - **felt:** the tired channel takes only the pressure above `usual(hour)` (a usual day's curve: 0.05 at 06:00, 0.42 at
   noon, 0.74 at 21:45 - the clock's alerting signal), x2;
-- the next tick's `raw_stamina` = 1 - pressure (diary); the `stats:` line shows `sleep_pressure=` and `load=`; a
-  reboot starts on the usual curve.
+- the next tick's `raw_stamina` = 1 - pressure (diary); the `stats:` line shows `sleep_pressure=` and `load=`.
+- **a reboot** (2026-10-28): the pressure and the budget are saved into NVS `v4` `body` every 10 minutes and taken
+  back once the clock is known, the time off counted as rest (`RobotRuntime::keepBody`, log `body: restored after N
+  s off`); nothing saved (or older than two days): the pressure starts on the usual curve, the budget at 0.85.
 - **the body budget** (step 2): 0..1, spent by the load (empty in 50 h at load 1, half as fast with someone near or
   talking), by threat / over above 0.3 (10 min at full) and by every servo rail power cycle (-0.0007); refilled by
   sleep or a nap (2 h) and by each gentle pet or tap (6 % of what is missing). The next tick's `raw_budget`; hunger
-  feels it below 0.7; `stats:` shows `budget=`; a reboot starts at 0.85.
+  feels it below 0.7; `stats:` shows `budget=`.
 
 **The sense of "I did that"** (`main/v4/contingency_v4.cpp`, twin `tools/v4/contingency.py`, concept
 [CONTINGENCY](CONTINGENCY.md); step 1 2026-10-27 06:29 wrote the diary only; since step 3 the main network sees it,
@@ -263,8 +282,11 @@ section 3). After the executor, every tick:
 - **Answers:** what came from outside: a gentle pet (weight 1.0) or tap (0.8), a new speech onset (0.6; the ear
   already holds back the robot's own voice and its tail, below), someone near (0.5), motion while the head is still
   (0.3).
-- **Credit:** an answer 0.5-4 s after an act goes to the latest act. Acts within 3 s after an answer are reactions
-  and do not count.
+- **Credit:** an answer 0.5-4 s after an act goes to the latest call or gesture in that window, and to the latest
+  face change only when there is none (2026-10-28, an audit: the latest act of any kind took it, and on 10-27 a face
+  change after a call took 53 of the 325 answers - a face is not a bid). Acts within 3 s after an answer are reactions
+  and do not count. A statistical link, not proof of a cause: the yoked control (CONTINGENCY, status) shows the
+  robot's acts do not yet multiply *because* they are answered.
 - **Contingency per act kind:** answered acts (leaky, ~5 min, with a prior of 3 acts at chance), minus the chance of
   an answer in such a window anyway. The chance comes from the background rate at moments without acts while
   someone is around (a touch, someone near or moving in view in the last 2 minutes; leaky, ~30 min).
@@ -281,15 +303,18 @@ section 3). After the executor, every tick:
 ## 6. The diary
 
 Every tick goes to the home PC over UDP (`main/net/life_log.*`, kind 3 datagrams, four ticks each, float16), with
-every log line. Columns (`spec_v4.DIARY`, 174): the 27 raw readings the channels are made from, the 18 channel values
+every log line. Columns (`spec_v4.DIARY`, 175): the 27 raw readings the channels are made from, the 18 channel values
 (after the zone shift: what the analyzer saw), the 32 SNN numbers, the 61 network outputs, what the body did (head
-yaw / pitch, shown face, said, gestured) the main network's 23 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), and the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got). `raw_stamina` is 1 - the sleep pressure since 2026-10-27 (1.0 before). With the raw
+yaw / pitch, shown face, said, gestured, and what the executor held back: `held`, section 4) the main network's 23 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), and the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got). `raw_stamina` is 1 - the sleep pressure since 2026-10-27 (1.0 before). With the raw
 readings any day can be re-encoded after a change of the channels; with the own state every decision can be replayed
 exactly on the PC (stage 6). Flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided
 this tick. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it (also the older layouts by column name: 135
 values until 2026-10-24 14:30, 147 until the camera's bright spot and the head yaw as a raw reading came in on 2026-10-25, 154 until
-the Muse's ideas on 2026-10-26, 159 until the contingency detector on 2026-10-27, 165 until the ear's columns the same morning, 173 until the body budget (`raw_budget`) that evening; missing columns
-are NaN).
+the Muse's ideas on 2026-10-26, 159 until the contingency detector on 2026-10-27, 165 until the ear's columns the same morning, 173 until the body budget (`raw_budget`) that evening, 174 until `held` on 2026-10-28 evening; missing columns
+are NaN). Four ticks of 175 values make a datagram of 1464 bytes: 8 bytes below one unfragmented UDP packet, so the
+next column needs three ticks a datagram. Each boot names its firmware (`firmware in ota_0 ..., sha c8b5d903`, the
+ELF's SHA-256) and its network (`main network trained (id 1d448676)`): the night learns only from boots of the
+network it trains.
 
 Every 5 s the robot logs three lines: `stats:` (CPU, memory, timing, servos, sensors, voice, diary counters), `v4:`
 (raw light / proximity, the 13 channels, the SNN's mood, the network's state, face, calls, gestures) and `power:`
@@ -307,11 +332,12 @@ Learning happens on the PC at night; the robot only receives the result, without
   that network: after a retrained network is flashed, it starts from its own innate heads, keeps the zone shift and
   the Muse's biases, and the next night trains heads for it (2026-10-27: until then a retrained network silently
   took the old one's heads).
-- **The Muse's ideas** (`sleep_v4.learn_muse`, since 2026-10-26): for each idea, its episodes by day (above 0.5,
-  at least 10 s apart). An idea after which people answered more than usual over 20 s (reward_v4, in units of
+- **The Muse's ideas** (`sleep_v4.learn_muse`, since 2026-10-26): one bias per idea moves (the reservoir and its
+  readout are fixed; CREATIVITY section 0). For each idea, its episodes by day (above 0.5, at least 10 s apart). An idea after which people answered more than usual over 20 s (reward_v4, in units of
   its spread) comes a little more often. So does one after which the world turned out other than the robot
   expected: curiosity is the error of a ridge forward model of the 13 channels 1 s ahead, over 5 s, weighted
-  0.3. The bias moves at most 0.05 a night (with >= 3 episodes), stays within -0.4..+0.6 so no idea dies out,
+  0.3 (unexpectedness, not learning progress: the robot's own act is not among the model's inputs, and a noisy room
+  scores high too). The bias moves at most 0.05 a night (with >= 3 episodes), stays within -0.4..+0.6 so no idea dies out,
   and drifts back by 0.005 a night when the idea was not had.
 - **Zone shift** (`main/v4/zone_shift.h`): per channel a shift s of its alarm border a (the lower border of its first
   anxiety or anger zone), |s| <= 0.15, applied as a monotone warp of the channel value before the analyzer (the
@@ -342,7 +368,12 @@ Learning happens on the PC at night; the robot only receives the result, without
   3. *heads* - the action heads move towards the choices that got more reward than expected and away from those
      that got less: the advantage over a ridge value baseline, centred, in units of its spread, clipped at ±3; the
      target of a decision is the heads' own distribution with the odds of the choice made times exp(A / 2), so a
-     decision of average outcome asks for no change; anchored by a KL to the heads the robot has. (Until 2026-10-28
+     decision of average outcome asks for no change; anchored by a KL to the heads the robot has. Only wishes the
+     body carried out are tilted (`carried_out`, 2026-10-28): a stretch of decisions wanting a call counts when a call
+     started in it, a nod / shake / flinch mode when its gesture started, look / scan / hold not while the head
+     followed its own reflex or a glance (the diary's `held`; before it, attention above 0.12 in the last 10 s), a
+     sound's style only where a call starts; the rest ask for no change. On 10-27/28: 68 % of the decisions wanting
+     a call, 71 % of those wanting a gesture and 96 % of the network's gaze were carried out. (Until 2026-10-28
      AWR, weights exp(A) > 0 on the robot's own greedy choices: with ~400 rewarded moments in 14 h it was the network
      imitating itself and cut the entropy of every choice by ~35 % a night; the KL gate happened to drop every night's
      step. Now a night changes the odds of a choice made before a bad outcome by ~3 %, entropy within 0.5 %.)
@@ -350,10 +381,13 @@ Learning happens on the PC at night; the robot only receives the result, without
      owner's innate rules): in the alarm zone > 5 % of the day with nothing bad after -> +0.01 (habituation);
      alarm followed by rough handling in > 30 % of >= 5 cases -> -0.01 (sensitization); alarm < 1 % -> back towards 0
      by 0.005;
-  5. *gates* - at least 1 h of daytime life and 5 reward events; a boot is learned from only if <= 1 % of its decisions replay with an emotion off by > 0.05 and the 99th percentile is <= 0.05 (the median until 2026-10-28: half the decisions could be wrong); KL <= 0.05 and <= 15 % of the
+  5. *gates* - at least 1 h of daytime life and 5 reward events; boots whose boot line names another network are
+     left out; a boot is learned from (heads, zones and the Muse alike: until 2026-10-28 the zones and the Muse used
+     every boot) only if <= 1 % of its decisions replay with an emotion off by > 0.05 and the 99th percentile is <= 0.05 (the median until 2026-10-28: half the decisions could be wrong); KL <= 0.05 and <= 15 % of the
      choices changed (a step beyond that is taken in part: half, a quarter ... down to a tenth of the way); all behaviour tests pass in the simulator with the new blob. Otherwise the robot keeps what it
      has;
-  6. *send* - `ota.py learned`, a minute on trial on the robot. History: `data/learned/v<version>.bin` (the version
+  6. *send* - `ota.py learned`, a minute on trial on the robot. The report says which parts are new (`new: heads
+     (1 of the step, KL ...), zones (n channels), Muse (n idea biases)`). History: `data/learned/v<version>.bin` (the version
      is yymmddhh), `live.bin`, reports in `tools/v4/out/sleep/`, one line a night in `data/life/sleep_v4.log`.
 - **Clean start** (2026-10-24): at boot the firmware erases what the earlier brains left in flash (NVS namespaces
   `life`, `assoc`, `weights` and platform B's weights blobs); brain v4's own settings live in NVS `v4` (head pad

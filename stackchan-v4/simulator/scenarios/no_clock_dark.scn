@@ -1,0 +1,11 @@
+# A reboot at 3 am with no internet (2026-10-28, an audit: without a clock the night rules ended after two minutes).
+# The clock never syncs; the room is dark, the owner asleep next to the robot, a few sounds in the night. Night rules
+# must hold: no call, no gesture.
+duration 8:00
+clock 03:00
+seed 5
+room_light off
+owner home
+at 0:00 fault ntp on
+at 3:00 clap 20 0.6
+at 5:00 talk 0 1.5 0.5

@@ -40,9 +40,10 @@ enum Body : uint8_t {
     BODY_FACE,
     BODY_SAID,
     BODY_GESTURE,
+    BODY_HELD,
     BODY_COUNT
 };
-inline constexpr const char* kBodyNames[] = {"head_yaw_deg", "head_pitch_deg", "face", "said", "gesture"};
+inline constexpr const char* kBodyNames[] = {"head_yaw_deg", "head_pitch_deg", "face", "said", "gesture", "held"};
 enum Channel : uint8_t {
     CH_LOUD,
     CH_SHARP,
@@ -263,5 +264,5 @@ inline constexpr int kHeadDoze = 8;
 inline constexpr uint8_t kLedRgb[][3] = {{255, 240, 220}, {255, 200, 40}, {255, 110, 20}, {255, 20, 10}, {255, 70, 150}, {150, 40, 255}, {30, 60, 255}, {20, 200, 230}};
 inline constexpr int kSnnInputs = 18;
 inline constexpr int kNnInputs = 55;
-inline constexpr int kDiaryValues = 174;  // RAW, channels, SO, NO, BODY, PV, CT, EAR (tools/v4/diary.py)
+inline constexpr int kDiaryValues = 175;  // RAW, channels, SO, NO, BODY, PV, CT, EAR (tools/v4/diary.py)
 }  // namespace v4

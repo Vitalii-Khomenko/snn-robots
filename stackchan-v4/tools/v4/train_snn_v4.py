@@ -23,12 +23,15 @@ SEQ = 6000          # 5 minutes per life
 CHUNK = 100         # 5 s per backprop window
 WARM = 100          # the first 5 s of a life only settle the state
 N_SYN, N_REAL = 1400, 400
+N_VAL_SYN, N_VAL_REAL = 100, 60  # held out: synthetic lives at random, real ones all from the newest day (split())
 
 
-def real_sequences(n, rng):
+def real_sequences(n, rng, n_held=N_VAL_REAL):
     """Stretches of the robot's real life, channels computed after the fact from the diary (calibrate.raw_hour). On
     platform B's days light, proximity and motion were not logged: a dark room (the robot's usual), nobody at the
-    face, the Vision NN's activity for motion."""
+    face, the Vision NN's activity for motion. -> (sequences, the day of each: 0.. in date order). n_held of them come
+    from the newest day and the rest from the others (2026-10-28, an audit: windows were drawn from every day and split
+    at random, so the held-out set had overlapping stretches of the training days)."""
     import diary as D
     from calibrate import raw_hour
     from channels import encode, new_state
@@ -49,24 +52,28 @@ def real_sequences(n, rng):
         if X:
             pool.append(np.concatenate(X))
         print("real", day, flush=True)
-    out = []
-    for _ in range(n):
-        d = pool[rng.integers(len(pool))]
+    out, day = [], []
+    for i in range(n):
+        k = len(pool) - 1 if i < n_held else rng.integers(len(pool) - 1)
+        d = pool[k]
         s = rng.integers(0, len(d) - SEQ - 1300)
         out.append(d[s + 1300:s + 1300 + SEQ])  # skip a warm-up (tilt baseline) inside the day stream
-    return out
+        day.append(k)
+    return out, day
 
 
 def build():
     rng = np.random.default_rng(7)
     X = [make_channels(rng, SEQ) for _ in range(N_SYN)]
-    X += real_sequences(N_REAL, rng)
-    X = np.stack(X).astype(np.float32)
+    seqs, days = real_sequences(N_REAL, rng)
+    X = np.stack(X + seqs).astype(np.float32)
     Y = np.stack([teach(x) for x in X]).astype(np.float32)
     real = np.zeros(len(X), bool)
     real[N_SYN:] = True
+    day = np.full(len(X), -1, np.int16)  # the real stretches' day (date order), -1: synthetic
+    day[N_SYN:] = days
     os.makedirs(OUT, exist_ok=True)
-    np.savez_compressed(os.path.join(OUT, "snn_data.npz"), X=X, Y=Y, real=real)
+    np.savez_compressed(os.path.join(OUT, "snn_data.npz"), X=X, Y=Y, real=real, day=day)
     print("dataset", X.shape, Y.shape)
 
 
@@ -90,13 +97,25 @@ def evaluate(model, X, Y, dev, bs=200):
     return P, T
 
 
+def split(real, day, rng, n_syn=N_VAL_SYN):
+    """-> (held-out, training) indices: synthetic lives at random (they are independent), the real stretches by day -
+    every one of the newest day held out, none of it trained on. A dataset built before 2026-10-28 has no days: a
+    random split, as it was."""
+    if day is None:
+        idx = rng.permutation(len(real))
+        return idx[:120], idx[120:]
+    syn = rng.permutation(np.flatnonzero(~real))
+    held_day = day[real].max()
+    val = np.concatenate([syn[:n_syn], np.flatnonzero(real & (day == held_day))])
+    tr = np.concatenate([syn[n_syn:], np.flatnonzero(real & (day != held_day))])
+    return val, rng.permutation(tr)
+
+
 def train(epochs):
     d = np.load(os.path.join(OUT, "snn_data.npz"))
     X, Y, real = d["X"], d["Y"], d["real"]
     rng = np.random.default_rng(0)
-    idx = rng.permutation(len(X))
-    n_val = 120
-    val, tr = idx[:n_val], idx[n_val:]
+    val, tr = split(real, d["day"] if "day" in d else None, rng)
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     sd = torch.tensor(np.maximum(Y[tr, WARM:].reshape(-1, Y.shape[2]).std(0), 0.03), device=dev)
     # rare, important numbers count more where they happen

@@ -7,8 +7,10 @@ seed 31
 room_light on
 owner home
 at 0:05 person v enter 0 1.0
-at 0:40 touch_head 500
-at 0:44 touch_head 500
+# (0:40 / 0:44 until 2026-10-28: the first touch fell in the very tick the clock synced - the night rules of the
+# first 40 s ending - and with the light sensor calibrated to the robot's it was not answered; 12 s later it is)
+at 0:52 touch_head 500
+at 0:56 touch_head 500
 at 1:40 touch_head 500
 at 1:43 touch_head 500
 at 1:47 touch_head 500

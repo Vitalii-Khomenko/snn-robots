@@ -5,6 +5,12 @@
 A jerk: a 5 s window where the gyro saw a peak over 300 deg/s and 40 deg more real rotation than was commanded (the
 diary's head angles are the commanded model's: a servo that runs off on its own is seen only by the gyro). A hang:
 the servo watchdog power-cycled the rail (commanded motion, the gyro saw none). Both per servo rail switch-on, by hour.
+
+  ./py jerks.py --pose 2026-10-28    where the head really points (2026-10-28, an audit A13: "no observed pose")
+
+The servos' own position cannot be read on this board, but the IMU sits in the head: still, gravity tells the head's
+real pitch (the diary's raw_imu_roll, x 180 deg). --pose fits it against the commanded pitch and shows how far apart
+the two are, overall and around the hangs. The yaw has no such reference (gravity does not change with it).
 """
 import collections
 import datetime
@@ -42,8 +48,41 @@ def count(day, since=None):
     return by_hour
 
 
+def pose(day):
+    """The head's real pitch from gravity against the commanded one: the fit, the error overall and before / after the
+    servo rail's power cycles."""
+    import numpy as np
+    t, lines = D.load(day)
+    v, boot, ms = t["v"], t["boot"], t["ms"].astype(np.int64)
+    cmd = v[:, D.col("head_pitch_deg")]
+    real = v[:, D.col("raw_imu_roll")] * 180.0
+    ok = (v[:, D.col("raw_imu_ok")] > 0.5) & np.isfinite(real) & np.isfinite(cmd)
+    k, c = np.linalg.lstsq(np.vstack([cmd[ok], np.ones(ok.sum())]).T, real[ok], rcond=None)[0]
+    err = (real - c) / k - cmd  # the real pitch in the command's degrees, minus the command
+    base = np.median(err[ok])
+    e = np.abs(err - base)
+    print(f"== {day}: gravity {k:+.3f} x commanded pitch {c:+.1f} deg; |real - commanded| median {np.median(e[ok]):.1f} deg, "
+          f"p90 {np.percentile(e[ok], 90):.1f}, > 5 deg {100 * np.mean(e[ok] > 5):.1f} % of {ok.sum()} ticks")
+    before, after = [], []
+    for _, b, m, text in lines:
+        if "servo rail power cycle" in text:
+            i = np.flatnonzero((boot == b) & (ms >= m - 6000) & (ms < m) & ok)
+            j = np.flatnonzero((boot == b) & (ms > m + 4000) & (ms < m + 8000) & ok)
+            if len(i):
+                before.append(np.median(e[i]))
+            if len(j):
+                after.append(np.median(e[j]))
+    if before:
+        print(f"   {len(before)} hangs: > 5 deg off in the 6 s before {100 * np.mean(np.array(before) > 5):.0f} %, "
+              f"4-8 s after {100 * np.mean(np.array(after) > 5):.0f} % (most hangs are the yaw servo: not seen here)")
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
+    if args and args[0] == "--pose":
+        for day in args[1:]:
+            pose(day)
+        sys.exit(0)
     since = None
     if "--since" in args:
         i = args.index("--since")

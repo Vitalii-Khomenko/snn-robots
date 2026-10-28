@@ -34,7 +34,7 @@ if __name__ == "__main__":
         cpp = np.fromfile(os.path.join(OUT, "body_out.bin"), np.float32).reshape(-1, 3)
         py = np.stack(B.run(X, boot), 1)
         err = np.abs(cpp - py).max(0)
-        print(f"{day}: {len(X)} ticks, {int(X[:, -1].sum())} power cycles, max |C++ - twin| pressure {err[0]:.2e}, "
+        print(f"{day}: {len(X)} ticks, {int(X[:, B.COLUMNS.index("hurt")].sum())} power cycles, max |C++ - twin| pressure {err[0]:.2e}, "
               f"load {err[1]:.2e}, budget {err[2]:.2e}")
         ok = ok and err[0] < 1e-4 and err[1] < 1e-3 and err[2] < 1e-4
     print("PARITY PASS" if ok else "PARITY FAIL")

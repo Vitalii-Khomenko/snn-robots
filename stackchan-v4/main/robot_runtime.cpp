@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
+#include <ctime>
 #include <bsp/esp-bsp.h>
 #include <driver/gpio.h>
 #include <driver/i2s_std.h>
@@ -13,6 +14,7 @@
 #include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <esp_core_dump.h>
+#include <esp_app_desc.h>
 #include <esp_ota_ops.h>
 #include <esp_partition.h>
 #include <esp_system.h>
@@ -104,13 +106,18 @@ bool RobotRuntime::begin()
         const esp_partition_t* run = esp_ota_get_running_partition();
         esp_ota_img_states_t state = ESP_OTA_IMG_UNDEFINED;
         esp_ota_get_state_partition(run, &state);
-        ESP_LOGI(kTag, "firmware in %s (%s)", run ? run->label : "?",
-                 state == ESP_OTA_IMG_PENDING_VERIFY ? "new, on trial for a minute" : "confirmed");
+        // which firmware and which network lived this boot (2026-10-28, an audit: the night learns from boots of any
+        // build; sleep_v4.py reads these two lines and learns only from boots of the network it trains)
+        const esp_app_desc_t* app = esp_app_get_description();
+        // (not the app's build date: ESP-IDF compiles it once and keeps it - it said Oct 24 on a build of Oct 28)
+        ESP_LOGI(kTag, "firmware in %s (%s), sha %02x%02x%02x%02x", run ? run->label : "?",
+                 state == ESP_OTA_IMG_PENDING_VERIFY ? "new, on trial for a minute" : "confirmed",
+                 app->app_elf_sha256[0], app->app_elf_sha256[1], app->app_elf_sha256[2], app->app_elf_sha256[3]);
     }
 
-    ESP_LOGI(kTag, "brain v4: spiking analyzer %s, main network %s, auditory NN %s",
+    ESP_LOGI(kTag, "brain v4: spiking analyzer %s, main network %s (id %08lx), auditory NN %s",
              loop_.brain().analyzer().trained() ? "trained" : "UNTRAINED", loop_.brain().trained() ? "trained" : "UNTRAINED",
-             loop_.auditory().trained() ? "trained" : "MISSING");
+             static_cast<unsigned long>(NnV4::id()), loop_.auditory().trained() ? "trained" : "MISSING");
 
     // The microSD slot shares the screen's SPI wires: with its chip select floating an inserted card answers the
     // screen's traffic and the picture flickers or vanishes (seen 2026-10-11). Deselected until it is mounted.
@@ -518,6 +525,7 @@ void RobotRuntime::logTick()
     *p++ = static_cast<float>(loop_.executor().shownEmotion());
     *p++ = loop_.saidThisTick() ? 1.0f : 0.0f;
     *p++ = loop_.gestureThisTick() ? 1.0f : 0.0f;
+    *p++ = static_cast<float>(loop_.executor().held());
     p = std::copy(loop_.brain().lastPrev().begin(), loop_.brain().lastPrev().end(), p);
     p = std::copy(loop_.contingency().begin(), loop_.contingency().end(), p);
     *p++ = loop_.earSpeech();
@@ -600,6 +608,60 @@ void RobotRuntime::confirmFirmware(uint32_t now)
                  static_cast<unsigned>(kConfirmGiveUpMs / 1000));
         vTaskDelay(pdMS_TO_TICKS(500));  // the line reaches the diary
         esp_ota_mark_app_invalid_rollback_and_reboot();
+    }
+}
+
+// The body's slow state across a reboot (2026-10-28, an audit: a reboot started the budget at 0.85 and the sleep
+// pressure on the usual curve, whatever the day had been): the sleep pressure and the body budget go into NVS every
+// 10 minutes (~150 short writes a day, far below the flash's wear) and come back once the clock is known; the time
+// the robot was off counts as rest (BodyV4::restore). The last minutes before a power loss are lost; a state older
+// than two days, or from the future, is not taken.
+namespace {
+struct BodySnapshot {
+    uint32_t magic = 0x31594442;  // "BDY1"
+    uint32_t unix = 0;
+    float pressure = 0, budget = 0;
+};
+}  // namespace
+
+void RobotRuntime::keepBody(uint32_t now)
+{
+    const time_t unix_now = time(nullptr);
+    if (!body_restored_) {
+        body_restored_ = true;
+        body_save_ms_ = now + kBodySaveMs;
+        BodySnapshot snap;
+        size_t size = sizeof(snap);
+        nvs_handle_t h;
+        bool ok = false;
+        if (nvs_open("v4", NVS_READONLY, &h) == ESP_OK) {
+            ok = nvs_get_blob(h, "body", &snap, &size) == ESP_OK && size == sizeof(snap);
+            nvs_close(h);
+        }
+        const int64_t off = static_cast<int64_t>(unix_now) - static_cast<int64_t>(snap.unix);
+        if (!ok || snap.magic != BodySnapshot{}.magic || !std::isfinite(snap.pressure) || !std::isfinite(snap.budget) ||
+            off < 0 || off > 2 * 86400) {
+            ESP_LOGI(kTag, "body: no saved state to take (%s): the pressure starts on the usual curve, budget %.2f",
+                     ok ? "too old or unreadable" : "none", static_cast<double>(BodyV4::kBudgetStart));
+            return;
+        }
+        loop_.restoreBody({snap.pressure, snap.budget}, static_cast<float>(off));
+        ESP_LOGI(kTag, "body: restored after %u s off: saved pressure %.6f budget %.6f -> pressure %.6f budget %.6f",
+                 static_cast<unsigned>(off), static_cast<double>(snap.pressure), static_cast<double>(snap.budget),
+                 static_cast<double>(loop_.body().pressure()), static_cast<double>(loop_.body().budget()));
+        return;
+    }
+    if (!msReached(now, body_save_ms_) || !loop_.driving()) return;
+    body_save_ms_ = now + kBodySaveMs;
+    BodySnapshot snap;
+    snap.unix = static_cast<uint32_t>(unix_now);
+    snap.pressure = loop_.body().pressure();
+    snap.budget = loop_.body().budget();
+    nvs_handle_t h;
+    if (nvs_open("v4", NVS_READWRITE, &h) == ESP_OK) {
+        if (nvs_set_blob(h, "body", &snap, sizeof(snap)) != ESP_OK || nvs_commit(h) != ESP_OK)
+            ESP_LOGW(kTag, "body: could not save its state");
+        nvs_close(h);
     }
 }
 
@@ -768,6 +830,7 @@ void RobotRuntime::loop()
         BrainLoop::Env env;
         env.timeSynced = wifi_.isTimeSynced();
         env.hour = env.timeSynced ? wifi_.hourOfDay() : 12.0f;
+        if (env.timeSynced) keepBody(now);
         loop_.step(now, env);
         lap();  // 5 the brain tick (ear, channels, SNN, NN, executor)
         logTick();

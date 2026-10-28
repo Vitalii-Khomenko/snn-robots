@@ -1,0 +1,10 @@
+# The light / proximity chip stops answering while a hand is at the robot's face (2026-10-28, an audit: stale
+# readings): it must not feel someone near for ever once the hand has gone.
+duration 6:00
+clock 14:00
+seed 5
+room_light on
+owner home
+at 0:05 person owner enter 0 0.6
+at 1:00 pet 25000
+at 1:10 fault light on

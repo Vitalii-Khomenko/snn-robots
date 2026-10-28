@@ -7,7 +7,8 @@ sleeps, and gets the result without a reboot.
   3. heads    the action heads (voice, LEDs, head) move towards the choices that were followed by more reward than
               expected and away from those followed by less (a centred advantage: train_heads), anchored to what
               they were (KL); the GRU, the emotion head and the analyzer stay innate; a step that changes them too
-              much is taken in part (blend)
+              much is taken in part (blend). Only wishes the body carried out count (carried_out: a call the
+              executor held back, a nod never made, a gaze the head's own reflex overrode teach nothing)
   4. zones    habituation: a channel that sits in its alarm zone a lot without anything bad following moves its
               alarm border up (0.01 a night); one whose alarm is followed by rough handling moves it down; one that
               is rarely alarming drifts back; |shift| <= 0.15 (learned.py, main/v4/zone_shift.h)
@@ -15,8 +16,10 @@ sleeps, and gets the result without a reboot.
               (reward over 20 s), or after which the world turned out other than the robot expected (curiosity: the
               error of a 1 s forward model of the channels over 5 s), comes a little more often - its bias up 0.05 at
               most a night; one nobody answered, a little less; none below -0.4 (every idea stays possible)
-  5. gates    enough life; the replay matches (<= 1 % of a boot's decisions off by > 0.05); the heads change little (KL, choices); all behaviour tests pass in the
-              simulator with the new blob - otherwise the robot keeps what it has
+  5. gates    enough life; boots of the network being trained only (its id in the boot line); the replay matches
+              (<= 1 % of a boot's decisions off by > 0.05: heads, zones and the Muse learn only from such boots); the
+              heads change little (KL, choices); all behaviour tests pass in the simulator with the new blob -
+              otherwise the robot keeps what it has
   6. send     tools/robot/ota.py learned (switched in between two ticks, a minute on trial, no reboot)
 
   ./py sleep_v4.py                 the night (run by tools/robot/sleep-v4.timer at 03:30)
@@ -42,7 +45,7 @@ import learned as LR
 import muse as MU
 from nn_v4 import EMO_IDX, GROUPS, NnV4
 from reward_v4 import reward
-from spec_v4 import CHANNELS, NN_OUT, SHIFT_MAX, SNN_OUT, PREV
+from spec_v4 import CHANNELS, HEAD_MODES, NN_OUT, SHIFT_MAX, SNN_OUT, PREV
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -68,6 +71,14 @@ SAY = NN_OUT.index("say")
 MUSE_STEP, MUSE_ETA, MUSE_FLOOR, MUSE_CURIOSITY = 0.05, 0.05, -0.4, 0.3
 MUSE_MIN_EPISODES = 3
 IDEA0 = len(SNN_OUT) + PREV.index("idea_play")
+# what the body did with the wishes (carried_out; V4Executor, BabbleVoice)
+SAY_ON = 0.55                     # a call starts when say rises above this
+HEAD_GESTURES = [HEAD_MODES.index(m) for m in ("nod", "shake", "flinch")]
+FREE_HEAD = [HEAD_MODES.index(m) for m in ("hold", "look", "scan")]
+GAZE_OWN = 32                     # V4Executor::kGazeOwn in the diary's `held`
+ATT_LOOK, WATCH_TICKS = 0.12, 200  # diaries before `held`: the orienting reflex holds the head 10 s (kAttLook, kWatchMs)
+HELD = [(1, "call: night"), (2, "call: budget spent"), (4, "call: busy / too soon"), (8, "gesture: night"),
+        (16, "gesture: too soon"), (32, "gaze: the head's own")]
 
 
 def say(lines, text):
@@ -81,15 +92,30 @@ def days_with_v4(n):
     return [d for d in days if d < today or d == today][-n:]
 
 
+def boot_ids(lines):
+    """boot -> (main network id or None, firmware sha or None) from the boot's own lines (RobotRuntime::begin; since
+    2026-10-28 evening)."""
+    ids = {}
+    for _, b, _, text in lines:
+        nn, fw = ids.get(b, (None, None))
+        if "main network" in text and "(id " in text:
+            nn = int(text.split("(id ")[1].split(")")[0], 16)
+        elif text.find("firmware in") >= 0 and ", sha " in text:
+            fw = text.split(", sha ")[1].split()[0]
+        ids[b] = (nn, fw)
+    return ids
+
+
 def load_life(days):
     """Per boot: the decided ticks with a full input (the own-state columns exist since 2026-10-24 13:22)."""
     S0, P0 = D.col("snn_" + SNN_OUT[0]), D.col("pv_" + PREV[0])
     N0 = D.col("nn_" + NN_OUT[0])
     boots = []
     for day in days:
-        t, _ = D.load(day)
+        t, lines = D.load(day)
         if t is None:
             continue
+        ids = boot_ids(lines)
         r, _ = reward(t)
         for b in np.unique(t["boot"]):
             m = t["boot"] == b
@@ -103,7 +129,9 @@ def load_life(days):
             # the reward between two decisions goes to the earlier one
             idx = np.flatnonzero(dec)
             rd = np.add.reduceat(rb, idx) if len(idx) else np.zeros(0)
-            boots.append(dict(day=day, dec_idx=idx,
+            boots.append(dict(day=day, dec_idx=idx, nn_id=ids.get(b, (None, None))[0], fw=ids.get(b, (None, None))[1],
+                              said=v[:, D.col("said")] > 0.5, gest=v[:, D.col("gesture")] > 0.5,
+                              held=v[:, D.col("held")], att=v[:, D.col("snn_att_strength")],
                               x=np.concatenate([v[dec][:, S0:S0 + len(SNN_OUT)], v[dec][:, P0:P0 + len(PREV)]], 1),
                               nn=v[dec][:, N0:N0 + len(NN_OUT)], r=rd.astype(np.float32),
                               day_mask=((f[dec] & D.FLAG_DRIVES) > 0) & ((f[dec] & D.FLAG_NIGHT) == 0),
@@ -178,18 +206,67 @@ SAY_ACT = ACT.index(SAY)
 
 
 def taken(nn_logged):
-    """What the robot did at each decision: the strongest choice per group, say above 0.5."""
+    """What the network chose at each decision: the strongest choice per group, say above SAY_ON (the voice's own
+    threshold; 0.5 until 2026-10-28)."""
     t = {g: np.argmax(nn_logged[:, idx], 1) for g, idx in GROUPS.items()}
-    t["say"] = (nn_logged[:, SAY] > 0.5).astype(np.float32)
+    t["say"] = (nn_logged[:, SAY] > SAY_ON).astype(np.float32)
     return t
 
 
-def train_heads(m, F_all, act, adv, epochs=40):
+def runs(mask):
+    """The True runs of a bool array: [(start, end)], end exclusive."""
+    d = np.diff(np.concatenate([[0], mask.astype(np.int8), [0]]))
+    return list(zip(np.flatnonzero(d == 1), np.flatnonzero(d == -1)))
+
+
+def gaze_own(b):
+    """Per tick: the head followed its own reflex, a watch or a glance, not the network's gaze. The diary's `held`
+    since 2026-10-28 evening; before it the orienting reflex is inferred (attention above ATT_LOOK in the last 10 s;
+    the glances are not seen)."""
+    held = b["held"]
+    if np.isfinite(held).all():
+        return (held.astype(np.int64) & GAZE_OWN) > 0
+    att = np.nan_to_num(b["att"]) > ATT_LOOK
+    c = np.r_[0, np.cumsum(att)]
+    i = np.arange(len(att))
+    return (c[i + 1] - c[np.maximum(0, i + 1 - WATCH_TICKS)]) > 0
+
+
+def carried_out(b):
+    """Per decision and action group: was the wish carried out? (2026-10-28, an audit: the night took every wish for a
+    deed - on 10-27 45 % of the runs of a wanted call never sounded (the call budget, a phrase still playing) and ~40 %
+    of the wanted nods and flinches were never made (too soon after the last), yet each was credited with what came
+    after it.) A run of decisions wanting a call counts when a call started during it; a gesture mode when its gesture
+    started; look / scan / hold not while the head followed its own reflex or a glance; a sound's style only where a
+    call starts. Colours and patterns are always shown. Wishes not carried out ask for no change (train_heads)."""
+    idx, nn, T = b["dec_idx"], b["nn"], len(b["said"])
+    end = np.r_[idx[1:], T]  # a decision's ticks: idx[i] .. end[i]
+    said_c, gest_c = np.r_[0, np.cumsum(b["said"])], np.r_[0, np.cumsum(b["gest"])]
+    own_c = np.r_[0, np.cumsum(gaze_own(b))]
+    ok = {}
+    wish = nn[:, SAY] > SAY_ON
+    ok["say"] = ~wish
+    for s, e in runs(wish):
+        a, z = idx[s], min(T, end[e - 1] + 2)
+        ok["say"][s:e] = said_c[z] - said_c[a] > 0
+    ok["style"] = said_c[end] - said_c[idx] > 0
+    head = np.argmax(nn[:, GROUPS["head"]], 1)
+    ok["head"] = ~(np.isin(head, FREE_HEAD) & (own_c[end] - own_c[idx] > 0))
+    for g in HEAD_GESTURES:
+        for s, e in runs(head == g):
+            a, z = idx[s], min(T, end[e - 1] + 2)
+            ok["head"][s:e] = gest_c[z] - gest_c[a] > 0
+    ok["color"] = ok["pattern"] = np.ones(len(idx), bool)
+    return ok
+
+
+def train_heads(m, F_all, act, adv, ok=None, epochs=40):
     """The action heads towards the choices that turned out better than expected and away from those that turned out
     worse. adv: the centred advantage of each decision (mean ~0, in units of its spread). The target of a decision is
     the heads' own distribution with the odds of the choice made tilted by exp(adv / ETA): a decision of average
-    outcome asks for no change at all, and no decision for more than exp(A_CLIP / ETA) in the odds. Anchored (KL) to
-    the heads the robot has.
+    outcome asks for no change at all, and no decision for more than exp(A_CLIP / ETA) in the odds. ok: per group,
+    the decisions whose wish the body carried out (carried_out); the others are not tilted. Anchored (KL) to the heads
+    the robot has.
 
     2026-10-28: it was advantage-weighted regression (weights exp(A) > 0 on the robot's own greedy choices). With ~400
     rewarded moments in 14 h the weights were ~1 almost everywhere: the step was the network imitating itself (KL 0.003
@@ -207,13 +284,15 @@ def train_heads(m, F_all, act, adv, epochs=40):
     with torch.no_grad():
         old = heads_out(m, F_all)
         tilt = torch.tensor(adv) / ETA
+        done = {g: torch.ones(len(adv)) if ok is None else torch.tensor(ok[g], dtype=torch.float32)
+                for g in list(GROUPS_ACT) + ["say"]}
         targets = {}
         for g, idx in GROUPS_ACT.items():
-            q = F.softmax(old[:, idx], -1) * torch.exp(tilt[:, None] * F.one_hot(torch.tensor(act[g]), len(idx)))
+            q = F.softmax(old[:, idx], -1) * torch.exp((tilt * done[g])[:, None] * F.one_hot(torch.tensor(act[g]), len(idx)))
             targets[g] = q / q.sum(-1, keepdim=True)
         p1 = torch.sigmoid(old[:, SAY_ACT])
         t = torch.tensor(act["say"])
-        k = torch.exp(tilt)
+        k = torch.exp(tilt * done["say"])
         up = torch.where(t > 0.5, p1 * k, p1)          # the odds of the outcome that happened, times exp(tilt)
         down = torch.where(t > 0.5, 1 - p1, (1 - p1) * k)
         say_q = up / (up + down)
@@ -381,18 +460,27 @@ def main():
     say(lines, f"night of {tonight}: days {', '.join(days) or '-'}")
     m, live_version, shift, mbias = base_model()
     boots = load_life(days)
+    # boots of another network are not this network's life (the boot line's id, 2026-10-28 evening on)
+    nn_id = LR.nn_id(m.state_dict())
+    other = [b for b in boots if b["nn_id"] is not None and b["nn_id"] != nn_id]
+    boots = [b for b in boots if b["nn_id"] is None or b["nn_id"] == nn_id]
     n_dec = sum(len(b["x"]) for b in boots)
     n_day = sum(int(b["day_mask"].sum()) for b in boots)
-    say(lines, f"  {len(boots)} boot(s), {n_dec} decisions ({n_day / 36000:.1f} h by day), live blob version {live_version}")
+    fws = sorted({b["fw"] for b in boots if b["fw"]})
+    say(lines, f"  {len(boots)} boot(s), {n_dec} decisions ({n_day / 36000:.1f} h by day), live blob version {live_version}"
+               f"; network {nn_id:08x}" + (f", firmware {', '.join(fws)}" if fws else "")
+               + (f"; {len(other)} boot(s) of another network left out" if other else ""))
     changed = False
+    parts = []
     heads_new = None
-    if n_day >= MIN_HOURS * 36000:  # decisions at 10 Hz
-        feats, errs = replay(m, boots)
+    feats, errs = replay(m, boots) if boots else ([], [])
+    if boots:
         say(lines, "  replay, per boot (share of decisions off by > %.2f / p99 of the error): %s"
             % (REPLAY_BAD_ERR, ", ".join(f"{a:.4f}/{q:.3f}" for a, q in errs)))
-        use = [i for i, e in enumerate(errs) if replay_ok(e)]
-        if len(use) < len(boots):
-            say(lines, f"  {len(boots) - len(use)} boot(s) replay wrong: not learned from")
+    use = [i for i, e in enumerate(errs) if replay_ok(e)]
+    if len(use) < len(boots):
+        say(lines, f"  {len(boots) - len(use)} boot(s) replay wrong: not learned from (heads, zones, Muse)")
+    if n_day >= MIN_HOURS * 36000:  # decisions at 10 Hz
         F_all = torch.cat([feats[i][torch.from_numpy(boots[i]["day_mask"])] for i in use]) if use else torch.zeros(0, 85)
         G = np.concatenate([returns(boots[i]["r"])[boots[i]["day_mask"]] for i in use]) if use else np.zeros(0)
         events = sum(int((np.abs(boots[i]["r"][boots[i]["day_mask"]]) > 0).sum()) for i in use)
@@ -404,7 +492,18 @@ def main():
             A = G - X @ wv
             A = np.clip((A - A.mean()) / (A.std() + 1e-6), -A_CLIP, A_CLIP).astype(np.float32)
             act = taken(np.concatenate([boots[i]["nn"][boots[i]["day_mask"]] for i in use]))
-            new = train_heads(m, F_all, act, A)
+            outs = [carried_out(boots[i]) for i in use]
+            ok = {g: np.concatenate([o[g][boots[i]["day_mask"]] for o, i in zip(outs, use)]) for g in outs[0]}
+            wished = {"say": act["say"] > 0.5, "head": np.isin(act["head"], HEAD_GESTURES)}
+            say(lines, "  wishes carried out by day: calls %.0f %%, nods / shakes / flinches %.0f %%, the network's gaze %.0f %%"
+                % (100 * ok["say"][wished["say"]].mean() if wished["say"].any() else 100,
+                   100 * ok["head"][wished["head"]].mean() if wished["head"].any() else 100,
+                   100 * ok["head"][np.isin(act["head"], FREE_HEAD)].mean()))
+            held = np.concatenate([boots[i]["held"][np.isfinite(boots[i]["held"])].astype(np.int64) for i in use])
+            if len(held):
+                say(lines, "  held back (ticks, diary `held`): " + ", ".join(
+                    f"{why} {int(((held & bit) > 0).sum())}" for bit, why in HELD))
+            new = train_heads(m, F_all, act, A, ok)
             kl, flip = change(m, new, F_all)
             say(lines, f"  the action heads: KL {kl:.4f} (max {KL_MAX}), choices changed {100 * flip:.1f} % "
                        f"(max {100 * FLIP_MAX:.0f} %)")
@@ -420,20 +519,25 @@ def main():
             if kl <= KL_MAX and flip <= FLIP_MAX:
                 heads_new = LR.heads_of(new if alpha == 1.0 else cand)
                 changed = True
+                parts.append(f"heads ({alpha:g} of the step, KL {kl:.4f})")
             else:
                 say(lines, "  gate: the heads would change too much even in part - kept")
         else:
             say(lines, "  not enough rewarded daytime life for the heads yet - kept")
     else:
         say(lines, f"  less than {MIN_HOURS:g} h of daytime decisions - heads kept")
-    new_shift = zones(boots, shift, lines)
+    good = [boots[i] for i in use]
+    new_shift = zones(good, shift, lines)
     if not np.allclose(new_shift, shift):
         changed = True
-    new_mbias = learn_muse(boots, mbias, lines)
+        parts.append(f"zones ({int((~np.isclose(new_shift, shift)).sum())} channel(s))")
+    new_mbias = learn_muse(good, mbias, lines)
     if not np.allclose(new_mbias, mbias):
         changed = True
+        parts.append(f"Muse ({int((~np.isclose(new_mbias, mbias)).sum())} idea bias(es))")
     if not changed:
         return finish(lines, started, "nothing new: the robot keeps what it has")
+    say(lines, "  new: " + ", ".join(parts) + ("" if heads_new is not None else "; the heads as they were"))
     if heads_new is None:
         heads_new = LR.heads_of(m)
     version = int(dt.datetime.now().strftime("%y%m%d%H"))

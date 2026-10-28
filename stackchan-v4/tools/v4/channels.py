@@ -132,8 +132,7 @@ def _encode(R, out, state):
                 r0 += (ir - r0) * a
         tilt += (tilt_now - tilt) * a_tilt
 
-        if near_ok > 0:
-            near += (_clamp(near_raw / NEAR_FULL) - near) * a_near
+        near += ((_clamp(near_raw / NEAR_FULL) if near_ok > 0 else 0.0) - near) * a_near  # a dead sensor: nobody near
         if als_ok > 0:
             light += (_clamp(np.log10(1.0 + max(als, 0.0)) / np.log10(1.0 + LIGHT_FULL)) - light) * a_light
         if frame_ok > 0.75:

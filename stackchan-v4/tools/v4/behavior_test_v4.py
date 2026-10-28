@@ -19,9 +19,30 @@ LINE = re.compile(r"^[IWE] \((\d+)\) (\w+): (.*)$")
 LEARNED = None  # --learned FILE: run every scenario with this learned blob (the night sleep's gate)
 
 
+# cases that run another scenario with extra simulator options (2026-10-28, an audit A21): the firmware's millisecond
+# clock wraps (49.7 days of uptime) 5 minutes into a play session
+RUN_AS = {"play_session_wrap": ("play_session", ["--ms-offset", "300"])}
+# what the simulator's trace (10 Hz) shows of a channel in a window: (column, from s, to s, max | mean)
+TRACE = {"stale_imu": {"tilt_held": ("tilt", 65, 80, max), "tilt_after": ("tilt", 100, 360, "mean")},
+         "stale_near": {"near_held": ("near", 60, 70, max), "near_after": ("near", 80, 360, "mean")}}
+
+
+def trace_metrics(name, out):
+    if name not in TRACE:
+        return {}
+    import csv
+    rows = list(csv.DictReader(open(os.path.join(out, "trace.csv"))))
+    res = {}
+    for key, (col, a, b, how) in TRACE[name].items():
+        xs = [float(r[col]) for r in rows if a <= float(r["t_s"]) <= b]
+        res[key] = (sum(xs) / len(xs) if how == "mean" else how(xs)) if xs else None
+    return res
+
+
 def run(name, minutes):
     out = os.path.join(ROOT, "simulator", "out", "v4_" + name + ("_learned" if LEARNED else ""))
-    cmd = [SIM, os.path.join(SCN, name + ".scn"), "--out", out, "--minutes", str(minutes)]
+    scn, extra = RUN_AS.get(name, (name, []))
+    cmd = [SIM, os.path.join(SCN, scn + ".scn"), "--out", out, "--minutes", str(minutes)] + extra
     subprocess.run(cmd + (["--learned", LEARNED] if LEARNED else []), check=True, stdout=subprocess.DEVNULL)
     ev = []
     for line in open(os.path.join(out, "log.txt"), errors="ignore"):
@@ -45,7 +66,7 @@ def scene_targets(name):
     """Where the scenario's person and lamps are over time: [(t0, t1, az)] while present / on (lamp: after it was
     switched on)."""
     person, lamps, out = None, {}, {"person": [], "lamp": []}
-    for line in open(os.path.join(SCN, name + ".scn")):
+    for line in open(os.path.join(SCN, RUN_AS.get(name, (name,))[0] + ".scn")):
         w = line.split()
         if len(w) >= 4 and w[0] == "lamp":
             lamps[w[1]] = float(w[2])
@@ -215,6 +236,16 @@ CASES = [
     # head's level; what counts is the lamp against the same runs with it left off, over 3 seeds (SEEK_SEEDS)
     ("seek_light", 4, [("lamp_found_s", 0, 120, "a lamp switched on outside the picture: looks round and finds it within 2 minutes"),
                        ("lamp_over_chance", 0.05, 1.01, "and looks there more than with the lamp left off (3 seeds)")]),
+    # faults of the real device (2026-10-28, an audit A21: the simulator never had them)
+    ("no_clock_dark", 8, [("calls", 0, 0, "rebooted at 3 am without internet, in the dark: night rules hold (silent)"),
+                          ("nods", 0, 0, "and no gestures")]),
+    ("no_clock_lit", 8, [("calls", 3, 600, "without internet by day in a lit room: talks again after two quiet minutes")]),
+    ("stale_imu", 6, [("tilt_held", 0.1, 1.01, "held tilted sideways it feels it"),
+                      ("tilt_after", 0.0, 0.05, "the IMU stops answering: the tilt fades, not frozen for ever")]),
+    ("stale_near", 6, [("near_held", 0.1, 1.01, "a hand at its face is felt near"),
+                       ("near_after", 0.0, 0.05, "the proximity chip stops answering: nobody near, not someone for ever")]),
+    ("play_session_wrap", 12, [("n_faces", 5, 30, "the millisecond clock wraps at minute 5: faces still vary"),
+                               ("calls_after_wrap", 3, 400, "and it still talks after the wrap")]),
 ]
 
 
@@ -244,6 +275,35 @@ def seeded(name, minutes, seed, fn=None):
     return (fn or contingency_metrics)(ev, minutes)
 
 
+def yoked(minutes, seed):
+    """The yoked control of contingent.scn (2026-10-28, an audit): the same pets at the very moments the contingent run
+    of this seed got them, whatever the robot does now - the same stimulation, the dependence on its acts broken.
+    -> contingency_metrics of that run."""
+    out = os.path.join(ROOT, "simulator", "out", "v4_contingent" + ("" if seed is None else f"_{seed}") +
+                       ("_learned" if LEARNED else ""))
+    times = [int(m.group(1)) / 1000.0 for m in (LINE.match(l.strip()) for l in open(os.path.join(out, "log.txt"), errors="ignore"))
+             if m and m.group(2) == "world" and m.group(3).startswith("responder:")]
+    src = [l for l in open(os.path.join(SCN, "contingent.scn")).read().splitlines()
+           if not l.startswith("responder") and " responder " not in l]
+    if seed is not None:
+        src = [l for l in src if not l.startswith("seed ")] + ["seed %d" % seed]
+    src += ["at %d:%06.3f pet 1200" % (t // 60, t % 60) for t in times]
+    tag = "yoked" + ("" if seed is None else f"_{seed}") + ("_learned" if LEARNED else "")
+    scn = os.path.join(ROOT, "simulator", "out", "v4_" + tag + ".scn")
+    open(scn, "w").write("\n".join(src) + "\n")
+    res = os.path.join(ROOT, "simulator", "out", "v4_" + tag)
+    cmd = [SIM, scn, "--out", res, "--minutes", str(minutes)]
+    subprocess.run(cmd + (["--learned", LEARNED] if LEARNED else []), check=True, stdout=subprocess.DEVNULL)
+    ev = []
+    for line in open(os.path.join(res, "log.txt"), errors="ignore"):
+        m = LINE.match(line.strip())
+        if m:
+            ev.append((int(m.group(1)) / 1000.0, m.group(2), m.group(3), line[0]))
+    res = contingency_metrics(ev, minutes)
+    res["answers"] = len(times)  # given by the scenario here, not by a responder
+    return res
+
+
 def lamp_share(name, minutes, seed, lamp):
     """The share of the time the head points at the scenario's lamp, the lamp switched on or left off, one seed."""
     src = open(os.path.join(SCN, name + ".scn")).read().splitlines()
@@ -263,6 +323,9 @@ def check(case):
     name, minutes, checks = case
     ev, minutes, moves, out = run(name, minutes)
     m = metrics(ev, minutes, moves)
+    m.update(trace_metrics(name, out))
+    if name in RUN_AS:
+        m["calls_after_wrap"] = sum(1 for t, tag, x, _ in ev if tag == "v4" and x.startswith("call") and t > 320.0)
     m.update(seek_metrics(name, out))
     m.update(contingency_metrics(ev, minutes))
     if any(k == "lamp_over_chance" for k, *_ in checks):
@@ -290,6 +353,10 @@ def check(case):
             m[k] = sum(r[k] for r in runs)
     if name in CT_CASES:  # the mean over the seeds (angry: the sum)
         runs = [contingency_metrics(ev, minutes)] + [seeded(name, minutes, s) for s in CT_SEEDS]
+        if name == "contingent":  # each seed's yoked control, after its contingent run
+            yk = [yoked(minutes, s) for s in (None,) + CT_SEEDS]
+            m["acts_yoked"] = sum(r["acts_per_min"] for r in yk) / len(yk)
+            m["answers_yoked"] = sum(r["answers"] for r in yk)
         for k in ("joy_after_answer", "again_after_answer", "acts_per_min", "low_after_still", "angry_after_still"):
             vals = [r[k] for r in runs if r[k] is not None]
             if vals:
@@ -305,6 +372,8 @@ if __name__ == "__main__":
     with ThreadPoolExecutor(os.cpu_count() or 4) as ex:
         for name, m, checks in ex.map(check, CASES):
             acts[name] = m["acts_per_min"]
+            if "acts_yoked" in m:
+                acts["yoked"], acts["answers_yoked"], acts["answers_contingent"] = m["acts_yoked"], m["answers_yoked"], m["answers"]
             if "calls_quiet" in m:
                 quiet[name] = (m["calls_quiet"], m["low_quiet"])
             extra = (f"   answers {m['answers']} credits {m['credits']} acts/min {m['acts_per_min']:.2f}"
@@ -320,13 +389,22 @@ if __name__ == "__main__":
                 print(f"   {'PASS' if ok else 'FAIL'}  {key} = {v if not isinstance(v, float) else round(v, 3)}  (want {lo}..{hi}: {why})")
                 if not ok:
                     failed.append(f"{name}: {key} = {v}, wanted {lo}..{hi} ({why})")
-    # the circular reaction at the level of behaviour: answered acts multiply, the same pets at random do not
+    # Answered, the robot acts more than with pets at random. (2026-10-28, an audit: this is not the circular reaction
+    # it was taken for - the responder pets twice as often as the random control (86 against 38 on its own seed), and the
+    # yoked control below, the same pets at the same moments, gets as many acts. Kept as a gate of what it does show:
+    # attention makes the robot livelier.)
     ratio = acts["contingent"] / max(acts["control"], 1e-6)
     # (3 seeds; over 6 seeds 1.10 on 2026-10-27 - the gate 1.1 on one seed was too tight)
     ok = ratio >= 1.05
     print(f"== contingent vs control: calls and gestures {acts['contingent']:.2f} vs {acts['control']:.2f} a minute")
-    print(f"   {'PASS' if ok else 'FAIL'}  acts_ratio = {ratio:.2f}  (want >= 1.05: answered acts come more often than with "
-          f"the same pets at random, 3 seeds)")
+    print(f"   {'PASS' if ok else 'FAIL'}  acts_ratio = {ratio:.2f}  (want >= 1.05: answered it acts more than with fewer pets "
+          f"at random - livelier with attention; not yet the contingency, see the yoked control; 3 seeds)")
+    # the yoked control (2026-10-28, an audit): the very same pets at the very same moments, not caused by the robot
+    yk = acts["contingent"] / max(acts.get("yoked", 0.0), 1e-6)
+    print(f"== contingent vs yoked: calls and gestures {acts['contingent']:.2f} vs {acts.get('yoked', 0.0):.2f} a minute "
+          f"(the same {acts.get('answers_yoked', 0)} pets at the same moments, 3 seeds)")
+    print(f"   REPORT  acts_ratio_yoked = {yk:.2f}  (above 1: the robot's acts multiply because they are answered, not "
+          f"because it is petted)")
     if not ok:
         failed.append(f"contingent vs control: acts_ratio = {ratio:.2f}, wanted >= 1.05")
     # the body (BODY step 3): after a hard stretch, alone and low, it saves itself - report until the robot's diary shows

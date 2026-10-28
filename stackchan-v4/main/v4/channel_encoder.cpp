@@ -56,7 +56,9 @@ void ChannelEncoder::update(const Raw& r, Out& out)
     }
     tilt_ += (tilt_now - tilt_) * a_tilt;
 
-    if (r.nearOk) near_ += (clamp01(r.nearRaw / kNearFull) - near_) * a_near;
+    // a proximity sensor that stopped answering does not keep someone near for ever (2026-10-28, the audit's stale
+    // sensors: the last value was held); the light is held - a room's light changes slowly
+    near_ += ((r.nearOk ? clamp01(r.nearRaw / kNearFull) : 0.0) - near_) * a_near;
     if (r.alsOk) light_ += (clamp01(std::log10(1.0 + std::max(r.als, 0.0f)) / log_light_full) - light_) * a_light;
     if (r.frameOk) {
         const double target = clamp01(r.motionFrac * kMotionGain);

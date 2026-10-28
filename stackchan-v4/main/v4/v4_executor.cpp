@@ -23,6 +23,7 @@ int argmaxRange(const NnV4::Out& o, int at, int count)
 
 void V4Executor::apply(const BrainV4& brain, bool decided, bool night, uint32_t now, BrainV4::Executed& done)
 {
+    held_ = 0;
     if (!brain.nnValid()) return;
     // the Muse's ideas as they come (the log line only: the network decides what to make of them)
     static constexpr const char* kIdeaNames[5] = {"play", "show", "still", "social", "surprise"};
@@ -97,12 +98,15 @@ void V4Executor::applyVoice(const BrainV4& brain, bool night, uint32_t now, Brai
     a.play = o[NO_STYLE_PLAY];
     a.grumble = o[NO_STYLE_GRUMBLE];
     // Night: silent, whatever the network wants (the owner sleeps next to the robot) - a safety rule, not a choice.
-    const bool allowed = !night && tokens_ >= (reaction ? 1.0f : 2.5f);
+    const bool budget = tokens_ >= (reaction ? 1.0f : 2.5f);
+    const bool allowed = !night && budget;
     if (vocal_.step(a, allowed, static_cast<int>(shown_), reaction)) {
         tokens_ -= 1.0f;
         ++calls_;
         done.said = true;
         ESP_LOGI(kTag, "call (face=%s%s)", emotionName(shown_), reaction ? ", reaction" : "");
+    } else if (a.say > 0.55f && vocal_.armed()) {
+        held_ |= night ? kCallNight : !budget ? kCallBudget : kCallBusy;
     }
     if (vocal_.phraseEnded())
         ESP_LOGI(kTag, "voice: %s (%.0f Hz) face=%s", vocal_.phraseText(), static_cast<double>(vocal_.baseHz()),
@@ -175,6 +179,8 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
     // ---- start a gesture on the network's wish (a rising edge of the mode)
     const bool edge = mode != prev_mode_;
     prev_mode_ = mode;
+    if (gesture_ != Gesture::None && edge && (mode == kHeadNod || mode == kHeadShake || mode == kHeadFlinch))
+        held_ |= night ? kGestureNight : kGestureSoon;  // another gesture still running
     if (gesture_ == Gesture::None && edge) {
         const bool gap_ok = last_gesture_ms_ == 0 || now - last_gesture_ms_ >= kGestureGapMs;
         Gesture g = Gesture::None;
@@ -184,6 +190,8 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
         else if (mode == kHeadFlinch && !night && (last_flinch_ms_ == 0 || now - last_flinch_ms_ >= kFlinchGapMs) &&
                  (last_gesture_ms_ == 0 || now - last_gesture_ms_ >= 1500))
             g = Gesture::Flinch;
+        const bool wanted = mode == kHeadNod || mode == kHeadShake || mode == kHeadFlinch;
+        if (wanted && g == Gesture::None) held_ |= night ? kGestureNight : kGestureSoon;
         if (g != Gesture::None) {
             gesture_ = g;
             gesture_start_ms_ = now;
@@ -277,15 +285,22 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
             next_glance_ms_ = now + rndMs(kGlanceGapMinMs, kGlanceGapMaxMs, now);
         }
         command(watch_yaw_, watch_pitch_, move_speed * kOrientSpeedK, now, false, kOrientGapMs, kOrientDeadDeg);
+        held_ |= kGazeOwn;
         return;
     }
-    if (!night && free_head && watch_until_ms_ != 0 && !msReached(now, watch_until_ms_)) return;  // still watching
+    if (!night && free_head && watch_until_ms_ != 0 && !msReached(now, watch_until_ms_)) {  // still watching
+        held_ |= kGazeOwn;
+        return;
+    }
 
     // ---- a curious glance (kGlanceGapMinMs): only while it wanders by day, looking or scanning
     const bool idle = wander && !night && (mode == kHeadLook || mode == kHeadScan);
     if (next_glance_ms_ == 0) next_glance_ms_ = now + rndMs(kGlanceGapMinMs / 2, kGlanceGapMaxMs / 2, now);
     if (glance_until_ms_ != 0) {
-        if (idle && !msReached(now, glance_until_ms_)) return;  // looking there
+        if (idle && !msReached(now, glance_until_ms_)) {  // looking there
+            held_ |= kGazeOwn;
+            return;
+        }
         glance_until_ms_ = 0;  // over (or something to attend to, a mood with its own pose): the network's gaze again
         next_glance_ms_ = now + rndMs(kGlanceGapMinMs, kGlanceGapMaxMs, now);
         wander_hold_ms_ = 0;
@@ -301,6 +316,7 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
             if (glance_until_ms_ == 0) glance_until_ms_ = 1;
             ESP_LOGI(kTag, "glance: yaw %.0f pitch %.0f, looks %.1f s", static_cast<double>(yaw),
                      static_cast<double>(pitch), static_cast<double>(hold) * 0.001);
+            held_ |= kGazeOwn;
             return;
         }
     }

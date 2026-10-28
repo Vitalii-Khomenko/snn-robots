@@ -7,7 +7,8 @@
 Detector (step 1; main/v4/contingency_v4.cpp is the robot's, parity_contingency.py): every tick it takes what the
 robot did (a call, a gesture, a face change) and what came from outside (a gentle pet or tap, a new speech onset that is
 not its own voice, someone coming near, motion seen while the head is still). An answer 0.5-4 s after an act is
-credited to the latest act; how often each kind of act is answered (leaky counts, ~5 min) is set against the chance of
+credited to the latest call or gesture in that window, else the latest face change (a face is not a bid; until
+2026-10-28 the latest act of any kind); how often each kind of act is answered (leaky counts, ~5 min) is set against the chance of
 an answer landing in such a window anyway (the background rate at moments with nobody acting, ~30 min). Acts within
 3 s after an answer are reactions and do not count; nothing counts at night or when the networks do not drive.
 Outputs (diary ct_*): agency, answered (a pulse, ~3 s), ignored (+0.1 per unanswered call or gesture with someone
@@ -115,9 +116,10 @@ class Detector:
             for a in range(5):
                 if not onset[a]:
                     continue
-                best = None
+                best = None  # the latest bid (call, gesture), else the latest face (ContingencyV4, 2026-10-28)
                 for p in self.pending:
-                    if WIN_LO_MS <= now - p[0] <= WIN_HI_MS and (best is None or (p[0], p[1]) > (best[0], best[1])):
+                    if WIN_LO_MS <= now - p[0] <= WIN_HI_MS and (
+                            best is None or (p[1] != 2, p[0], p[1]) > (best[1] != 2, best[0], best[1])):
                         best = p
                 if a in (0, 1, 2):  # petted, tapped, talked to: not ignored
                     self.ignored = 0.0

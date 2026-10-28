@@ -68,6 +68,7 @@ private:
     std::mt19937 cost_rng_;
     // trace / summary bookkeeping
     uint32_t next_trace_ms_ = 0, next_minute_ms_ = 60000, minute_index_ = 0;
+    uint32_t start_ms_ = 0;  // the firmware clock at begin() (--ms-offset: near its wrap)
     double minute_travel_start_ = 0;
     int minute_moves_start_ = 0;
     double host_tick_s_ = 0.0;

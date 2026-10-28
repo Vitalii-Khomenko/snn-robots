@@ -5,6 +5,10 @@ set -Eeuo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 repo_root="$(cd .. && pwd)"
+if [[ ! -f "$repo_root/.tooling/esp-idf-v5.5.4/export.sh" ]]; then
+  echo "no ESP-IDF in $repo_root/.tooling: run ./bootstrap.sh once" >&2
+  exit 1
+fi
 
 docker run --rm \
   -v "$repo_root/stackchan-v4:/project" \

@@ -1,5 +1,6 @@
 # Python environment for brain v4's training and analysis tools (tools/v4/py runs $STACKCHAN_PY, default
-# ~/.venvs/stackchan/bin/python). Install torch separately for your hardware (CUDA build recommended):
-# https://pytorch.org   - tested with Python 3.13, torch 2.6.0+cu124, numpy 2.x, numba 0.6x
-numpy
-numba
+# ~/.venvs/stackchan/bin/python). The versions the networks were trained and checked with (2026-10-28):
+#   python 3.13.16, torch 2.6.0+cu124 (install it first, for your hardware: https://pytorch.org - a CUDA GPU helps)
+#   pip install -r tools/requirements.txt
+numpy==2.5.3
+numba==0.68.0

@@ -9,6 +9,15 @@ Built and on the robot:
 Steps 4-5 are the plan. The
 science behind it is in [FOUNDATIONS](FOUNDATIONS.md) (sections 5-7).
 
+**Status (2026-10-28, after an audit):**
+
+| | Built | Measured | Not shown / open |
+|---|---|---|---|
+| The detector (step 1) | answers credited to acts, against the background rate | parity C++ / twin 6e-6 | a statistical link, not proof of a cause; "someone around" comes from touch, near and motion, not from knowing a person |
+| Credit | the latest *bid* (a call or a gesture) in the window takes the answer; a face change only when no bid is there (2026-10-28) | before: on 10-27 a face change after a call took 53 of 325 answers; the calls had 84 | eligibility by the kind of act and its delay |
+| Clean ears (step 2) | the voice check | speech 14 % -> 5 % of the time live | hand-labelled recordings of the owner's speech |
+| The network uses it (step 3) | 6 inputs, the teacher's rules | more acts when answered than with **fewer** random pets (x1.10) | **the yoked control (2026-10-28): the very same pets at the very same moments, not caused by the robot, give as many acts (x0.96-0.98)** - the robot is livelier with attention, it has not learned that its acts cause the answer; the joy and the repetition of the answered act are not above chance either |
+
 ## 1. Why this, and why now
 
 At two to three months a baby discovers that the world answers it. John S. Watson (1972) put infants on a pillow that
@@ -95,7 +104,8 @@ honest and fast.
 - **Background rate.** λ = answers per second at moments with no act in the 5 s before, and only while someone
   is around. Chance of an answer landing in the window by accident: p0 = 1 - exp(-λ · 3.5 s).
 - **Per act kind k.** Leaky counts of acts n_k and of answered acts h_k. Answered means an answer in 0.3-4 s.
-  When several acts share a window, the latest one gets most of the credit (an eligibility trace).
+  When several acts share a window, the latest one gets most of the credit (an eligibility trace). *(Built: the
+  latest call or gesture gets all of it, a face change only when neither is there - a face is not a bid.)*
 - **Contingency.** c_k = (h_k + p0·m) / (n_k + m) - p0, with m = 3.
 
   The prior m keeps a single lucky answer from making a superstition: it takes about three answered acts before
@@ -235,7 +245,12 @@ speaker, and sharp sounds were dropped while it spoke (06:55). Wrong.
   make it joyful now, but still alike: answered or not. Also: the robot's calls are capped by the voice budget (5
   tokens, one per 10 s) and come as often answered or not (845 vs 846 in 12 runs); the more frequent acts when
   answered are all gestures (+35 %).
-- Calls and gestures, `contingent` / `control`: 1.10 on every set of seeds. This part holds.
+- Calls and gestures, `contingent` / `control`: 1.10 on every set of seeds. **2026-10-28, an audit: this is not the
+  contingency.** The responder pets more than twice as often as the random control (86 against 38 pets on the scenario's own seed).
+  The yoked control (`behavior_test_v4.yoked`) gives the robot the very same pets at the very same moments as its
+  contingent run (275 pets over 3 seeds), whatever it does now: 10.03 acts a minute against 9.64 when answered (x0.96;
+  0.98 in the run before). The robot acts more because it is petted more, not because its acts are answered. The gate stays as a
+  check of liveliness with attention; the yoked ratio is reported.
 - The tests now judge these scenarios over 3 seeds; joy is a report until it is learned.
 
 **Not reached:** the same act again right after its answer (Piaget's repetition) is not above chance:

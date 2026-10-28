@@ -47,7 +47,7 @@ const std::vector<std::pair<std::string, size_t>> kEventVerbs = {
     {"touch_head", 0}, {"tap_screen", 0}, {"double_tap_screen", 0}, {"triple_tap_screen", 0},
     {"pet", 0}, {"shake", 0}, {"pick_up", 0}, {"put_down", 0}, {"clap", 0}, {"talk", 0}, {"talk_ramp", 0},
     {"noise", 1}, {"bang", 0}, {"hiss", 0}, {"tone", 2}, {"whistle", 3}, {"thing", 2}, {"clip", 2}, {"lamp", 2}, {"room_light", 1}, {"person", 2}, {"owner", 1},
-    {"charging", 1}, {"battery", 1}, {"log", 1}, {"responder", 1},
+    {"charging", 1}, {"battery", 1}, {"log", 1}, {"responder", 1}, {"fault", 1},
 };
 
 }  // namespace

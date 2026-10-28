@@ -19,6 +19,7 @@ Never flash at night (the owner sleeps next to the robot, 21:45-06:00): a reboot
 ## 2. Build and flash
 
 ```bash
+./bootstrap.sh                         # once on a clean machine: the builder image + ESP-IDF v5.5.4 and its tools in ../.tooling
 ./build.sh build                       # ESP-IDF v5.5.4 in the stackchan-firmware-builder:local image, cache ../.tooling
 ./build.sh reconfigure                 # after adding a source file under main/ (the source list is globbed)
 python3 tools/robot/ota.py firmware    # over Wi-Fi (normal way); build/stackchan_v4.bin
@@ -39,16 +40,17 @@ sensor engines) in a simulated room with scripted people, sounds, touches, light
 
 ```bash
 simulator/build.sh                                   # g++, no ESP-IDF needed
-simulator/run.sh simulator/scenarios/petting.scn [--minutes N] [--seed N] [--echo] [--voice-wav F] [--learned F] [--v4-dump F]
+simulator/run.sh simulator/scenarios/petting.scn [--minutes N] [--seed N] [--echo] [--voice-wav F] [--learned F] [--v4-dump F] [--ms-offset S]
 # -> simulator/out/<scenario>/log.txt (the robot's log), trace.csv (10 Hz: head, face, channels, mood), summary.txt
-tools/v4/py behavior_test_v4.py                      # 13 scenarios in parallel, ~40 s
+# --ms-offset S: the firmware's millisecond clock starts S seconds before it wraps (49.7 days of uptime)
+tools/v4/py behavior_test_v4.py                      # 22 cases in parallel, a few minutes
 ```
 
 | Behaviour test | Scenario | Checks |
 |---|---|---|
 | touch_response | touches now and then | >= 80 % of touches answered within 2 s (a call or a gesture) |
 | pokes | taps every 0.8 s | it gets cross (annoyed / angry face or a head shake): >= 2 over 3 seeds (one seed until 2026-10-28: 1 run in 12 has none, the night gate failed by chance) |
-| petting | slow strokes | never angry after a touch; answers the hand |
+| petting | slow strokes | never angry after a touch; answers the hand (the first strokes at 0:52, after the simulated clock's sync at 0:40: a stroke in that very tick was not answered once the light sensor read like the robot's, 2026-10-28) |
 | night_quiet | a night | no calls at all; sleepy most of the time |
 | play_session | play | >= 5 different faces, talks |
 | day_alone | an empty room by day | babbles 40..600 calls/h, moods change (>= 4 faces in 20 min; 5 until 2026-10-28: with the head input as trained 4-6 over 12 seeds, the fifth had been a 2-6 s flicker) |
@@ -59,15 +61,28 @@ tools/v4/py behavior_test_v4.py                      # 13 scenarios in parallel,
 | seek_motion | someone walks about the room (a few seconds at ~1 m/s, then stands), often outside the picture | report only: the share of the time the head points within 25° of them (the simulated walker is a low-contrast figure, found as often as by chance: 0.37 over 5 seeds, the same with nobody there; the robot's diary judges the motion sense) |
 | seek_light | a lamp switched on beside the desk (-55°), outside the picture | the head finds it within 2 minutes and points at it >= 0.05 more of the time than the same run with the lamp left off (`lamp_over_chance`; until 2026-10-26 >= 50 % absolute, the old busy head's level). 10 seeds, 2026-10-26: 45 % vs 16 %, found after 49-67 s |
 | contingent | someone close answers the robot's calls and gestures with a pet, 0.8-2 s later, 85 % of the time (`responder`) | report over 3 seeds: joy after an answer (a joyful face 1.5 s later; 0.35 was a gate until 2026-10-27 evening - one seed's luck, 6 seeds gave 0.09-0.33), the answered act again within 8 s over chance (CONTINGENCY) |
-| control | the same person and as many pets, at random moments | calls and gestures a minute over 3 seeds: `contingent` / `control` >= 1.05 (6 seeds: 1.10) |
+| control | the same person, pets at random moments (about half as many as `contingent` gets) | calls and gestures a minute over 3 seeds: `contingent` / `control` >= 1.05 (6 seeds: 1.10) - livelier with attention, not the contingency (below) |
+| yoked (run by `contingent`) | the very same pets at the very same moments as each seed's `contingent` run, whatever the robot does now (2026-10-28, an audit) | report: `contingent` / `yoked` calls and gestures a minute; 0.96-0.98 - the robot has not learned that its acts cause the answers |
 | still_face | answered for 4 minutes, then ignored by the same person close by, answered again at 11:00 | over 3 seeds: low faces (sad / bored) >= 20 % of 7:00-11:00; never angry or annoyed after 5:00 |
+| no_clock_dark | rebooted at 3 am, the clock never syncs (`fault ntp on`), dark, a clap and a voice | no call, no gesture: the night rules hold without a clock |
+| no_clock_lit | the same by day in a lit room | talks again after the first two minutes |
+| stale_imu | held tilted sideways, then the IMU stops answering (`fault imu on`) | the tilt is felt (>= 0.1), then fades (<= 0.05): a frozen reading is not fresh |
+| stale_near | a hand at the face, then the light / proximity chip stops answering (`fault light on`) | felt near (>= 0.1), then nobody (<= 0.05) |
+| play_session_wrap | `play_session` with the millisecond clock wrapping at minute 5 (`--ms-offset 300`) | faces still vary (>= 5), it talks after the wrap |
 
 **Time.** Firmware tasks (main loop, microphone, camera, voice) run on a virtual RTOS (`simulator/core/vrtos`): each
 in its own thread but strictly one at a time, and time advances only when all wait. The same scenario and seed always
 give the same result. A brain tick costs modelled CPU time (`--brain-cost`, default 4 ms). A 10 min scenario takes
 ~5 s. The simulator's IMU mounting matches the real head (pitch rotates gravity); its servos are quieter than the
 real ones (do not tune servo-noise filters in the simulator). The light sensor answers the firmware's 4-byte burst read
-(since 2026-10-25; from 2026-10-24 the simulated light channel had read 0, a dark room, in every scenario).
+(since 2026-10-25; from 2026-10-24 the simulated light channel had read 0, a dark room, in every scenario). Its counts
+are the robot's (2026-10-28, the diary of 10-26/27: a lit room by day 2-25, a dark night 0): until then a dark room
+read 120 counts (light channel 0.44) and a lit one 3400 (0.82, by the light's anger zone; the robot's day is 0.1-0.33).
+
+**What the simulator does not have** (2026-10-28, an audit): `RobotRuntime` itself - the servo watchdog, OTA, NVS and
+the learned slots, the body's saving across reboots - is not in it; the tasks run one at a time, so races between the
+two cores are not tested; the servos never hang or lose packets; the case's acoustics are simplified. It has the
+faults below, the firmware's clock wrap (`--ms-offset`), and every brain path the robot runs.
 
 **Scenario format.** A `*.scn` file describes the room and the events. `#` starts a comment. Times are `s`, `m:ss` or
 `h:mm:ss` since power-on. Azimuth `+` is to the robot's right (like head yaw), elevation `+` is up.
@@ -98,6 +113,9 @@ every 0:05 from 2:00 until 2:30 touch_head 300
 at 0:50 responder call,gesture pet 0.85 0.8 2.0   # a person who answers the robot's acts (call / gesture / face) with
                                           # pet / talk / tap, p, latency s lo..hi (docs/CONTINGENCY.md)
 at 0:50 responder random pet 20           # ... or answers at random, every ~20 s (the control);  responder off
+at 1:20 fault imu on                      # injected faults: imu (reads fail), light (the light / proximity chip
+                                          # times out), ntp (the clock never syncs); ... off ends it
+at 1:00 pick_up 0 35                      # held tilted: forward / back (pitch), sideways (roll)
 ```
 
 **What the servos are told.** `SIM_SERVO_LOG=FILE` writes every packet the motion engine puts on the servo bus (ms,
@@ -132,6 +150,15 @@ behavior_test_v4.py          then build, flash, watch
   every touch answered, petting never angers, quiet nights, nod / shake used sensibly).
 - Real days: `calibrate.raw_hour(day, hour)` reads brain v4's diary (raw readings logged, exact) or platform B's
   older days (`legacy_diary.py`, approximations for shake and motion; no light or proximity).
+- **Held out by day** (2026-10-28, an audit: windows were drawn from every day and split at random, so overlapping
+  stretches of the same days sat on both sides; DAgger rolled out validation lives into training). The analyzer's
+  real stretches of the newest day are all held out (`train_snn_v4.split`), the main network tests on that day's
+  lives (`train_nn_v4.split`), and its validation lives stay out of every DAgger round. Datasets built before keep the
+  random split. The trained networks of 2026-10-27 are from the old split.
+- **SNN parity** (`parity_snn_v4.py`) judges the mean (< 0.01), the share of ticks off by > 0.05 (< 1 %) and how
+  often the executor's thresholds on its numbers (attention 0.12, surprise 0.35, threat 0.45) decide otherwise
+  (< 0.5 %). 2026-10-28: mean 0.0000, 0.27-0.37 % of the ticks off (att_x / att_y, at most 4 ticks in a row, max
+  0.109), no threshold decided otherwise.
 - A full retrain takes ~1 h on an RTX-class GPU (the SNN data pass is the slowest). Checkpoints: `tools/v4/data/*.pt`
   (in git); reports and logs: `tools/v4/out/*.txt|*.log` (in git); the large `.npz` are not.
 
@@ -146,6 +173,7 @@ tools/v4/py body.py --measure 2026-10-26      # the body's channels hour by hour
 tools/v4/py body.py 2026-10-28                # the twin's sleep pressure and body budget against the robot's (raw_stamina, raw_budget)
 tools/v4/py parity_body.py [DAY]              # C++ BodyV4 == the twin on real diary days
 tools/v4/py jerks.py 2026-10-27 [--since HH:MM]  # the head's own jerks (gyro) and hangs per servo rail switch-on, by hour
+tools/v4/py jerks.py --pose 2026-10-28         # the head's real pitch from gravity against the commanded one, around the hangs
 tools/v4/py contingency.py --self 2026-10-26  # me or not me: sense events that follow the robot's own acts at once
 python tools/robot/listen.py [SECONDS]        # record the robot's microphone (24 kHz, ms-stamped) -> data/sound/<day>/<time>.wav
 tools/v4/py sound_check.py data/sound/DAY/TIME  # every speech onset of the ear vs the sound and the robot's own acts, + .png
@@ -170,10 +198,14 @@ send the innate blob, the next nights start from the new network.
   another MAC no longer moves the address. A new robot: delete `data/life/robot.json`.
 - `tools/v4/py diary.py 2026-10-25` - a day's summary (hours, losses, channels, faces, calls, gestures).
 - In Python: `ticks, lines = diary.load(day)`; `ticks["v"][:, diary.col("snn_valence")]`; `lines` are all log lines.
+- The PC's services for a clone elsewhere than `~/Codex/StackChan`: `tools/robot/install_services.sh` writes the units
+  with this clone's path.
 
 | Line | Meaning |
 |---|---|
-| `runtime: brain v4: spiking analyzer trained, main network trained, auditory NN trained` | boot: weights present |
+| `runtime: firmware in ota_0 (confirmed), sha c8b5d903` | boot: which firmware (the ELF's SHA-256), confirmed or on trial |
+| `runtime: brain v4: spiking analyzer trained, main network trained (id 1d448676), auditory NN trained` | boot: weights present, the main network's fingerprint (the night learns only from boots of its network) |
+| `runtime: body: restored after N s off: saved pressure P budget B -> pressure P' budget B'` | the body's state across the reboot (`body.py` takes it too) |
 | `runtime: head touch (level N)` / `... ignored: brief, during own motion` / `head touch storm ...` | the head pad and its filters |
 | `runtime: screen touch`, `runtime: loud sound: peak=N`, `runtime: hear: speech 0.73 ...` | other senses |
 | `v4: face: Happy (valence ... arousal ...)` | a new face (the SNN's mood at that moment) |

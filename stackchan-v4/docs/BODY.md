@@ -57,13 +57,15 @@ overtired; this robot does not, whatever happened.
   - load = 1 + 2 x (effort - 1), within 0.25 .. 3. A usual day is 1. Play counts double; an idle hour builds
     pressure at a quarter of the rate.
 - **Awake:** S -> 1 with 12 h / load.
-- **Asleep:** S drains with 3 h. Asleep means the owner's night, or a nap: the sleepy face is shown.
+- **Asleep:** S drains with 3 h. Asleep means the owner's night, or a nap: the sleepy face shown **and the body
+  quiet** - no call and the head still for 20 s (2026-10-28, below).
 - **The clock** (process C) is the usual day's curve, `usual(hour)`: S of a day at load 1, 0.05 at 06:00, 0.42 at
   noon, 0.74 at 21:45.
 - **Tired channel** = 0.75 x the night ramp + 2 x (S - usual(hour)), the part above zero. Only pressure above a
   usual day's is felt.
 - **The diary:** `raw_stamina` = 1 - S since 2026-10-27; it was 1.0 before.
-- **A reboot** keeps nothing: S starts on the usual curve once the clock is known, and the load at 1.
+- **A reboot** keeps S and the budget (2026-10-28, below); with nothing saved S starts on the usual curve once the
+  clock is known. The load starts at 1.
 
 **What this changes:**
 
@@ -110,7 +112,7 @@ A robot dull every day is the opposite of what the owner wants. That is why the 
 | refilled by sleep | the night or a nap: 2 h to the full |
 | refilled by a gentle hand | each pet or tap (as the contingency detector counts one, not a poke) fills 6 % of what is missing |
 | felt | hunger = 1 - budget / 0.7 (or 1 - battery off USB, whichever is more): a budget above 0.7 is not felt |
-| diary | `raw_budget` (a new column: 174 values); the `stats:` line shows `budget=`; a reboot starts at 0.85 |
+| diary | `raw_budget` (a new column: 174 values); the `stats:` line shows `budget=`; a reboot keeps it (2026-10-28; with nothing saved it starts at 0.85) |
 
 **Measured before the flash** (the twin on three whole days): the budget stayed between 0.61 and 0.99, so hunger
 was at most 0.13. A usual day is unchanged.
@@ -133,6 +135,40 @@ does to the robot, so it is no longer squeezed (`zone_shift.h`, `learned.toleran
   stretch colours the mood but does not change the face.
 
 Live after the flash (16:55): the robot equals the twin (budget 0.0002), load 0.95.
+
+## 4a. A rest is a state, not a face; the body outlives a reboot (2026-10-28, after an audit)
+
+**The rest.** Asleep was "the night, or the sleepy face shown". The face was enough, whatever the body did.
+- In the diary, by day under a sleepy face: 1.48 h on 10-27 and 1.10 h on 10-28.
+- The robot made 187 and 289 calls an hour then, and moved its head 1.1 and 1.9 deg/s (a usual day: 2.3).
+- All that time the budget refilled and the pressure drained as in sleep.
+
+Now a nap is the sleepy face **and** a quiet body: no call and the head still (under 0.1 deg a tick) for 20 s
+(`BodyV4::resting()`, the twin's `Body.resting`). A call, a head move or another face ends it at once. Only 44 % (10-27)
+and 19 % (10-28) of the sleepy-face time by day was such a rest.
+
+**The body across a reboot.**
+- **Before:** every boot started the budget at 0.85 and the pressure on the usual curve, whatever the day had been.
+- **Saving:** the robot saves both every 10 minutes into NVS (`RobotRuntime::keepBody`, ~150 short writes a day).
+- **Restoring:** once the clock is known it takes them back, and counts the time it was off as rest.
+  - The log line: `body: restored after N s off: saved pressure P budget B -> ...`.
+  - The twin (`body.py`) reads it and does the same.
+- **Not taken:** a state older than two days, or from the future.
+- **Lost:** the last minutes before a power loss.
+
+**Measured on the twin (whole days, one body across the reboots, as with saving).**
+- On 10-28 the budget's low by day is 0.64 with the real rest, against 0.73 with the face alone.
+- Hunger is felt in 21 % of the day, but at most 0.09 and 0.009 on average.
+- 10-25 .. 10-27: no difference to speak of.
+- **No retuning.** Without the saving, each boot that day started at 0.85 instead of the night's ~1.0, and the
+  afternoon fell to 0.55. With it, a usual day stays almost unfelt, as step 2 wanted.
+
+**Simulator:** all behaviour tests pass. `hard_day`: the low is 0.48 (≤ 0.6), the refill +0.22. `hard_day_control`:
+the low is 0.84.
+
+**Still open (the audit):** hunger mixes two causes in one channel, the battery (only off USB) and the budget. The
+network cannot tell them apart. While the robot lives on USB the battery part is always 0. Splitting them needs a
+new channel and a retrain.
 
 ## 5. Next steps (the order may change with what the diary shows)
 

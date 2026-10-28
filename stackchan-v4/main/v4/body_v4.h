@@ -3,10 +3,15 @@
 // The body and its needs (docs/BODY.md, step 1; tools/v4/body.py - its twin): sleep pressure, Borbely's process S.
 // Awake, it builds up towards 1 (kTauWakeH), faster the more the robot does: its head's travel, its calls and its
 // arousal over the last ~10 minutes make the load (1 on a usual day, 2026-10-26); asleep (the owner's night, or a nap:
-// the sleepy face shown) it drains (kTauSleepH). The clock (process C) holds the usual day's pressure off: the tired
+// a real rest, below) it drains (kTauSleepH). The clock (process C) holds the usual day's pressure off: the tired
 // channel feels only the pressure above the usual curve at that hour (ChannelEncoder, usual()). A busy day makes the
 // robot tired and a dark room then puts it to sleep; a usual day is as before; a nap or the night clears it.
-// A reboot keeps nothing: the pressure starts on the usual curve once the clock is known.
+// Asleep is the owner's night, or a real rest (2026-10-28, an audit): the sleepy face shown AND the body quiet - no
+// call and the head still for kRestQuietS. Until then the face alone was enough, and by day the robot made 190-290
+// calls an hour and moved its head 1-2 deg/s under a sleepy face (10-27/28) while its budget refilled as in sleep.
+// A reboot keeps the pressure and the budget (2026-10-28, the audit's continuity): RobotRuntime saves them every
+// 10 minutes and gives them back once the clock is known, the time it was off counted as rest (restore()); with no
+// saved state the pressure starts on the usual curve.
 //
 // Step 2, the body budget (Barrett's allostasis; Coan's social baseline): energy 0..1. Awake, the load spends it
 // (empty in kSpendH at a usual load), half as fast with someone near or talking; fear and too much (the analyzer's
@@ -23,7 +28,8 @@ public:
         float movedDeg = 0;      // yaw + pitch travel this tick
         bool said = false;       // a call started this tick
         float arousal = 0;       // the analyzer's
-        bool asleep = false;     // night rules, or the sleepy face shown
+        bool night = false;      // the owner's night rules
+        bool drowsy = false;     // the sleepy face shown (a rest once the body is quiet: resting())
         float threat = 0, over = 0;  // the analyzer's
         bool pet = false;        // a gentle touch started this tick: a pet on the head or a tap on the screen
         bool nearby = false;     // someone near or talking
@@ -31,6 +37,13 @@ public:
     };
 
     void step(const In& in);
+    // what a reboot keeps (RobotRuntime: NVS), and the body after offS seconds switched off: rested that long
+    struct Saved {
+        float pressure = 0, budget = 0;
+    };
+    Saved saved() const { return {static_cast<float>(s_), static_cast<float>(b_)}; }
+    void restore(const Saved& s, float offS);
+    bool resting() const { return resting_; }
     float pressure() const { return static_cast<float>(s_); }
     float load() const;
     float budget() const { return static_cast<float>(b_); }
@@ -45,6 +58,8 @@ public:
     static constexpr float kDayStartH = 6.0f, kDayEndH = 21.75f, kDegTickMax = 20.0f;
     static constexpr float kSpendH = 50.0f, kNearShare = 0.5f, kStressFrom = 0.3f, kStressS = 600.0f, kHurt = 0.0007f;
     static constexpr float kRefillSleepH = 2.0f, kPetShare = 0.06f, kBudgetStart = 0.85f;
+    // a rest: the sleepy face and no call, the head still (under kStillDegTick a tick) for kRestQuietS
+    static constexpr float kRestQuietS = 20.0f, kStillDegTick = 0.1f;
 
 private:
     // double: a 50 ms step changes the pressure by ~1e-6, below a float's resolution near 1
@@ -52,4 +67,6 @@ private:
     double b_ = kBudgetStart;
     bool clock_ = false;
     double deg_ = kRefDegS, say_ = kRefSayS, arousal_ = kRefArousal;  // a usual load until it knows better
+    double quiet_s_ = 0;  // no call and a still head for this long
+    bool resting_ = false;
 };

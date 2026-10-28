@@ -38,6 +38,7 @@ uint32_t SimRuntime::nowMs() const { return static_cast<uint32_t>(esp_timer_get_
 // Mirrors RobotRuntime::begin().
 bool SimRuntime::begin()
 {
+    start_ms_ = nowMs();  // 0, or near the wrap (--ms-offset)
     ESP_LOGI(kTag, "nvs");
     ESP_LOGI(kTag, "brain v4: spiking analyzer %s, main network %s, auditory NN %s",
              loop_.brain().analyzer().trained() ? "trained" : "UNTRAINED", loop_.brain().trained() ? "trained" : "UNTRAINED",
@@ -98,11 +99,11 @@ bool SimRuntime::begin()
 // WifiEngine's observable behaviour: connect, NTP.
 void SimRuntime::updateWifi(uint32_t now)
 {
-    if (!wifi_connected_ && now >= kWifiUpMs) {
+    if (!wifi_connected_ && msReached(now, kWifiUpMs + start_ms_)) {
         wifi_connected_ = true;
         ESP_LOGI("wifi", "got IP");
     }
-    if (!time_synced_ && now >= kTimeSyncMs) {
+    if (!time_synced_ && msReached(now, kTimeSyncMs + start_ms_) && !World::get().faultNtp()) {
         time_synced_ = true;
         ESP_LOGI("wifi", "time synced");
     }
@@ -228,11 +229,11 @@ void SimRuntime::run(uint64_t until_us)
         loop_.afterVoice(now);
 
         if (msReached(now, next_diagnostics_ms_)) logStats(now);
-        if (now >= next_trace_ms_) {
+        if (msReached(now, next_trace_ms_)) {
             writeTrace(now);
             next_trace_ms_ = now + 100;
         }
-        if (now >= next_minute_ms_) writeMinute(now);
+        if (msReached(now, next_minute_ms_)) writeMinute(now);
         vTaskDelay(pdMS_TO_TICKS(kMainLoopIntervalMs));
     }
 }

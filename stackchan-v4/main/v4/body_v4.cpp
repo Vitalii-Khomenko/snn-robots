@@ -20,6 +20,15 @@ float BodyV4::load() const
     return static_cast<float>(std::clamp(1.0 + kLoadGain * (e - 1.0), double{kLoadLo}, double{kLoadHi}));
 }
 
+void BodyV4::restore(const Saved& s, float offS)
+{
+    const double off = std::max(0.0f, offS);
+    s_ = std::clamp(static_cast<double>(s.pressure), 0.0, 1.0) * std::exp(-off / (kTauSleepH * 3600.0));
+    b_ = std::clamp(static_cast<double>(s.budget), 0.0, 1.0);
+    b_ += (1.0 - b_) * (1.0 - std::exp(-off / (kRefillSleepH * 3600.0)));
+    clock_ = true;  // the usual curve is not needed any more
+}
+
 void BodyV4::step(const In& in)
 {
     if (in.clockOk && !clock_) s_ = usual(in.hour);
@@ -30,14 +39,17 @@ void BodyV4::step(const In& in)
     deg_ += (std::min(in.movedDeg, kDegTickMax) / dt - deg_) * k;
     say_ += ((in.said ? 1.0 / dt : 0.0) - say_) * k;
     arousal_ += (in.arousal - arousal_) * k;
-    if (in.asleep)
+    quiet_s_ = in.said || in.movedDeg > kStillDegTick || !in.drowsy ? 0.0 : quiet_s_ + dt;
+    resting_ = in.drowsy && quiet_s_ >= kRestQuietS;
+    const bool asleep = in.night || resting_;
+    if (asleep)
         s_ *= std::exp(-dt / (kTauSleepH * 3600.0));
     else
         s_ = 1.0 - (1.0 - s_) * std::exp(-dt * load() / (kTauWakeH * 3600.0));
 
     // the body budget
     if (in.hurt) b_ -= kHurt;
-    if (in.asleep) {
+    if (asleep) {
         b_ += (1.0 - b_) * (1.0 - std::exp(-dt / (kRefillSleepH * 3600.0)));
     } else {
         const double stress = std::max(0.0, static_cast<double>(std::max(in.threat, in.over)) - kStressFrom) / (1.0 - kStressFrom);

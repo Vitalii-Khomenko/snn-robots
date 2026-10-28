@@ -77,6 +77,11 @@ public:
     uint16_t alsRaw() const;        // LTR-553 ALS channel 0 counts
     uint16_t psRaw();               // LTR-553 proximity counts
     bool charging() const { return charging_; }
+    // injected faults (scenario `fault imu|light|ntp on|off`, 2026-10-28, an audit A21): the IMU and the light /
+    // proximity chip stop answering on the bus, the clock never syncs
+    bool faultImu() const { return fault_imu_; }
+    bool faultLight() const { return fault_light_; }
+    bool faultNtp() const { return fault_ntp_; }
     int batteryPct() const { return battery_pct_; }
 
     // --- gyroscope: the head's real angular rates, deg/s -----------------
@@ -163,6 +168,7 @@ public:
 private:
     bool owner_home_ = false;
     bool charging_ = true;
+    bool fault_imu_ = false, fault_light_ = false, fault_ntp_ = false;
     int battery_pct_ = 100;
 
     // servos
@@ -202,7 +208,7 @@ public:
     bool shaking() const { return now_us_ < shake_until_; }
     bool bodyLifted() const { return std::fabs(body_pitch_deg_) > 20.0f || std::fabs(body_roll_deg_) > 20.0f; }
 private:
-    float body_pitch_deg_ = 0, body_roll_deg_ = 0, body_pitch_target_ = 0;
+    float body_pitch_deg_ = 0, body_roll_deg_ = 0, body_pitch_target_ = 0, body_roll_target_ = 0;
 
     // camera exposure
     bool exposure_locked_ = false;

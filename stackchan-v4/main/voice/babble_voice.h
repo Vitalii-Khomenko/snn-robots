@@ -42,6 +42,9 @@ public:
     bool step(const Intent& a, bool allow, int emotion, bool preempt = false);
 
     bool active() const { return active_.load(); }
+    // a rise of `say` above 0.55 would start a call now if allowed: armed (it fell below 0.3 since the last call) or a
+    // reaction still open (V4Executor: what the executor held back, the diary's `held`)
+    bool armed() const { return armed_ || reaction_open_; }
     // A short beep at the speaker's volume (the owner set a new one on the screen), unless a phrase is sounding.
     void beep() { beep_.store(true); }
     bool trained() const { return net_.trained(); }

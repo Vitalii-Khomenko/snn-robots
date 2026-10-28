@@ -30,6 +30,18 @@ public:
     uint32_t nods() const { return nods_; }
     uint32_t shakes() const { return shakes_; }
     int shownEmotion() const { return static_cast<int>(shown_); }
+    // What the executor held back of the network's wishes this tick (2026-10-28, an audit: the night's learning took
+    // every wish for a deed; a third of the calls the network wanted never sounded). The diary's `held`, bits:
+    enum Held : uint8_t {
+        kCallNight = 1,      // a call wanted (say above 0.55, armed), silent: night
+        kCallBudget = 2,     // ... the call budget is spent
+        kCallBusy = 4,       // ... a phrase still sounding, or too soon after the last
+        kGestureNight = 8,   // a nod / shake / flinch wanted (the mode's rising edge), not made: night
+        kGestureSoon = 16,   // ... too soon after the last, or another still running
+        kGazeOwn = 32,       // the head follows its own reflex (something new in view), a watch or a glance, not the
+                             // network's gaze (look / scan / hold by day)
+    };
+    uint8_t held() const { return held_; }
 
     static constexpr float kYawLimitDeg = 100.0f, kPitchMinDeg = -20.0f, kPitchMaxDeg = 35.0f;
     static constexpr uint32_t kMinCommandGapMs = 120;  // servo bus: <= ~8 packets/s (gesture keyframes)
@@ -128,4 +140,5 @@ private:
     bool idea_on_[5] = {false, false, false, false, false};  // the Muse's ideas above 0.5 (logged as they come)
     uint32_t idea_log_ms_[5] = {0, 0, 0, 0, 0};  // the next curious glance; the end of the present one (0: none)
     bool attended_ = false;
+    uint8_t held_ = 0;  // this tick's Held bits
 };

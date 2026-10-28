@@ -7,7 +7,8 @@
 Sleep pressure (step 1; main/v4/body_v4.cpp is the robot's, parity_body.py): Borbely's two-process model. Process S
 builds up while awake, towards 1 with a time constant of TAU_WAKE_H, faster the more the robot does (head travel,
 calls, arousal over ~10 minutes: the load, 1 on a usual day of 2026-10-26); it drains while asleep (the owner's night,
-or a nap: the sleepy face shown) with TAU_SLEEP_H. Process C, the clock, holds a usual day's pressure off (the alerting
+or a nap: the sleepy face shown and the body quiet - no call and a still head - for REST_QUIET_S; 2026-10-28) with
+TAU_SLEEP_H. Process C, the clock, holds a usual day's pressure off (the alerting
 signal of Edgar, Dement & Fuller 1993): the tired channel is 0.75 * night_ramp + channels.TIRED_FELT * the pressure
 above usual(hour). A busy day makes the robot tired and a dark room then puts it to sleep; a usual day is as before;
 a nap or the night clears it.
@@ -15,6 +16,9 @@ a nap or the night clears it.
 The body budget (step 2, BodyV4 too): energy 0..1, spent by the load, fear and too much, the servo rail's power cycles;
 refilled by sleep and a gentle touch; costs halve with someone near (Coan). The hunger channel is the larger of
 1 - battery and 1 - budget.
+
+A reboot keeps both (2026-10-28): the robot saves them every 10 minutes and logs "body: restored after N s off: saved
+pressure P budget B" once its clock is known; the twin takes the same (Body.restore: the time off counts as rest).
 """
 import math
 import sys
@@ -39,6 +43,7 @@ DEG_TICK_MAX = 20.0                  # a jump of the logged head angle (a reboot
 SPEND_H, NEAR_SHARE, STRESS_FROM, STRESS_S, HURT = 50.0, 0.5, 0.3, 600.0, 0.0007
 REFILL_SLEEP_H, PET_SHARE, BUDGET_START = 2.0, 0.06, 0.85
 BUDGET_FELT = 0.7  # channels: hunger = 1 - budget / BUDGET_FELT (a usual day stays above it)
+REST_QUIET_S, STILL_DEG_TICK = 20.0, 0.1  # a nap: the sleepy face, no call and the head still this long
 SLEEPY = EMOTIONS.index("sleepy")
 F = np.float32
 
@@ -55,8 +60,8 @@ def usual(hour):
 
 
 class Body:
-    """The twin of BodyV4, tick by tick: step(dt, clock_ok, hour, moved_deg, said, arousal, asleep, threat, over,
-    pet, nearby, hurt) -> pressure; .b is the budget."""
+    """The twin of BodyV4, tick by tick: step(dt, clock_ok, hour, moved_deg, said, arousal, night, drowsy, threat,
+    over, pet, nearby, hurt) -> pressure; .b is the budget, .resting a nap now."""
 
     def __init__(self):
         self.s = 0.3
@@ -64,12 +69,21 @@ class Body:
         self.clock = False
         self.deg, self.say = REF_DEG_S, REF_SAY_S  # a usual load until it knows better
         self.arousal = REF_AROUSAL
+        self.quiet, self.resting = 0.0, False
+
+    def restore(self, pressure, budget, off_s):
+        """BodyV4::restore: the saved state, after off_s seconds switched off (rested that long)."""
+        off = max(0.0, off_s)
+        self.s = min(1.0, max(0.0, pressure)) * math.exp(-off / (TAU_SLEEP_H * 3600.0))
+        self.b = min(1.0, max(0.0, budget))
+        self.b += (1.0 - self.b) * (1.0 - math.exp(-off / (REFILL_SLEEP_H * 3600.0)))
+        self.clock = True
 
     def load(self):
         e = W_DEG * self.deg / REF_DEG_S + W_SAY * self.say / REF_SAY_S + W_AROUSAL * self.arousal / REF_AROUSAL
         return min(LOAD_HI, max(LOAD_LO, 1.0 + LOAD_GAIN * (e - 1.0)))
 
-    def step(self, dt, clock_ok, hour, moved_deg, said, arousal, asleep, threat=0.0, over=0.0, pet=False,
+    def step(self, dt, clock_ok, hour, moved_deg, said, arousal, night, drowsy=False, threat=0.0, over=0.0, pet=False,
              nearby=False, hurt=False):
         if clock_ok and not self.clock:
             self.s = usual(F(hour))
@@ -80,6 +94,9 @@ class Body:
         self.deg += (min(moved_deg, DEG_TICK_MAX) / dt - self.deg) * k
         self.say += ((1.0 / dt if said else 0.0) - self.say) * k
         self.arousal += (arousal - self.arousal) * k
+        self.quiet = 0.0 if said or moved_deg > F(STILL_DEG_TICK) or not drowsy else self.quiet + dt
+        self.resting = drowsy and self.quiet >= REST_QUIET_S
+        asleep = night or self.resting
         if asleep:
             self.s *= math.exp(-dt / (TAU_SLEEP_H * 3600.0))
         else:
@@ -98,13 +115,14 @@ class Body:
         return self.s
 
 
-COLUMNS = ["dt", "clock_ok", "hour", "moved_deg", "said", "arousal", "asleep", "threat", "over", "pet", "nearby",
-           "hurt"]
+COLUMNS = ["dt", "clock_ok", "hour", "moved_deg", "said", "arousal", "night", "drowsy", "threat", "over", "pet", "nearby",
+           "hurt", "saved_pressure", "saved_budget", "off_s"]  # the last three: a restore before this tick (NaN: none)
 
 
 def inputs(t, lines=()):
-    """A diary (and its log lines: the servo rail's power cycles) -> per tick the COLUMNS [T, 12] and the boot of each
-    tick: what BodyV4 got at the end of that tick (BrainLoop::tick; the diary row is written right after it)."""
+    """A diary (and its log lines: the servo rail's power cycles, the restores) -> per tick the COLUMNS [T, 16] and the
+    boot of each tick: what BodyV4 got at the end of that tick (BrainLoop::tick; the diary row is written right after
+    it)."""
     v = t["v"]
     I = {n: i for i, n in enumerate(DIARY)}
     col = lambda n: np.nan_to_num(v[:, I[n]])
@@ -114,7 +132,7 @@ def inputs(t, lines=()):
     yaw, pitch = col("head_yaw_deg"), col("head_pitch_deg")
     moved = np.where(new, 0.0, np.abs(np.diff(yaw, prepend=yaw[0])) + np.abs(np.diff(pitch, prepend=pitch[0])))
     driving, night = (t["flags"] & 1) > 0, (t["flags"] & 2) > 0
-    asleep = night | (driving & (col("face").astype(int) == SLEEPY))
+    drowsy = driving & (col("face").astype(int) == SLEEPY)
     pet = ((col("raw_head_ev") > 0) & (col("ch_touch_head") < 0.7)) | ((col("raw_screen_ev") > 0) & (col("ch_touch_screen") < 0.4))
     nearby = (col("ch_near") > 0.1) | (col("ch_voice") > 0.05)
     hurt = np.zeros(len(v), bool)
@@ -123,8 +141,17 @@ def inputs(t, lines=()):
             idx = np.flatnonzero((boot == b) & (ms >= m))
             if len(idx):
                 hurt[idx[np.argmin(ms[idx])]] = True
-    X = np.stack([dt, col("raw_clock_ok"), col("raw_hour"), moved, col("said") > 0.5, col("snn_arousal"), asleep,
-                  col("snn_threat"), col("snn_over"), pet, nearby, hurt], 1)
+    saved = np.full((len(v), 3), np.nan)
+    for _, b, m, text in lines:  # RobotRuntime::keepBody, just before that tick's step
+        if text.find("body: restored after") >= 0:
+            w = text.split()
+            k = w.index("restored")
+            off, p, bud = float(w[k + 2]), float(w[w.index("pressure", k) + 1]), float(w[w.index("budget", k) + 1])
+            idx = np.flatnonzero((boot == b) & (ms >= m))
+            if len(idx):
+                saved[idx[np.argmin(ms[idx])]] = (p, bud, off)
+    X = np.stack([dt, col("raw_clock_ok"), col("raw_hour"), moved, col("said") > 0.5, col("snn_arousal"), night,
+                  drowsy, col("snn_threat"), col("snn_over"), pet, nearby, hurt, saved[:, 0], saved[:, 1], saved[:, 2]], 1)
     return X.astype(F), boot
 
 
@@ -135,8 +162,11 @@ def run(X, boot):
     for i in range(len(X)):
         if i == 0 or boot[i] != boot[i - 1]:
             body = Body()
-        dt, clock, hour, moved, said, arousal, asleep, threat, over, pet, nearby, hurt = (float(x) for x in X[i])
-        out[i] = body.step(dt, clock > 0, hour, moved, said > 0, arousal, asleep > 0, threat, over, pet > 0,
+        dt, clock, hour, moved, said, arousal, night, drowsy, threat, over, pet, nearby, hurt, sp, sb, off = (
+            float(x) for x in X[i])
+        if math.isfinite(off):
+            body.restore(sp, sb, off)
+        out[i] = body.step(dt, clock > 0, hour, moved, said > 0, arousal, night > 0, drowsy > 0, threat, over, pet > 0,
                            nearby > 0, hurt > 0)
         loads[i] = body.load()
         budget[i] = body.b

@@ -1,0 +1,9 @@
+# The same reboot without internet, but by day in a lit room: after two quiet minutes the day rules come back (the
+# light says it is day) and the robot talks again.
+duration 8:00
+clock 14:00
+seed 5
+room_light on
+owner home
+at 0:00 fault ntp on
+at 0:05 person owner enter 0 0.6

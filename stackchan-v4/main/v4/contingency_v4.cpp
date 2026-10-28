@@ -106,11 +106,16 @@ void ContingencyV4::step(const In& in, Out& out, Credit& credit)
         if (around && no_act) bg_s_ += dt;
         for (int a = 0; a < kAnswers; ++a) {
             if (!onset[a]) continue;
+            // the latest bid (a call, a gesture) in the window, else the latest face (2026-10-28, an audit: the latest act
+            // of any kind took it, and on 10-27 a face change after a call took 53 of the 325 answers - the calls had
+            // 84: a face is not a bid). The same tick: call < gesture.
             Pending* best = nullptr;
-            for (auto& p : pending_)
-                if (p.live && now - p.ms >= kWinLoMs && now - p.ms <= kWinHiMs &&
-                    (!best || p.ms > best->ms || (p.ms == best->ms && p.act > best->act)))
-                    best = &p;  // the latest act (the same tick: call < gesture < face)
+            for (auto& p : pending_) {
+                if (!p.live || now - p.ms < kWinLoMs || now - p.ms > kWinHiMs) continue;
+                const bool bid = p.act != kFace, best_bid = best && best->act != kFace;
+                if (!best || bid > best_bid || (bid == best_bid && (p.ms > best->ms || (p.ms == best->ms && p.act > best->act))))
+                    best = &p;
+            }
             if (a == kPet || a == kTap || a == kSpeech) ignored_ = 0.0f;  // petted, tapped, talked to: not ignored
             if (best) {
                 best->answered[a] = true;

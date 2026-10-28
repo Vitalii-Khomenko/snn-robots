@@ -5,6 +5,16 @@ signals - work it out as a concept."* Then: *"implement it all the way."* Steps 
 (ARCHITECTURE sections 3 and 7). The curious glances in the executor (section 4) stay as the head's own small
 chance.
 
+## 0. Status (2026-10-28, after an audit: what is built against what the concept below promised)
+
+| Part | Concept | Built | Measured | Open |
+|---|---|---|---|---|
+| Reservoir | 64 tanh neurons at the edge of chaos, driven by mood and attention | as proposed (`muse_v4.cpp`, `muse.py`, parity 9e-7) | 5 kinds of ideas by itself (`day_alone`) | a spectral radius near 1 is not by itself proof of creativity |
+| Ideas | 5 ideas the main network acts on | as proposed; what each idea means is the teacher's fixed rule | the network acts on them (simulator) | the ideas do not invent new acts: a *generator of structured initiatives* over a fixed repertoire |
+| Habituation | "bored of itself": pushes the reservoir to new regions | damps an idea's own positive output (90 s); **it does not feed back into the reservoir** | - | feed back into the reservoir, or drop the claim |
+| Selection | AWR trains the readout at night | **the readout is fixed**; the night moves one bias per idea (`muse.bias`, +-0.05 a night, within +-0.6) | 5 biases moved by < 0.01 so far (the ideas were hardly answered) | learning the readout itself |
+| Curiosity | "learning progress, after Oudeyer" | **the error of a 1 s ridge forward model of the channels, fitted on the same day**: unexpectedness, not progress; the robot's own act is not among its inputs, so a noisy room scores high with nothing learned | - | a forward model with the robot's own act and context, and progress measured on held-out moments (Oudeyer, Kaplan & Hafner 2007) |
+
 ## 1. Where variety comes from today
 
 | Source | What it is | Limit |
@@ -29,14 +39,16 @@ sound", "try a funny face" or "be still and watch". Three things together make i
    of what happens around the robot. This replaces the blind pacemakers. Same inputs make similar ideas, and
    different days make different ones.
 2. **Novelty: it gets bored of itself.** It keeps a memory of its own recent ideas: a habituation trace over the
-   readout, like light_spot's place memory. An idea that was tried recently is damped. Dropping a repeated idea
-   pushes the reservoir towards unexplored regions. This is the part that makes "no two days alike" true and not
-   only "no two minutes".
+   readout, like light_spot's place memory. An idea that was tried recently is damped. *(Concept: dropping a
+   repeated idea pushes the reservoir towards unexplored regions. Built: the damping acts on the idea's output only
+   and does not reach the reservoir - section 0.)*
 3. **Selection: it learns what was good.** The night sleep already scores the day: touch, voice, the owner coming
-   near, set against being ignored or poked (`reward_v4.py`). The same AWR step trains the Muse's readout. Ideas
-   that drew an answer from the owner come back more often, and ideas nobody cared about fade. A **curiosity**
-   term comes on top: a small forward model predicts the next SNN channels. An idea after which the world turned
-   out differently than predicted (learning progress, after Oudeyer) is worth more, even with nobody there.
+   near, set against being ignored or poked (`reward_v4.py`). Ideas that drew an answer from the owner come back
+   more often, and ideas nobody cared about fade. *(Concept: AWR trains the readout. Built: one bias per idea moves a
+   little each night - section 0.)* A **curiosity** term comes on top: a small forward model predicts the channels a
+   second ahead, and an idea after which the world turned out differently than predicted is worth more, even with
+   nobody there. *(Concept: learning progress, after Oudeyer. Built: the prediction error itself, which a noisy room
+   also has - section 0.)*
 
 ```
  senses -> ChannelEncoder -> SNN (768 LIF) ----------------> NN (GRU policy) -> executor
@@ -45,7 +57,7 @@ sound", "try a funny face" or "be still and watch". Three things together make i
                         Muse: reservoir 64 tanh -> readout 8 -+
                                ^        |
                                |        +-> habituation of its own ideas (damps repeats)
-                         night sleep: AWR on the readout from reward_v4 + curiosity (forward model error)
+                         night sleep: one bias per idea, from reward_v4 + curiosity (forward model error)
 ```
 
 ### What the outputs are (as built)
@@ -77,8 +89,8 @@ a *creativity budget* that grows with boredom and falls with threat, sleepiness 
 
 The reservoir is 64x64 plus 64 inputs and an 8-wide readout: about 5 000 multiply-adds per step at 10 Hz, well
 under 0.5 ms. The SNN takes ~3.7 ms and the NN ~5.2 ms. The reservoir weights are fixed (seeded) and live in
-flash. The readout (8x64) and the habituation state go into the learned blob, which the night sleep already
-writes, so the blob gains one more array.
+flash. The readout is fixed too; the night's one bias per idea goes into the learned blob (`muse.bias`, 8 floats).
+The habituation state lives in RAM and starts afresh at a reboot.
 
 ## 5. How we would know it works
 
@@ -96,8 +108,8 @@ writes, so the blob gains one more array.
 |---|---|---|---|
 | 1 | Reservoir Muse in C++ and its Python twin (parity, like `channels.py`). Its 3 slowest readouts replace the pacemakers 1:1 (same range and time scales), so the teacher keeps working unchanged. Retrain the NN on Muse sequences. Measure entropy. | NN | a day |
 | 2 | 8 idea outputs plus the habituation of its own ideas; teacher rules per idea, with a few new micro-acts (sound game, double glance, nod dance, "stillness"); the creativity budget | NN | 2-3 days |
-| 3 | Night learning of the readout from reward_v4 (AWR, with the same gates: KL, behaviour tests) | none by hand | a day |
-| 4 | Curiosity: a forward model of the SNN channels; its error at an idea's end counts as reward | none by hand | 1-2 days |
+| 3 | Night learning from reward_v4 (built as one bias per idea, not the readout; the same gates: behaviour tests) | none by hand | a day |
+| 4 | Curiosity: a forward model of the SNN channels; its error at an idea's end counts as reward (an error, not learning progress) | none by hand | 1-2 days |
 
 Step 1 alone already changes something visible: the "random" choices begin to depend on the room and the mood, and
 they hold together for longer. Each step is flashed only after the behaviour tests and a simulator day, and can be

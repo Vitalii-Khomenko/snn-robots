@@ -409,7 +409,10 @@ uint16_t World::alsRaw() const
     for (const auto& lamp : lamps_)
         if (lamp.on) lux += lamp.brightness * 25.0f * facing(lamp.az_deg, lamp.el_deg);
     if (sc_.window.present) lux += sc_.window.gain * daylight(now_us_) * 120.0f * facing(sc_.window.az_deg, sc_.window.el_deg);
-    return static_cast<uint16_t>(std::clamp(lux * 20.0f, 0.0f, 65535.0f));
+    // counts as the robot's LTR-553 reads them (2026-10-28, its diary 10-26/27): a lit room by day 2-25 (median ~8), a
+    // dark night 0. It was lux x 20 - a dark room read 120 counts (light channel 0.44, the robot's night is 0) and a
+    // lit one 3400 (0.82, near the channel's anger zone; the robot's day is 0.1-0.33).
+    return static_cast<uint16_t>(std::clamp(lux * 0.05f, 0.0f, 65535.0f));
 }
 
 uint16_t World::psRaw()
@@ -471,6 +474,7 @@ void World::stepPhysics(double dt_s)
 
     // The body is lifted/tilted by a person, smoothly.
     body_pitch_deg_ += (body_pitch_target_ - body_pitch_deg_) * std::min(1.0f, dt / 0.4f);
+    body_roll_deg_ += (body_roll_target_ - body_roll_deg_) * std::min(1.0f, dt / 0.4f);
 }
 
 void World::robotActed(int kind)
@@ -558,6 +562,14 @@ void World::applyEvent(const Event& e)
             }
         }
         note("responder %s", a.empty() ? "off" : a[0].c_str());
+    } else if (v == "fault") {
+        // fault imu|light|ntp on|off
+        const bool on = a.size() < 2 || a[1] != "off";
+        const std::string what = a.empty() ? "" : a[0];
+        if (what == "imu") fault_imu_ = on;
+        else if (what == "light") fault_light_ = on;
+        else if (what == "ntp") fault_ntp_ = on;
+        note("fault %s %s", what.c_str(), on ? "on" : "off");
     } else if (v == "touch_head") {
         touch_until_ = now_us_ + static_cast<uint64_t>(argf(0, 400) * 1000);
         note("touch_head %.0f ms", argf(0, 400));
@@ -574,10 +586,13 @@ void World::applyEvent(const Event& e)
         shake_until_ = now_us_ + static_cast<uint64_t>(argf(0, 2) * 1e6);
         note("shake %.1f s", argf(0, 2));
     } else if (v == "pick_up") {
+        // pick_up [PITCH [ROLL]]: held tilted forward / back, and sideways
         body_pitch_target_ = argf(0, 25);
-        note("pick_up: body tilted %.0f deg", body_pitch_target_);
+        body_roll_target_ = argf(1, 0);
+        note("pick_up: body tilted %.0f deg, %.0f sideways", body_pitch_target_, body_roll_target_);
     } else if (v == "put_down") {
         body_pitch_target_ = 0;
+        body_roll_target_ = 0;
         note("put_down");
     } else if (v == "clap") {
         sounds_.push_back(Sound{Sound::Clap, now_us_, now_us_ + 40000, argf(0, 0), argf(1, 1), 0});

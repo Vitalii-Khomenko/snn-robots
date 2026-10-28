@@ -117,7 +117,8 @@ RAW = ["energy", "speech", "sharp_ev", "head_ev", "head_hold", "screen_ev", "acc
        "light_x", "light_y", "light_str",  # the camera's brightest spot (2026-10-25; older diaries: NaN)
        "head_yaw",  # where the head points, degrees: places the spot in the room
        "budget"]  # the body budget 0..1 (main/v4/body_v4.h, docs/BODY.md step 2; 2026-10-27 evening, older: NaN = full)
-BODY = ["head_yaw_deg", "head_pitch_deg", "face", "said", "gesture"]
+BODY = ["head_yaw_deg", "head_pitch_deg", "face", "said", "gesture",
+        "held"]  # what the executor held back of the network's wishes, bits (V4Executor::Held; 2026-10-28, older: NaN)
 # + the main network's own-state inputs (PREV) of the tick it last decided: with the SNN numbers they are its whole
 # input, so the PC can replay every decision exactly (stage 6, sleep_v4.py)
 # + the sense of "I did that" (docs/CONTINGENCY.md, main/v4/contingency_v4.cpp; 2026-10-27): how much the world answers

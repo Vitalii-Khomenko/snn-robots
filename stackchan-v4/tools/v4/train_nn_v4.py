@@ -46,7 +46,8 @@ def build():
             outs.append(o[:, ::2].cpu().numpy())  # the main network runs at 10 Hz
             print(i, flush=True)
     S = np.concatenate(outs).astype(np.float32)
-    np.savez_compressed(os.path.join(OUT, "nn_snn.npz"), S=S, real=d["real"])
+    extra = {"day": d["day"]} if "day" in d else {}
+    np.savez_compressed(os.path.join(OUT, "nn_snn.npz"), S=S, real=d["real"], **extra)
     print("SNN outputs", S.shape)
 
 
@@ -121,10 +122,12 @@ def loss_fn(raw, y, emo_w, head_w=None):
     return l_emo + 0.5 * l_grp + 1.5 * l_say + 2.0 * l_sig + 2.0 * l_gaze + l_sv
 
 
-def fit(model, X, Y, epochs, dev, emo_w, log, head_w=None):
+def fit(model, X, Y, epochs, dev, emo_w, log, head_w=None, n_val=None):
+    """The first n_val lives of X are the validation lives, the rest are trained on (the same in every DAgger round:
+    train() never rolls them out again)."""
     opt = torch.optim.Adam(model.parameters(), lr=3e-3)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
-    n_val = max(20, len(X) // 12)
+    n_val = n_val or max(20, len(X) // 12)
     tr, va = np.arange(n_val, len(X)), np.arange(n_val)
     rng = np.random.default_rng(0)
     best, best_state = 1e9, None
@@ -174,12 +177,28 @@ def census(model, S, rng, dev):
             "head: " + ", ".join(f"{k} {v / n * 100:.1f}%" for k, v in head.most_common())]
 
 
+def split(real, day, rng, n_test=60):
+    """-> (test, pool) lives (2026-10-28, an audit: a random split put stretches of the same days on both sides). The
+    real stretches of the newest day are never trained on: they are the test's real lives (the analyzer held the same
+    day out, train_snn_v4.split), with n_test synthetic lives at random. A dataset without days: random, as before."""
+    if day is None:
+        idx = rng.permutation(len(real))
+        return idx[:n_test], idx[n_test:]
+    held = real & (day == day[real].max())
+    syn = rng.permutation(np.flatnonzero(~real))
+    return np.concatenate([syn[:n_test], np.flatnonzero(held)]), rng.permutation(
+        np.concatenate([syn[n_test:], np.flatnonzero(real & ~held)]))
+
+
 def train(dagger_rounds):
     d = np.load(os.path.join(OUT, "nn_snn.npz"))
     S, real = d["S"], d["real"]
     rng = np.random.default_rng(1)
-    idx = rng.permutation(len(S))
-    test, pool = idx[:60], idx[60:]
+    test, pool = split(real, d["day"] if "day" in d else None, rng)
+    # the validation lives of every fit: the first n_val of the pool, never rolled out by DAgger (they were: DAgger drew
+    # from the whole pool and its rollouts of validation lives went into training)
+    n_val = max(20, len(pool) // 12)
+    val_lives, train_lives = pool[:n_val], pool[n_val:]
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     log = []
     t0 = time.time()
@@ -191,15 +210,15 @@ def train(dagger_rounds):
     log.append("head mode weights: " + ", ".join(f"{m} {w:.2f}" for m, w in zip(HEAD_MODES, head_w.tolist())))
     model = NnV4().to(dev)
     log.append("imitation")
-    fit(model, X, Y, 25, dev, emo_w, log, head_w)
+    fit(model, X, Y, 25, dev, emo_w, log, head_w, n_val)
     for r in range(dagger_rounds):
-        sub = rng.choice(pool, size=min(600, len(pool)), replace=False)
+        sub = rng.choice(train_lives, size=min(600, len(train_lives)), replace=False)
         t0 = time.time()
         Xd, Yd = label(S[sub], rng, policy=model, dev=dev)
         print(f"DAgger round {r + 1}: {Xd.shape} labelled in {time.time() - t0:.0f}s", flush=True)
         X, Y = np.concatenate([X, Xd]), np.concatenate([Y, Yd])
         log.append(f"DAgger round {r + 1}")
-        fit(model, X, Y, 15, dev, emo_w, log, head_w)
+        fit(model, X, Y, 15, dev, emo_w, log, head_w, n_val)
     os.makedirs(DATA, exist_ok=True)
     torch.save({"state": model.state_dict()}, os.path.join(DATA, "nn_v4.pt"))
     lines = census(model, S[test], rng, dev)

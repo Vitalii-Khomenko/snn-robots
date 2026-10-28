@@ -99,6 +99,8 @@ public:
     const ContingencyV4::Out& contingency() const { return contingency_out_; }
     // the body (docs/BODY.md): the sleep pressure (the diary's raw_stamina is 1 - it)
     const BodyV4& body() const { return body_; }
+    // what a reboot keeps (RobotRuntime saves it): the body as it was, switched off for offS seconds
+    void restoreBody(const BodyV4::Saved& s, float offS) { body_.restore(s, offS); }
     // diagnostics
     uint64_t tickLastUs() const { return tick_last_us_; }
     uint64_t takeTickMaxUs() { const uint64_t m = tick_max_us_; tick_max_us_ = 0; return m; }

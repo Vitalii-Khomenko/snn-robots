@@ -1,0 +1,11 @@
+# The IMU stops answering while the robot is held tilted sideways (2026-10-28, an audit: a reading that froze still
+# counted as fresh - the robot would feel tilted for ever). The tilt must fade once the readings stop.
+duration 6:00
+clock 14:00
+seed 5
+room_light on
+owner home
+at 0:05 person owner enter 0 0.6
+at 1:00 pick_up 0 35
+at 1:20 fault imu on
+at 1:30 put_down

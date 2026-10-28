@@ -166,6 +166,21 @@ by itself, in the 5 s `stats:` windows: a peak over 300°/s with 40° more real 
   servo, its gears or the cable). A glance hangs in ~22 % of cases, any move hangs ~2.4 times per 1000° of travel,
   whatever the size, side or target of the move; not the robot's voice (a voice 1-6 s before a hang: 45 %, at random
   moments 46 %). The supply (`vbus_min` dips to ~4.8 V at a switch-on) and the cable are next.
+- **Since the 1 s start (10-28 08:30 - 16:00):** 0 jerks in 2108 switch-ons; 167 hangs (7.9 %), ~20 an hour.
+- **Where the head really is** (2026-10-28, an audit A13: "no observed pose"). The servos cannot be read, but the IMU
+  sits in the head, so while it is still, gravity gives the head's real pitch (the diary's `raw_imu_roll` x 180°;
+  `jerks.py --pose`).
+  - Over whole days (10-27, 10-28): real ≈ 82.4° - 0.70 x commanded pitch. The head turns ~30 % less than it is
+    told, as the channel encoder's "the servos stop short" found on 10-19..21.
+  - The real pitch is within 1° of the fitted one at the median; 14.5-14.9 % of the ticks are more than 5° off.
+  - Around a hang: 39-43 % of the 6 s before a power cycle are more than 5° off, and 34-43 % of 4-8 s after (15 %
+    at any moment). Most hangs are not seen in the pitch at all: the yaw has no such reference (gravity does not
+    change with it).
+  - So the pitch is observable, the yaw is not. A pose estimate with a confidence, and with it a stall seen sooner,
+    needs the yaw's own reference (the camera's picture of the room, or the servos' feedback line repaired).
+- **What software cannot settle (A13):** the electrical cause of the hangs - a measurement of the supply and the
+  UART at a switch-on, a servo swapped. The watchdog's backoff (3 power cycles in 3 minutes: the next waits 1, 2, 5,
+  10, 30, 60 min, below) is the failure state for a held or blocked head.
 
 **2026-10-25 evening, eased moves** (the owner, sitting next to it: "a short whizz of the motors every few seconds -
 it should move slowly and smoothly"): the diary showed 11 moves a minute, one every ~4.4 s, each ~14° in ~1.3 s, and an

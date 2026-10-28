@@ -37,6 +37,7 @@ face):
 | [docs/BODY.md](docs/BODY.md) | the body and its needs: what the diary says the body feels (step 0), sleep pressure (step 1), the body budget (step 2) |
 | [docs/FOUNDATIONS.md](docs/FOUNDATIONS.md) | what we take from the study of people: Panksepp, Barrett, Damasio, Oudeyer, infant research; how not to get buried |
 | [docs/HISTORY.md](docs/HISTORY.md) | how the project got here (v1 .. v4, platform B), what was learned, where the old code lives |
+| [docs/AUDIT_2026-10-28_RU.md](docs/AUDIT_2026-10-28_RU.md) | an independent audit of the whole project (another model, in Russian): 24 findings and what was done with each (its section 9) |
 | [BRAIN_V4_PLAN.txt](BRAIN_V4_PLAN.txt), [BRAIN_V4_INPUT_SCALES.txt](BRAIN_V4_INPUT_SCALES.txt) | the owner's design of v4 and the sense scales (in Russian) |
 | `JOURNAL.txt` | the development journal (in Russian, newest first): what was done, seen, measured, left open |
 
@@ -46,9 +47,8 @@ Needs Linux with Docker, the robot on USB (`/dev/ttyACM0`) for the first flash, 
 cache (`../.tooling`). Training needs Python 3 with PyTorch (a CUDA GPU helps) and numba.
 
 ```bash
-git clone https://github.com/Vitalii-Khomenko/snn-robots.git && cd snn-robots
-docker build -t stackchan-firmware-builder:local firmware-builder     # ESP-IDF v5.5.4 image
-cd stackchan-v4
+git clone https://github.com/Vitalii-Khomenko/snn-robots.git && cd snn-robots/stackchan-v4
+./bootstrap.sh                                                        # once: the builder image + ESP-IDF v5.5.4 in ../.tooling
 cp secrets/wifi_credentials.example.h secrets/wifi_credentials.h      # edit: your Wi-Fi
 cp secrets/known_devices.example.h    secrets/known_devices.h         # edit: your phone's IP (or an empty list)
 cp secrets/life_log_host.example.h    secrets/life_log_host.h         # edit: the PC that keeps the diary, OTA token
@@ -59,12 +59,16 @@ The trained networks are generated headers in the repository (`main/v4/*_data.h`
 `main/voice/babble_model_data.h`): the firmware builds and runs without training. After the first flash:
 
 ```bash
-cp tools/robot/lifelogd.service ~/.config/systemd/user/ && systemctl --user enable --now lifelogd   # the diary
-cp tools/robot/sleep-v4.* tools/robot/compress-diary.* ~/.config/systemd/user/
-systemctl --user enable --now sleep-v4.timer compress-diary.timer                                  # learning, compression
+tools/robot/install_services.sh                       # the diary receiver, the night sleep, compression (this clone's path)
+systemctl --user enable --now lifelogd sleep-v4.timer compress-diary.timer
 python3 tools/robot/ota.py status                      # the robot answers over Wi-Fi
 ./build.sh build && python3 tools/robot/ota.py firmware   # every later update, over Wi-Fi, with rollback
 ```
+
+Two ways to use it. **Run the trained brain:** the steps above; nothing else is needed. **Train and analyse:** Python
+3.13 with torch 2.6 (install it for your hardware first), then `pip install -r tools/requirements.txt` into the
+venv `tools/v4/py` runs (`$STACKCHAN_PY`, default `~/.venvs/stackchan/bin/python`), and the robot's diary in `data/`
+(here a link to `../stackchan-life/data`; `lifelogd` fills `data/life/`). The diary is not in the repository.
 
 ## Folders
 
@@ -161,8 +165,29 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   waits for its switch, and a trial blob that does not read is dropped at once; without a clock the night rules hold
   while the room is dark (were daytime after 2 minutes); stale sensors no longer count as working; the night's reward
   counts quick spoken replies and no longer punishes a call whose next minute was never seen; the replay gate checks
-  every decision, not the median. Open: the action/intent contract (A10), rest as a state not a face (A14), memory
-  across reboots (A15), the hangs' hardware cause (A13).
+  every decision, not the median.
+- **The audit's second round** (2026-10-28 evening; its section 9 lists every finding):
+  - **The night learns only from deeds (A10).** The executor reports what it held back of the network's wishes (the
+    diary's `held`: night, the call budget, a phrase still sounding, too soon, the head's own reflex). 45 % of the
+    stretches of a wanted call had never sounded, yet the night credited them with what came after.
+  - **A rest is a state (A14).** A nap needs the sleepy face *and* a quiet body. By day under a sleepy face the robot
+    made 190-290 calls an hour while its body "slept".
+  - **The body outlives a reboot (A15):** the sleep pressure and the budget are saved every 10 minutes.
+  - **Answers go to bids (A17):** a face change after a call no longer takes the call's answer (53 of 325 on 10-27).
+    A yoked control (the same pets at the same moments, not caused by the robot) shows the robot is livelier with
+    attention but has **not** learned that its acts cause the answers. The earlier "x1.10" was the amount of
+    petting.
+  - **The simulator gets the device's faults (A21):** no clock in the dark and by day, a dead IMU, a dead proximity
+    sensor, the millisecond clock's wrap. Its light sensor is calibrated to the robot's: it read a dark room as
+    0.44, the robot reads 0.
+  - **Training splits by day (A19).** The SNN parity judges the tail and the executor's thresholds (A20: 0.3 % of the
+    ticks off by > 0.05, no threshold decided otherwise).
+  - **A clean clone builds (A22):** `bootstrap.sh`, executable scripts in git, pinned versions,
+    `install_services.sh`.
+  - **The head's real pitch is measured from gravity (A13):** `jerks.py --pose`.
+  - **The Muse is described as built (A16):** a fixed readout with learned biases, curiosity as a prediction error.
+
+  Open: the hangs' hardware cause; episodic memory; turning answered acts into a learned circular reaction.
 - The network's head input (2026-10-28, found checking the whole project): it saw its head pitch with the sign the
   other way round and its head's own moves it never learned from; now it is its own gaze, eased, as in training.
   In the simulator a pet now brings a joyful face (0.72-0.74, was 0.23-0.46) - after any pet alike, so the joy of

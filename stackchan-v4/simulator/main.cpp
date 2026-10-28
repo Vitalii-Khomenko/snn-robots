@@ -28,6 +28,10 @@
 #include "runtime/sim_runtime.h"
 #include "world/world.h"
 
+namespace sim {
+extern int64_t g_clock_offset_us;  // hal/platform.cpp
+}
+
 int main(int argc, char** argv)
 {
     if (argc < 2) {
@@ -76,6 +80,9 @@ int main(int argc, char** argv)
                 return 2;
             }
             options.learned = blob.data();
+        } else if (a == "--ms-offset") {
+            // the firmware's millisecond clock starts S seconds before it wraps (uint32 ms: 49.7 days of uptime)
+            sim::g_clock_offset_us = (int64_t{1} << 32) * 1000 - static_cast<int64_t>(std::stod(value()) * 1e6);
         } else if (a == "--v4-dump") {
             options.v4_dump = std::fopen(value().c_str(), "wb");
             if (!options.v4_dump) return 1;

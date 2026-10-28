@@ -52,7 +52,11 @@ LedState g_led;
 }  // namespace sim
 
 // --- esp_timer / esp_random / esp_err / esp_log ----------------------------
-int64_t esp_timer_get_time() { return static_cast<int64_t>(vrtos::nowUs()); }
+// --ms-offset: the firmware's clock starts that far before its millisecond counter wraps (49.7 days of uptime)
+namespace sim {
+int64_t g_clock_offset_us = 0;
+}
+int64_t esp_timer_get_time() { return static_cast<int64_t>(vrtos::nowUs()) + sim::g_clock_offset_us; }
 uint32_t esp_random() { return static_cast<uint32_t>(g_random()); }
 
 const char* esp_err_to_name(esp_err_t code)
@@ -194,6 +198,7 @@ esp_err_t i2c_master_transmit_receive(i2c_master_dev_handle_t dev, const uint8_t
 {
     World& w = world();
     const uint8_t reg = tx[0];
+    if (dev->addr == 0x23 && w.faultLight()) return ESP_ERR_TIMEOUT;
     if (dev->addr == 0x23 && reg == 0x88 && rx_len == 4) {
         // the ALS data as one burst (PresenceEngine::readAlsData, 2026-10-24): CH1 (IR) lo/hi, CH0 lo/hi; the room's
         // IR share taken as a quarter
@@ -255,6 +260,7 @@ BMI270::BMI270(i2c_master_bus_handle_t, uint8_t) {}
 bool BMI270::begin() { return true; }
 bool BMI270::update()
 {
+    if (world().faultImu()) return false;  // the chip does not answer: the last reading stays
     world().imuAccel(x_, y_, z_);
     return true;
 }

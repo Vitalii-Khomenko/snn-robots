@@ -272,7 +272,8 @@ void BrainLoop::tick(uint32_t now, const Env& env)
         in.movedDeg = body_head_ ? std::fabs(yaw - body_yaw_) + std::fabs(pitch - body_pitch_) : 0.0f;
         in.said = said_tick_;
         in.arousal = brain_.snn()[SO_AROUSAL];
-        in.asleep = night_ || (brain_.trained() && exec_.shownEmotion() == NO_EMO_SLEEPY - NO_EMO_NORMAL);
+        in.night = night_;
+        in.drowsy = brain_.trained() && exec_.shownEmotion() == NO_EMO_SLEEPY - NO_EMO_NORMAL;
         const auto& so = brain_.snn();
         in.threat = so[SO_THREAT];
         in.over = so[SO_OVER];
