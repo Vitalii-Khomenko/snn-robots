@@ -18,8 +18,9 @@ sleeps, and gets the result without a reboot.
               most a night; one nobody answered, a little less; none below -0.4 (every idea stays possible)
   5. gates    enough life; boots of the network being trained only (its id in the boot line); the replay matches
               (<= 1 % of a boot's decisions off by > 0.05: heads, zones and the Muse learn only from such boots); the
-              heads change little (KL, choices); all behaviour tests pass in the simulator with the new blob -
-              otherwise the robot keeps what it has
+              heads change little (KL, choices); the same step learned without the newest day does not favour, on
+              that day, what turned out worse (held_out); all behaviour tests pass in the simulator with the new
+              blob - otherwise the robot keeps what it has
   6. send     tools/robot/ota.py learned (switched in between two ticks, a minute on trial, no reboot)
 
   ./py sleep_v4.py                 the night (run by tools/robot/sleep-v4.timer at 03:30)
@@ -317,6 +318,73 @@ def train_heads(m, F_all, act, adv, ok=None, epochs=40):
     return new
 
 
+def prepare(m, boots, idx, feats, wv=None):
+    """The daytime decisions of the boots `idx` for the heads: features, the centred advantage, the choices made and
+    which were carried out. wv: a value baseline fitted elsewhere (held_out); None fits it here. -> F, A, act, ok, wv,
+    spread (of the raw advantage) and each decision's minute (for a bootstrap by minutes)."""
+    F_all = torch.cat([feats[i][torch.from_numpy(boots[i]["day_mask"])] for i in idx])
+    G = np.concatenate([returns(boots[i]["r"])[boots[i]["day_mask"]] for i in idx])
+    X = np.concatenate([F_all.numpy(), np.ones((len(F_all), 1), np.float32)], 1)
+    if wv is None:  # value baseline: ridge regression of the return on the features
+        wv = np.linalg.solve(X.T @ X + 1.0 * np.eye(X.shape[1]), X.T @ G)
+    A = G - X @ wv
+    spread = A.std() + 1e-6
+    act = taken(np.concatenate([boots[i]["nn"][boots[i]["day_mask"]] for i in idx]))
+    outs = [carried_out(boots[i]) for i in idx]
+    ok = {g: np.concatenate([o[g][boots[i]["day_mask"]] for o, i in zip(outs, idx)]) for g in outs[0]}
+    minute = np.concatenate([k * 100000 + np.arange(int(boots[i]["day_mask"].sum())) // 600 for k, i in enumerate(idx)])
+    return F_all, A, act, ok, wv, spread, minute
+
+
+def improvement(m, new, feat, act, ok, A):
+    """Per decision, how the step moves the odds of what was chosen and carried out, times how that turned out:
+    sum over the groups of (p_new / p_old - 1) x advantage. Its mean is the step's first-order change of the return
+    (the policy-gradient estimate), > 0 when the choices it favours were followed by more reward."""
+    with torch.no_grad():
+        a, b = heads_out(m, feat), heads_out(new, feat)
+    s = np.zeros(len(feat))
+    for g, idx in GROUPS_ACT.items():
+        ch = torch.tensor(act[g])[:, None]
+        pa = torch.softmax(a[:, idx], -1).gather(1, ch)[:, 0].numpy()
+        pb = torch.softmax(b[:, idx], -1).gather(1, ch)[:, 0].numpy()
+        s += ok[g] * (pb / pa - 1.0)
+    on = act["say"] > 0.5
+    pa = torch.sigmoid(a[:, SAY_ACT]).numpy()
+    pb = torch.sigmoid(b[:, SAY_ACT]).numpy()
+    s += ok["say"] * np.where(on, pb / pa, (1 - pb) / (1 - pa)) - ok["say"]
+    return s * A
+
+
+def held_out(m, boots, use, feats, lines, rng=None):
+    """Does a night's step generalise? (2026-10-28, an audit A11: the gates only checked that the heads changed little
+    and broke no test.) The step is learned on every day but the newest and judged on the newest: does it favour the
+    choices that were followed by more reward there? The mean improvement() over that day with a 95 % interval from a
+    bootstrap over its minutes. -> (mean, lo, hi) in units of the train days' advantage spread, x 1000; None when
+    there is one day only."""
+    days = sorted({boots[i]["day"] for i in use})
+    if len(days) < 2:
+        say(lines, "  held-out check: one day only - not judged")
+        return None
+    tr = [i for i in use if boots[i]["day"] != days[-1]]
+    te = [i for i in use if boots[i]["day"] == days[-1]]
+    F_tr, A_tr, act_tr, ok_tr, wv, spread, _ = prepare(m, boots, tr, feats)
+    A_tr = np.clip((A_tr - A_tr.mean()) / spread, -A_CLIP, A_CLIP).astype(np.float32)
+    new = train_heads(m, F_tr, act_tr, A_tr, ok_tr)
+    F_te, A_te, act_te, ok_te, _, _, minute = prepare(m, boots, te, feats, wv)
+    A_te = np.clip((A_te - A_te.mean()) / spread, -A_CLIP, A_CLIP)
+    s = improvement(m, new, F_te, act_te, ok_te, A_te)
+    s_tr = improvement(m, new, F_tr, act_tr, ok_tr, A_tr)
+    _, inv = np.unique(minute, return_inverse=True)
+    sums, counts = np.bincount(inv, s), np.bincount(inv)
+    rng = rng or np.random.default_rng(0)
+    boot = [sums[k].sum() / counts[k].sum() for k in (rng.integers(0, len(sums), len(sums)) for _ in range(400))]
+    mean, lo, hi = 1000 * s.mean(), 1000 * np.quantile(boot, 0.025), 1000 * np.quantile(boot, 0.975)
+    say(lines, f"  held-out check (learned on {', '.join(days[:-1])}, judged on {days[-1]}, {len(s)} decisions): "
+               f"improvement {mean:+.3f} (95 % {lo:+.3f} .. {hi:+.3f}) x 1e-3; on the days it learned from "
+               f"{1000 * s_tr.mean():+.3f}")
+    return mean, lo, hi
+
+
 def blend(m, new, alpha):
     """The heads a share `alpha` of the way from m's to new's (the rest of the network is m's)."""
     out = NnV4()
@@ -481,19 +549,12 @@ def main():
     if len(use) < len(boots):
         say(lines, f"  {len(boots) - len(use)} boot(s) replay wrong: not learned from (heads, zones, Muse)")
     if n_day >= MIN_HOURS * 36000:  # decisions at 10 Hz
-        F_all = torch.cat([feats[i][torch.from_numpy(boots[i]["day_mask"])] for i in use]) if use else torch.zeros(0, 85)
-        G = np.concatenate([returns(boots[i]["r"])[boots[i]["day_mask"]] for i in use]) if use else np.zeros(0)
+        n_use = sum(int(boots[i]["day_mask"].sum()) for i in use)
         events = sum(int((np.abs(boots[i]["r"][boots[i]["day_mask"]]) > 0).sum()) for i in use)
-        say(lines, f"  reward events by day {events}, mean return {G.mean() if len(G) else 0:+.3f}")
-        if len(F_all) >= MIN_HOURS * 36000 and events >= MIN_EVENTS:
-            # value baseline: ridge regression of the return on the features
-            X = np.concatenate([F_all.numpy(), np.ones((len(F_all), 1), np.float32)], 1)
-            wv = np.linalg.solve(X.T @ X + 1.0 * np.eye(X.shape[1]), X.T @ G)
-            A = G - X @ wv
-            A = np.clip((A - A.mean()) / (A.std() + 1e-6), -A_CLIP, A_CLIP).astype(np.float32)
-            act = taken(np.concatenate([boots[i]["nn"][boots[i]["day_mask"]] for i in use]))
-            outs = [carried_out(boots[i]) for i in use]
-            ok = {g: np.concatenate([o[g][boots[i]["day_mask"]] for o, i in zip(outs, use)]) for g in outs[0]}
+        say(lines, f"  reward events by day {events}")
+        if n_use >= MIN_HOURS * 36000 and events >= MIN_EVENTS:
+            F_all, A, act, ok, _, spread, _ = prepare(m, boots, use, feats)
+            A = np.clip((A - A.mean()) / spread, -A_CLIP, A_CLIP).astype(np.float32)
             wished = {"say": act["say"] > 0.5, "head": np.isin(act["head"], HEAD_GESTURES)}
             say(lines, "  wishes carried out by day: calls %.0f %%, nods / shakes / flinches %.0f %%, the network's gaze %.0f %%"
                 % (100 * ok["say"][wished["say"]].mean() if wished["say"].any() else 100,
@@ -516,12 +577,19 @@ def main():
                 cand = blend(m, new, alpha)
                 kl, flip = change(m, cand, F_all)
                 say(lines, f"    {alpha:g} of the step: KL {kl:.4f}, choices changed {100 * flip:.1f} %")
-            if kl <= KL_MAX and flip <= FLIP_MAX:
+            # the same step learned without the newest day, judged on it: one that clearly favours what turned out
+            # worse there is not taken (2026-10-28; 10-27 -> 10-28: +7.3 (+6.4 .. +8.2) x 1e-3, with the outcomes
+            # shuffled -0.1 (-0.3 .. +0.1))
+            ho = held_out(m, boots, use, feats, lines)
+            if kl > KL_MAX or flip > FLIP_MAX:
+                say(lines, "  gate: the heads would change too much even in part - kept")
+            elif ho is not None and ho[2] < 0:
+                say(lines, "  gate: on the held-out day the step favours what turned out worse - kept")
+            else:
                 heads_new = LR.heads_of(new if alpha == 1.0 else cand)
                 changed = True
-                parts.append(f"heads ({alpha:g} of the step, KL {kl:.4f})")
-            else:
-                say(lines, "  gate: the heads would change too much even in part - kept")
+                parts.append(f"heads ({alpha:g} of the step, KL {kl:.4f}"
+                             + (f", held-out {ho[0]:+.2f}e-3)" if ho else ")"))
         else:
             say(lines, "  not enough rewarded daytime life for the heads yet - kept")
     else:

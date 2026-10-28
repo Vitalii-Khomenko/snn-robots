@@ -384,7 +384,14 @@ Learning happens on the PC at night; the robot only receives the result, without
   5. *gates* - at least 1 h of daytime life and 5 reward events; boots whose boot line names another network are
      left out; a boot is learned from (heads, zones and the Muse alike: until 2026-10-28 the zones and the Muse used
      every boot) only if <= 1 % of its decisions replay with an emotion off by > 0.05 and the 99th percentile is <= 0.05 (the median until 2026-10-28: half the decisions could be wrong); KL <= 0.05 and <= 15 % of the
-     choices changed (a step beyond that is taken in part: half, a quarter ... down to a tenth of the way); all behaviour tests pass in the simulator with the new blob. Otherwise the robot keeps what it
+     choices changed (a step beyond that is taken in part: half, a quarter ... down to a tenth of the way); the
+     same step learned without the newest day must not favour, on that day, the choices that turned out worse
+     (`held_out`, 2026-10-28, an audit A11: per decision (p_new / p_old - 1) of what was chosen and carried out, times
+     its advantage against the training days' value baseline; a 95 % interval from a bootstrap over minutes; the step
+     is dropped when the whole interval is below 0). 10-27 -> 10-28: +7.4 (+6.4 .. +8.3) x 1e-3; the same with the
+     outcomes shuffled -0.1 (-0.3 .. +0.1). This shows the step's direction agrees with an unseen day's outcomes, not
+     that the other choice would have done better: the robot's choices are the networks' strongest outputs, so the
+     outcome of a choice not made is never seen; all behaviour tests pass in the simulator with the new blob. Otherwise the robot keeps what it
      has;
   6. *send* - `ota.py learned`, a minute on trial on the robot. The report says which parts are new (`new: heads
      (1 of the step, KL ...), zones (n channels), Muse (n idea biases)`). History: `data/learned/v<version>.bin` (the version
