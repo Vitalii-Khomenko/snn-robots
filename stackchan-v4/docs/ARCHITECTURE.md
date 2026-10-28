@@ -327,7 +327,8 @@ Learning happens on the PC at night; the robot only receives the result, without
   minute and the good blob's slot taken for the next upload); a confirm stays a trial until NVS has it.
 - **A new firmware** is confirmed once it is healthy - a minute up, the brain deciding with trained networks and no
   faults, the gyro alive, the diary reaching the PC - and goes back to the old one if it is not within 3 minutes
-  (until 2026-10-28 after any minute, whatever ran).
+  (until 2026-10-28 after any minute, whatever ran). An upload whose sender goes quiet for a minute is dropped (it
+  waited forever, and the update server has one task: status and every update blocked).
 - **The night sleep** (`tools/v4/sleep_v4.py`, timer `sleep-v4` at 03:30, the owner sleeps and nothing reboots):
   1. *replay* - every decision of the last 3 days is run again through the GRU and the emotion head from the diary
      (the analyzer's numbers + the network's own-state inputs); the replayed emotions must match the logged ones;

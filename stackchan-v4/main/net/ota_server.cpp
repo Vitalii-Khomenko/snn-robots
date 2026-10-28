@@ -22,6 +22,7 @@
 namespace {
 constexpr const char* kTag = "ota";
 constexpr size_t kChunk = 4096;
+constexpr int kMaxTimeouts = 6;  // in a row, of the server's receive timeout (recv_wait_timeout 10 s): a minute of silence
 
 bool authorized(httpd_req_t* req)
 {
@@ -52,9 +53,16 @@ bool receive(httpd_req_t* req, Sink sink)
 {
     EXT_RAM_BSS_ATTR static char buf[kChunk];  // one upload at a time (the server has one task); PSRAM: internal RAM is scarce
     size_t left = req->content_len;
+    int timeouts = 0;
     while (left > 0) {
         const int n = httpd_req_recv(req, buf, left < kChunk ? left : kChunk);
-        if (n == HTTPD_SOCK_ERR_TIMEOUT) continue;
+        // a sender that went quiet ends the upload (2026-10-28, an audit: it waited forever, and the server has one
+        // task - status and every update blocked until a reboot)
+        if (n == HTTPD_SOCK_ERR_TIMEOUT) {
+            if (++timeouts >= kMaxTimeouts) return false;
+            continue;
+        }
+        timeouts = 0;
         if (n <= 0) return false;
         if (!sink(buf, static_cast<size_t>(n))) return false;
         left -= static_cast<size_t>(n);
