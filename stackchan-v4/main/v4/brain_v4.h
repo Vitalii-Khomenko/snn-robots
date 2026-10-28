@@ -47,6 +47,10 @@ public:
     static constexpr float kNnDt = 0.1f;
     static constexpr uint32_t kSettleTicks = 100;  // 5 s
     static constexpr float kGazeYawDeg = 60.0f, kGazePitchDeg = 30.0f;  // gaze -1..1 -> degrees (v4_executor.h)
+    // the head's pitch for gaze_pitch 0: the executor turns the network's gaze into degrees as yaw = gaze_yaw x
+    // kGazeYawDeg, pitch = kGazePitchCenterDeg - gaze_pitch x kGazePitchDeg (gaze_pitch > 0 looks down, a positive
+    // degree looks up); executed() maps the real head back into those units, as the teacher's head is (teacher_nn.py)
+    static constexpr float kGazePitchCenterDeg = 5.0f;
 
 private:
     float gauss();

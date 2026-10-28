@@ -85,7 +85,18 @@ void BrainV4::executed(const Executed& e)
     }
     touch_age_ += kNnDt;
     if (touch_age_ > 3.0f) touch_open_ = false;
-    head_yaw_ = std::clamp(e.headYawDeg / kGazeYawDeg, -1.5f, 1.5f);
-    head_pitch_ = std::clamp(e.headPitchDeg / kGazePitchDeg, -1.5f, 1.5f);
+    // Where the network believes its head is: its own gaze, eased, in the decisions it chose to look or scan - exactly
+    // as the teacher kept it (teacher_nn.Teacher.apply), the only meaning these two inputs had in training. (Until
+    // 2026-10-28 the real head: yaw / 60 matched, but pitch / 30 had the sign the other way round and 0.17 off - gaze
+    // pitch > 0 looks down - and the head's own moves the teacher never counts, a sad look down, a glance to 70 deg,
+    // a nod, came in as well: the network saw inputs it never learned from.)
+    (void)e.headYawDeg, (void)e.headPitchDeg;
+    const int mode = static_cast<int>(std::max_element(nn_out_.begin() + v4::kNoHeadAt,
+                                                       nn_out_.begin() + v4::kNoHeadAt + v4::kNoHeadCount) -
+                                      (nn_out_.begin() + v4::kNoHeadAt));
+    if (mode == v4::kHeadLook || mode == v4::kHeadScan) {
+        head_yaw_ = 0.7f * head_yaw_ + 0.3f * nn_out_[v4::NO_GAZE_YAW];
+        head_pitch_ = 0.7f * head_pitch_ + 0.3f * nn_out_[v4::NO_GAZE_PITCH];
+    }
     led_level_ = e.ledLevel;
 }

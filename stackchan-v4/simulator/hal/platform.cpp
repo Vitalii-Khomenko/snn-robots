@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <random>
 #include <vector>
@@ -276,13 +277,29 @@ void BMI270::getGyroscope(float& x, float& y, float& z)
 }
 
 // --- SCS servo bus -------------------------------------------------------------
+// SIM_SERVO_LOG=FILE: every packet on the bus, one line each (ms, kind, id, values) - what the servos are told
+static FILE* servoLog()
+{
+    static FILE* f = [] { const char* p = std::getenv("SIM_SERVO_LOG"); return p ? std::fopen(p, "w") : nullptr; }();
+    return f;
+}
 bool SCSCL::begin(int, int, int, int) { return true; }
 int SCSCL::WritePos(uint8_t id, int16_t position, uint16_t time_ms, uint16_t)
 {
+    if (FILE* f = servoLog()) std::fprintf(f, "%lld pos %u %d %u\n", static_cast<long long>(esp_timer_get_time() / 1000), id, position, time_ms);
     world().servoWrite(id, position, time_ms);
     return 1;
 }
-int SCSCL::EnableTorque(uint8_t, uint8_t) { return 1; }
+int SCSCL::EnableTorque(uint8_t id, uint8_t enable)
+{
+    if (FILE* f = servoLog()) std::fprintf(f, "%lld torque %u %u\n", static_cast<long long>(esp_timer_get_time() / 1000), id, enable);
+    return 1;
+}
+int SCSCL::writeWord(uint8_t id, uint8_t addr, uint16_t value)
+{
+    if (FILE* f = servoLog()) std::fprintf(f, "%lld word %u %u %u\n", static_cast<long long>(esp_timer_get_time() / 1000), id, addr, value);
+    return 1;
+}
 
 // --- Face, LED, speaker: recorded, not drawn ------------------------------------
 void FaceEngine::begin() {}

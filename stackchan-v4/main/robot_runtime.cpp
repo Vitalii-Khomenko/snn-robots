@@ -270,18 +270,33 @@ bool RobotRuntime::begin()
 void RobotRuntime::superviseServos(uint32_t now)
 {
     // The head's own jerks (2026-10-27, the owner): the commanded model never moves faster than ~40 deg/s, so a gyro
-    // peak over 300 deg/s in the first 1.5 s after the rail came on is the servo running off by itself.
-    if (motion_.railOn() && !rail_was_on_) rail_on_at_ms_ = now ? now : 1, rail_peak_ = 0.0f;
+    // peak over 300 deg/s in the first kJerkWatchMs after the rail came on is the servo running off by itself.
+    // 2026-10-28: the gyro axes at the peak, when it came and the packets before it (the bang is heard ~0.85 s after
+    // the switch-on), to tell which servo runs off and on what packet.
+    if (motion_.railOn() && !rail_was_on_) {
+        rail_on_at_ms_ = motion_.railChangeMs() ? motion_.railChangeMs() : 1;
+        rail_peak_ = 0.0f;
+    }
     rail_was_on_ = motion_.railOn();
     if (rail_on_at_ms_) {
         float gx, gy, gz;
         imu_.getGyro(gx, gy, gz);
-        rail_peak_ = std::max(rail_peak_, std::sqrt(gx * gx + gy * gy + gz * gz));
-        if (now - rail_on_at_ms_ >= 1500) {
+        const float g = std::sqrt(gx * gx + gy * gy + gz * gz);
+        if (g > rail_peak_) {
+            rail_peak_ = g;
+            rail_peak_xyz_[0] = gx, rail_peak_xyz_[1] = gy, rail_peak_xyz_[2] = gz;
+            rail_peak_ms_ = now - rail_on_at_ms_;
+        }
+        if (now - rail_on_at_ms_ >= kJerkWatchMs) {
             if (rail_peak_ > 300.0f) {
                 ++servo_jerks_;
-                ESP_LOGW(kTag, "servos: a jerk of %.0f deg/s in the 1.5 s after the rail came on (%s)",
-                         static_cast<double>(rail_peak_), now - last_repower_ms_ < 60000 ? "after a hang" : "no hang");
+                char packets[400];
+                motion_.formatPackets(rail_on_at_ms_, packets, sizeof(packets));
+                ESP_LOGW(kTag, "servos: a jerk of %.0f deg/s in the %.1f s after the rail came on (%s): at +%u ms, gyro "
+                         "%.0f,%.0f,%.0f; packets (ms after the switch-on): %s",
+                         static_cast<double>(rail_peak_), kJerkWatchMs / 1000.0,
+                         now - last_repower_ms_ < 60000 ? "after a hang" : "no hang", static_cast<unsigned>(rail_peak_ms_), static_cast<double>(rail_peak_xyz_[0]),
+                         static_cast<double>(rail_peak_xyz_[1]), static_cast<double>(rail_peak_xyz_[2]), packets);
             }
             rail_on_at_ms_ = 0;
         }

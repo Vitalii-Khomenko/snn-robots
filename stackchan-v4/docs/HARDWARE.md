@@ -93,7 +93,7 @@ then waited 1-2 minutes and the head stood still. The executor now sends a gaze 
 >= 12° yaw / 8° pitch (simulator: 7-11 moves a minute instead of 12-18).
 
 **2026-10-25, power-gated moves** (the owner's idea, `MotionEngine::kGatedPower`): the servo rail (VM EN) is on
-only while the head moves. A move switches it on and waits 200 ms for the servos to start (`kRailBootMs`; the
+only while the head moves. A move switches it on and waits 200 ms (1000 ms since 2026-10-28, below) for the servos to start (`kRailBootMs`; the
 position-mode limits, torque and both positions go out again); the rail goes off 600 ms after the servo should have
 arrived (`kRailHoldMs`) and stays off at least 300 ms (`kRailMinOffMs`). Gesture keyframes come closer together than
 that, so a nod or shake keeps the rail on. A hung servo now costs one move instead of a dead head until the watchdog
@@ -141,8 +141,31 @@ by itself, in the 5 s `stats:` windows: a peak over 300°/s with 40° more real 
   the first `kEepromWrites` = 3 switch-ons of each boot, ~10 EEPROM writes a day). A servo that misses every
   packet after a power-on then still wakes in position mode. The hour after: 2 jerk windows in 271 switch-ons
   (0.7 %), 4 logged at a switch-on (2 after a hang); 17 hangs (6.3 %). Fewer, not none; a whole day will tell.
-- **Still open: the hangs themselves**, ~20 an hour since 10-26 evening (0-3 that day). Nothing in the firmware
-  timing explains them so far; the supply (`vbus_min` dips to ~4.8 V at a switch-on) and the cable are next.
+- **The rest of that evening:** 20:00-21:00 8 jerk windows in 245 switch-ons (3.3 %), 12 logged: the EEPROM did not
+  help - over the evening 2.0 % again.
+- **Not the charger.** Jerk windows were 30x more often in a 5 s window with the PMU status 0x38 (BATFET on: the
+  battery helps the USB input) than 0x28 (10-26: 8.4 % vs 0.2 %). By the status of the window *before* the
+  switch-on the rate is the same (1.7 % and 1.7 %): the jerk draws the current that turns the battery on, not the
+  other way round. The PMU registers were left alone.
+- **2026-10-28, what a jerk is** (each jerk now logs the gyro's three axes at the peak, when it came after the
+  switch-on, and the last 12 packets: `formatPackets`). The first one, 06:34: 577°/s at +910 ms, gyro x 468 (pitch),
+  y 338 (yaw: y is the vertical axis, gravity 9.5 there), z -9 - **both servos ran off at once** for a 2° goal, 80 ms
+  after the second packet. The six bangs of 10-27 evening came +840..+880 ms after the switch-on, whatever the
+  packets' times. So the servos seem to finish starting only ~0.85 s after power-on and lose what they were told at
+  +200 ms (position mode, the goal, the torque, the EEPROM write) - **`kRailBootMs` 200 -> 1000 ms, a test** (every
+  move from a still head starts 0.8 s later). 06:42-07:23: no jerk without a hang in ~170 switch-ons (~3 expected
+  before).
+- **The catch-up after a hang, a bug of 10-27's fix:** the slow first packet after a hang (1.5 s) was followed 300 ms
+  later by the settled model's latch with 120 ms - the servo dashed from wherever the hang had left it, ~300°/s
+  170 ms after the latch (07:03, 07:06). Now no packet may ask to arrive sooner while the slow move after a hang runs
+  (`slow_until_ms_`; only after a hang: after a plain switch-off the head is where the model is, and a nod's quick
+  keyframes stayed quick - with it after every switch-on, the simulator's nods after a switch-on smeared and
+  gestures answered fell, 12 seeds).
+- **Still open: the hangs themselves**, ~20 an hour since 10-26 evening (0.2 per 1000° of travel by day on 10-26,
+  rising through that evening to 2.5-3 all of 10-27; no firmware change at 15:30 when it began, so likely wear: a
+  servo, its gears or the cable). A glance hangs in ~22 % of cases, any move hangs ~2.4 times per 1000° of travel,
+  whatever the size, side or target of the move; not the robot's voice (a voice 1-6 s before a hang: 45 %, at random
+  moments 46 %). The supply (`vbus_min` dips to ~4.8 V at a switch-on) and the cable are next.
 
 **2026-10-25 evening, eased moves** (the owner, sitting next to it: "a short whizz of the motors every few seconds -
 it should move slowly and smoothly"): the diary showed 11 moves a minute, one every ~4.4 s, each ~14° in ~1.3 s, and an

@@ -4,9 +4,10 @@ sleeps, and gets the result without a reboot.
   1. replay   every decision of the main network on the last days, exactly (the diary keeps its whole input: the
               analyzer's 32 numbers + its 12 own-state inputs); checked against the emotions the robot logged
   2. reward   how people answered (reward_v4.py), discounted over ~5 s -> the return of every decision
-  3. AWR      the action heads (voice, LEDs, head) move towards the choices that were followed by more reward than
-              expected (advantage-weighted regression), anchored to what they were (KL), the GRU, the emotion head
-              and the analyzer stay innate
+  3. heads    the action heads (voice, LEDs, head) move towards the choices that were followed by more reward than
+              expected and away from those followed by less (a centred advantage: train_heads), anchored to what
+              they were (KL); the GRU, the emotion head and the analyzer stay innate; a step that changes them too
+              much is taken in part (blend)
   4. zones    habituation: a channel that sits in its alarm zone a lot without anything bad following moves its
               alarm border up (0.01 a night); one whose alarm is followed by rough handling moves it down; one that
               is rarely alarming drifts back; |shift| <= 0.15 (learned.py, main/v4/zone_shift.h)
@@ -51,12 +52,13 @@ REPORTS = os.path.join(HERE, "out", "sleep")
 LOG = os.path.join(D.LIFE, "sleep_v4.log")
 
 GAMMA = 0.98          # per decision (10 Hz): ~5 s
-BETA = 1.0            # AWR temperature, in units of the advantage's spread
-W_MAX = 20.0
+A_CLIP = 3.0          # the centred advantage, in units of its spread, is clipped here (train_heads)
+ETA = 2.0             # its tilt of a choice's odds: exp(A / ETA), at most exp(1.5) = 4.5x
 ANCHOR = 1.0          # weight of the KL to the heads the robot has
 MIN_HOURS = 1.0       # of daytime life before anything is learned (--min-hours)
 MIN_EVENTS = 5
 KL_MAX, FLIP_MAX = 0.05, 0.15
+ALPHA_MIN = 0.1      # the smallest share of a night's step on the heads (blend)
 REPLAY_MAX_ERR = 0.05
 ADAPTIVE = ["loud", "sharp", "voice", "near", "light", "motion"]  # touch, shake, tilt keep the owner's innate rules
 ZONE_STEP, ZONE_RELAX = 0.01, 0.005
@@ -171,8 +173,18 @@ def taken(nn_logged):
     return t
 
 
-def train_heads(m, F_all, act, w, epochs=40):
-    """AWR on the action heads, anchored (KL) to the heads the robot has."""
+def train_heads(m, F_all, act, adv, epochs=40):
+    """The action heads towards the choices that turned out better than expected and away from those that turned out
+    worse. adv: the centred advantage of each decision (mean ~0, in units of its spread). The target of a decision is
+    the heads' own distribution with the odds of the choice made tilted by exp(adv / ETA): a decision of average
+    outcome asks for no change at all, and no decision for more than exp(A_CLIP / ETA) in the odds. Anchored (KL) to
+    the heads the robot has.
+
+    2026-10-28: it was advantage-weighted regression (weights exp(A) > 0 on the robot's own greedy choices). With ~400
+    rewarded moments in 14 h the weights were ~1 almost everywhere: the step was the network imitating itself (KL 0.003
+    from a step with all weights 1) and cut the entropy of every choice by ~35 % a night - a slowly monotonous robot
+    (saved only by the KL gate, which dropped every night's step). Signed weights on -log p were unbounded; on
+    log(1 - p) for A < 0 they flattened every choice (entropy +20 % a night)."""
     new = NnV4()
     new.load_state_dict(m.state_dict())
     for p in new.parameters():
@@ -183,9 +195,18 @@ def train_heads(m, F_all, act, w, epochs=40):
     opt = torch.optim.Adam(params, lr=1e-3)
     with torch.no_grad():
         old = heads_out(m, F_all)
-    wt = torch.tensor(w)
-    tg = {g: torch.tensor(a, dtype=torch.long) for g, a in act.items() if g != "say"}
-    say_t = torch.tensor(act["say"])
+        tilt = torch.tensor(adv) / ETA
+        targets = {}
+        for g, idx in GROUPS_ACT.items():
+            q = F.softmax(old[:, idx], -1) * torch.exp(tilt[:, None] * F.one_hot(torch.tensor(act[g]), len(idx)))
+            targets[g] = q / q.sum(-1, keepdim=True)
+        p1 = torch.sigmoid(old[:, SAY_ACT])
+        t = torch.tensor(act["say"])
+        k = torch.exp(tilt)
+        up = torch.where(t > 0.5, p1 * k, p1)          # the odds of the outcome that happened, times exp(tilt)
+        down = torch.where(t > 0.5, 1 - p1, (1 - p1) * k)
+        say_q = up / (up + down)
+    other = [i for i in range(len(ACT)) if i != SAY_ACT and not any(i in v for v in GROUPS_ACT.values())]
     n = len(F_all)
     rng = np.random.default_rng(0)
     for _ in range(epochs):
@@ -194,18 +215,29 @@ def train_heads(m, F_all, act, w, epochs=40):
             loss = 0.0
             for g, idx in GROUPS_ACT.items():
                 logp = F.log_softmax(out[:, idx], -1)
-                loss = loss + (wt[b] * F.nll_loss(logp, tg[g][b], reduction="none")).mean()
+                loss = loss + F.kl_div(logp, targets[g][b], reduction="batchmean")
                 loss = loss + ANCHOR * F.kl_div(logp, F.softmax(old[b][:, idx], -1), reduction="batchmean")
-            loss = loss + (wt[b] * F.binary_cross_entropy_with_logits(out[:, SAY_ACT], say_t[b], reduction="none")).mean()
-            other = [i for i in range(len(ACT)) if i != SAY_ACT and not any(i in v for v in GROUPS_ACT.values())]
+            loss = loss + F.binary_cross_entropy_with_logits(out[:, SAY_ACT], say_q[b])
+            loss = loss + ANCHOR * F.binary_cross_entropy_with_logits(out[:, SAY_ACT], p1[b])
             loss = loss + ANCHOR * F.mse_loss(out[:, other], old[b][:, other])
-            p_old = torch.sigmoid(old[b][:, SAY_ACT])
-            loss = loss + ANCHOR * F.binary_cross_entropy_with_logits(out[:, SAY_ACT], p_old)
             opt.zero_grad()
             loss.backward()
             opt.step()
     new.eval()
     return new
+
+
+def blend(m, new, alpha):
+    """The heads a share `alpha` of the way from m's to new's (the rest of the network is m's)."""
+    out = NnV4()
+    out.load_state_dict(m.state_dict())
+    with torch.no_grad():
+        for name in ("act1", "act2"):
+            for p_out, p_old, p_new in zip(getattr(out, name).parameters(), getattr(m, name).parameters(),
+                                           getattr(new, name).parameters()):
+                p_out.copy_(p_old + alpha * (p_new - p_old))
+    out.eval()
+    return out
 
 
 def change(m, new, F_all):
@@ -356,18 +388,26 @@ def main():
             X = np.concatenate([F_all.numpy(), np.ones((len(F_all), 1), np.float32)], 1)
             wv = np.linalg.solve(X.T @ X + 1.0 * np.eye(X.shape[1]), X.T @ G)
             A = G - X @ wv
-            A = A / (A.std() + 1e-6)
-            w = np.clip(np.exp(A / BETA), 0, W_MAX).astype(np.float32)
+            A = np.clip((A - A.mean()) / (A.std() + 1e-6), -A_CLIP, A_CLIP).astype(np.float32)
             act = taken(np.concatenate([boots[i]["nn"][boots[i]["day_mask"]] for i in use]))
-            new = train_heads(m, F_all, act, w)
+            new = train_heads(m, F_all, act, A)
             kl, flip = change(m, new, F_all)
-            say(lines, f"  AWR on the action heads: KL {kl:.4f} (max {KL_MAX}), choices changed {100 * flip:.1f} % "
+            say(lines, f"  the action heads: KL {kl:.4f} (max {KL_MAX}), choices changed {100 * flip:.1f} % "
                        f"(max {100 * FLIP_MAX:.0f} %)")
+            # Too big a step is taken in part (2026-10-28: three nights in a row the whole step was 0.060-0.062 against
+            # 0.05 and was dropped - the heads never learned anything): half, a quarter ... of the way, the largest
+            # share that passes the gate.
+            alpha = 1.0
+            while (kl > KL_MAX or flip > FLIP_MAX) and alpha > ALPHA_MIN:
+                alpha /= 2
+                cand = blend(m, new, alpha)
+                kl, flip = change(m, cand, F_all)
+                say(lines, f"    {alpha:g} of the step: KL {kl:.4f}, choices changed {100 * flip:.1f} %")
             if kl <= KL_MAX and flip <= FLIP_MAX:
-                heads_new = LR.heads_of(new)
+                heads_new = LR.heads_of(new if alpha == 1.0 else cand)
                 changed = True
             else:
-                say(lines, "  gate: the heads would change too much - kept")
+                say(lines, "  gate: the heads would change too much even in part - kept")
         else:
             say(lines, "  not enough rewarded daytime life for the heads yet - kept")
     else:

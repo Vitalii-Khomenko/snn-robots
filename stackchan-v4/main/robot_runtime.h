@@ -72,6 +72,9 @@ private:
     bool rail_was_on_ = true;
     uint32_t rail_on_at_ms_ = 0, servo_jerks_ = 0;
     float rail_peak_ = 0.0f;
+    float rail_peak_xyz_[3] = {0, 0, 0};  // the gyro (deg/s, signed) at that peak, and when (ms after the switch-on)
+    uint32_t rail_peak_ms_ = 0;
+    static constexpr uint32_t kJerkWatchMs = 2500;  // 1.5 s until 2026-10-28 (the servos now start for 1 s)
     uint32_t panel_recover_ms_ = 0, next_panel_refresh_ms_ = 60000;
     uint32_t repower_times_[3] = {0, 0, 0};
     int series_level_ = 0;

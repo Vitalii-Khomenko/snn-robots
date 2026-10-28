@@ -127,6 +127,8 @@ does to the robot, so it is no longer squeezed (`zone_shift.h`, `learned.toleran
 - **The quiet stretch that follows:** the analyzer's valence is 0.45 against the control's 0.49. The faces barely
   differ: alone, both are bored and sleepy.
 - **Comfort:** 6 minutes of strokes bring the budget 0.26 -> 0.59. The control stays at 0.85-0.91.
+- **2026-10-28:** with the network's head input as it was trained (ARCHITECTURE section 4) the robot is frightened
+  less in the hard stretch: the low is 0.36-0.53 over 12 seeds (0.23-0.42 before); the test asks <= 0.6.
 - **Not yet visible:** the "unwell" faces need hunger above 0.75 (the teacher's rule), a budget below 0.17. A hard
   stretch colours the mood but does not change the face.
 

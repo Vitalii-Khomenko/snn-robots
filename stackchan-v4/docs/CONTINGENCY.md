@@ -230,6 +230,11 @@ speaker, and sharp sounds were dropped while it spoke (06:55). Wrong.
 - Joy 1.5 s after an answer: 0.09-0.33, mean 0.18. A joyful face at any moment: 0.15. After a pet at random
   (`control`): 0.18-0.24.
 - **So the robot is no happier after an answer than after any pet.** The joy of being answered is not learned yet.
+- **2026-10-28, after the network's head input was matched to its training** (ARCHITECTURE section 4; the pitch had
+  the sign the other way round): joy 1.5 s after an answer 0.72 and after a random pet 0.74 (12 seeds each). Pets
+  make it joyful now, but still alike: answered or not. Also: the robot's calls are capped by the voice budget (5
+  tokens, one per 10 s) and come as often answered or not (845 vs 846 in 12 runs); the more frequent acts when
+  answered are all gestures (+35 %).
 - Calls and gestures, `contingent` / `control`: 1.10 on every set of seeds. This part holds.
 - The tests now judge these scenarios over 3 seeds; joy is a report until it is learned.
 

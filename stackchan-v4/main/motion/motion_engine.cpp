@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_log.h>
@@ -103,12 +104,21 @@ void MotionEngine::getCurrentDeg(float& yaw_deg, float& pitch_deg) const
 void MotionEngine::writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_deg, uint16_t time_ms)
 {
     constexpr uint8_t kBroadcast = 0xFE;
+    const uint32_t now_ms = static_cast<uint32_t>(esp_timer_get_time() / 1000);
     if (first_after_rail_) {
         time_ms = std::max(time_ms, after_cut_ ? kFirstAfterCutMs : kFirstMoveMs);
+        // after a hang only: where the head really is nobody knows (after a plain switch-off it is where the model is,
+        // and a nod's next keyframes must stay quick)
+        slow_until_ms_ = after_cut_ ? now_ms + time_ms : now_ms;
         first_after_rail_ = after_cut_ = false;
         // the rail stays on until the servo should have arrived (railReady)
-        const uint32_t now = static_cast<uint32_t>(esp_timer_get_time() / 1000);
-        if (static_cast<int32_t>(now + time_ms - arrive_ms_) > 0) arrive_ms_ = now + time_ms;
+        if (static_cast<int32_t>(now_ms + time_ms - arrive_ms_) > 0) arrive_ms_ = now_ms + time_ms;
+    } else if (static_cast<int32_t>(slow_until_ms_ - now_ms) > 0) {
+        // nor any packet after it while the slow move after a hang runs (2026-10-28: the settled model's latch, 300 ms
+        // behind the 1.5 s first packet after a hang, went out with 120 ms - the servo dashed from wherever the hang left it at
+        // ~300 deg/s, 170 ms later, twice in 25 minutes)
+        time_ms = std::max<uint16_t>(time_ms, static_cast<uint16_t>(slow_until_ms_ - now_ms));
+        if (static_cast<int32_t>(now_ms + time_ms - arrive_ms_) > 0) arrive_ms_ = now_ms + time_ms;
     }
     if ((yaw && !yaw_torque_enabled_) || (pitch && !pitch_torque_enabled_)) {
         // Force POSITION mode. These SCS servos also have a motor (PWM) mode,
@@ -153,10 +163,12 @@ void MotionEngine::writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_
                 static_cast<uint16_t>(std::clamp(kPitchZeroPos + static_cast<int>(pitch_spring_.value * kRawPerDeg), 0, 1000))};
             uint16_t time[2] = {time_ms, time_ms}, speed[2] = {0, 0};
             bus_.SyncWritePos(ids, 2, pos, time, speed);
+            logPacket('h', pos[0], pos[1], time_ms);
             esp_rom_delay_us(2000);
             limits_written_[0] = limits_written_[1] = true;
         }
         bus_.EnableTorque(kBroadcast, 1);
+        logPacket('t', -1, -1, 0);
         yaw_torque_enabled_ = pitch_torque_enabled_ = true;
     }
     uint8_t ids[2];
@@ -172,6 +184,7 @@ void MotionEngine::writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_
     if (yaw) add(kYawId, kYawZeroPos, yaw_deg);
     if (pitch) add(kPitchId, kPitchZeroPos, pitch_deg);
     packets_sent_ += static_cast<uint32_t>(n);
+    logPacket('p', yaw ? pos[0] : -1, pitch ? pos[n - 1] : -1, time_ms);
     // Addressed packets, like the official firmware - which waits for each
     // reply (up to 10 ms); we cannot hear it (the RX line is dead), so leave
     // the bus quiet for 1 ms instead so the reply never collides with the
@@ -187,6 +200,32 @@ void MotionEngine::writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_
     for (int i = 0; i < n; ++i) {
         bus_.WritePos(ids[i], pos[i], time[i], 0);
         esp_rom_delay_us(1000);
+    }
+}
+
+void MotionEngine::logPacket(char kind, int yaw_raw, int pitch_raw, uint16_t time_ms)
+{
+    Packet& p = packet_log_[packet_log_n_++ % kPacketLog];
+    p.ms = static_cast<uint32_t>(esp_timer_get_time() / 1000);
+    p.raw[0] = static_cast<int16_t>(yaw_raw);
+    p.raw[1] = static_cast<int16_t>(pitch_raw);
+    p.time = time_ms;
+    p.kind = kind;
+}
+
+void MotionEngine::formatPackets(uint32_t since_ms, char* buf, int n) const
+{
+    int len = 0;
+    buf[0] = '\0';
+    const int count = std::min(packet_log_n_, kPacketLog);
+    for (int k = packet_log_n_ - count; k < packet_log_n_ && len < n - 1; ++k) {
+        const Packet& p = packet_log_[k % kPacketLog];
+        const int dt = static_cast<int>(p.ms - since_ms);
+        if (p.kind == 't')
+            len += std::snprintf(buf + len, n - len, "%s%+d t", len ? ", " : "", dt);
+        else
+            len += std::snprintf(buf + len, n - len, "%s%+d %c y%d p%d T%u", len ? ", " : "", dt, p.kind, p.raw[0],
+                                 p.raw[1], static_cast<unsigned>(p.time));
     }
 }
 

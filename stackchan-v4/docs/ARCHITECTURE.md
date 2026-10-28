@@ -183,7 +183,15 @@ The network decides **what**; `V4Executor` decides only **how**, inside fixed ru
 | LEDs | colour, pattern, brightness, rate | brightness <= 6 % at night |
 | head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +6° at 60°/s, at most one every 15 s (12° at 160°/s until 2026-10-25 evening, 8° at 90°/s and every 1.5 s until 10-26: 9 flinches in 13 minutes at the owner's sounds) | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; gaze moves at most every 4 s and only for >= 12° yaw / 8° pitch (the servos hang more often the more packets they get; 2.5 s / 8° until 2026-10-25); with nothing attended for 10 s (attention <= 0.12) the wandering gaze keeps a place 5-11 s (shorter in a lively mood) and turns only for >= 20° (2026-10-25 evening, the owner: a whizz of the motors every few seconds - 11 moves a minute of ~14°); a turn of 0.8 s or more is eased (half a cosine, peak 7-20°/s; HARDWARE, servos); something new in view (attention > 0.12) is turned to 1.5x faster, still eased (at the wander's speed a lamp was no longer new when the head got there; 2.5x jerked right after a glance), aimed once (head yaw + attention x 30°, within ±75°) and again only after the head has been still 0.8 s - the picture is not renewed during a turn, and re-aiming every tick from the turning head ran after a lamp at the picture's edge to -88..-100° (2026-10-27, the owner: "it jerks its head far left and back"); curious glances (2026-10-26, the owner: "add creativity and unpredictability"): while it wanders by day, at a random moment every 40-150 s the head turns 40-70° to one side at 12°/s (the other side when it already looks aside), a little up or down, looks 4-9 s and goes back (55-90° at 20°/s for 3-7 s the first hours: the owner saw the head jerk far aside and back) - its own xorshift generator, so the simulator's world keeps its random numbers (simulator, a day alone: yaw -57..48°, beyond 30° 34 % of the time, 5.5 moves a minute); the hold of a place is drawn by chance too; at night the head only sinks into the doze (no look / scan); gesture keyframes <= 8 commands/s; yaw ±100°, pitch -20..35° |
 
-What really happened (shown face, said, gestured, head pose, LED level) goes back into the network's own state.
+What really happened (shown face, said, gestured, LED level) goes back into the network's own state. The head pose
+in it is the network's own gaze, eased (0.7 old + 0.3 new, in the decisions it chose look or scan), exactly as the
+teacher keeps it (`teacher_nn.Teacher.apply`): the only meaning these two inputs had in training. Until 2026-10-28 it
+was the real head: yaw / 60 matched, but pitch / 30 had the sign the other way round and 0.17 off (gaze pitch > 0
+looks down, a positive degree looks up), and the head's own moves the teacher never counts came in as well (a sad look
+down, a glance to 70°, a nod). Matched, over 12 simulator seeds: a joyful face 1.5 s after a pet 0.72-0.74 (0.23
+after an answered act, 0.46 after a random pet before) - after any pet alike, so the joy of *being answered* is still
+not learned; cross when poked in 11 of 12 runs (7 before); twice the share of happy / loving / winking faces; still
+never angry when ignored.
 
 **The faces** (`main/ui/pixel_face.*`, 2026-10-24): pixel art in the style of the owner's site airwitech.com - square
 pixels of 10 px on a 32 x 24 grid, a dark screen, the site's palette (paper for calm, amber for joy and affection,
@@ -315,14 +323,19 @@ Learning happens on the PC at night; the robot only receives the result, without
      being talked to +0.5 (speech of >= 1 s that is not the tail of the robot's own voice), someone coming close
      +0.3; shaken -1, tilted -0.5, poked hard -0.5, calling or gesturing at someone who then leaves it alone for a
      minute -0.3; night ticks count nothing; returns discounted over ~5 s (gamma 0.98 per decision);
-  3. *AWR* - the action heads move towards the choices that got more reward than expected (advantage over a ridge
-     value baseline, weights exp(A), at most 20), anchored by a KL to the heads the robot has;
+  3. *heads* - the action heads move towards the choices that got more reward than expected and away from those
+     that got less: the advantage over a ridge value baseline, centred, in units of its spread, clipped at ±3; the
+     target of a decision is the heads' own distribution with the odds of the choice made times exp(A / 2), so a
+     decision of average outcome asks for no change; anchored by a KL to the heads the robot has. (Until 2026-10-28
+     AWR, weights exp(A) > 0 on the robot's own greedy choices: with ~400 rewarded moments in 14 h it was the network
+     imitating itself and cut the entropy of every choice by ~35 % a night; the KL gate happened to drop every night's
+     step. Now a night changes the odds of a choice made before a bad outcome by ~3 %, entropy within 0.5 %.)
   4. *zones* - for loudness, sharp sounds, voice, proximity, light and motion only (touch, shake and tilt keep the
      owner's innate rules): in the alarm zone > 5 % of the day with nothing bad after -> +0.01 (habituation);
      alarm followed by rough handling in > 30 % of >= 5 cases -> -0.01 (sensitization); alarm < 1 % -> back towards 0
      by 0.005;
   5. *gates* - at least 1 h of daytime life and 5 reward events; replay error <= 0.05; KL <= 0.05 and <= 15 % of the
-     choices changed; all behaviour tests pass in the simulator with the new blob. Otherwise the robot keeps what it
+     choices changed (a step beyond that is taken in part: half, a quarter ... down to a tenth of the way); all behaviour tests pass in the simulator with the new blob. Otherwise the robot keeps what it
      has;
   6. *send* - `ota.py learned`, a minute on trial on the robot. History: `data/learned/v<version>.bin` (the version
      is yymmddhh), `live.bin`, reports in `tools/v4/out/sleep/`, one line a night in `data/life/sleep_v4.log`.

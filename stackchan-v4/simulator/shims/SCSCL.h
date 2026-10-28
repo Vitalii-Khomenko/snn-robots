@@ -9,7 +9,7 @@ class SCSCL {
 public:
     int Level = 1;
     uint8_t getState() { return 0; }
-    int writeWord(uint8_t, uint8_t, uint16_t) { return 1; }
+    int writeWord(uint8_t id, uint8_t addr, uint16_t value);
     int unLockEprom(uint8_t) { return 1; }
     int LockEprom(uint8_t) { return 1; }
     int readWord(uint8_t, uint8_t) { return -1; }

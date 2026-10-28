@@ -65,6 +65,10 @@ public:
     // take hold or let go: a click in the microphone, a small jolt in the IMU and the head pad).
     bool railSwitching(uint32_t nowMs) const { return kGatedPower && nowMs - rail_change_ms_ < 400; }
     bool railOn() const { return rail_on_; }
+    uint32_t railChangeMs() const { return rail_change_ms_; }
+    // The packets of the last few moves, as text (ms after `since_ms`): what the servos were told before a jerk.
+    // h = the goal sent before the torque at a switch-on, t = torque on, p = a position; y/p raw goals, T the goal time.
+    void formatPackets(uint32_t since_ms, char* buf, int n) const;
     // what switches the rail (power::setServoPower on the robot)
     using RailFn = bool (*)(bool on);
     void setRailSwitch(RailFn fn) { rail_fn_ = fn; }
@@ -96,7 +100,11 @@ public:
     // kRailBootMs for the servos to start, the rail goes off kRailHoldMs after the servo should have arrived, and stays
     // off at least kRailMinOffMs (long enough for a hung servo to reset). false = the rail always on, as before.
     static constexpr bool kGatedPower = true;
-    static constexpr uint32_t kRailBootMs = 200;
+    // 2026-10-28: 200 -> 1000 ms, a test. The head's own jerks come ~850 ms after a switch-on whatever the packets
+    // (the bang in the microphone at +840..+880 ms, six of six on 10-27 evening; 06:34 the gyro's peak at +910 ms), and
+    // both servos run off at once (gyro pitch 468, yaw 338 deg/s for a 2 deg goal): the servos seem to finish starting
+    // only then and lose what they were told at +200 ms (position mode, the goal, the torque, the EEPROM write).
+    static constexpr uint32_t kRailBootMs = 1000;
     static constexpr uint32_t kRailHoldMs = 600;
     static constexpr uint32_t kRailMinOffMs = 300;
 
@@ -145,6 +153,18 @@ private:
     // hangs). kFirstMoveMs at least, kFirstAfterCutMs after the watchdog cut the power.
     static constexpr uint16_t kFirstMoveMs = 600, kFirstAfterCutMs = 1500;
     bool first_after_rail_ = false, after_cut_ = false;
+    uint32_t slow_until_ms_ = 0;  // the slow first move after a hang runs until then: no packet may ask to be faster
+    // the last kPacketLog packets (formatPackets)
+    struct Packet {
+        uint32_t ms;
+        int16_t raw[2];  // -1: that servo got nothing
+        uint16_t time;
+        char kind;
+    };
+    static constexpr int kPacketLog = 12;
+    Packet packet_log_[kPacketLog] = {};
+    int packet_log_n_ = 0;
+    void logPacket(char kind, int yaw_raw, int pitch_raw, uint16_t time_ms);
 
     // A gesture can request a large jump in one call. Keep that command as a
     // destination and slew the spring's target in small increments in update().

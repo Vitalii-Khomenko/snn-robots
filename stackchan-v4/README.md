@@ -99,9 +99,12 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   (`tools/v4/behavior_test_v4.py`, all pass).
 - Stage 6, learning from its own life, runs since 2026-10-24: every night at 03:30 the PC replays the robot's decisions,
   rewards them by how people answered (petting, talk, coming close vs shaking, rough pokes, leaving), fine-tunes the
-  main network's action heads (AWR), shifts the zones of loudness, sounds, voice, proximity, light and motion by
-  experience, checks everything in the simulator and sends it to the robot without a reboot
-  ([ARCHITECTURE](docs/ARCHITECTURE.md#7-what-the-robot-learns-from-its-life-stage-6)).
+  main network's action heads (towards choices that did better than expected, away from worse ones), shifts the
+  zones of loudness, sounds, voice, proximity, light and motion by experience, checks everything in the simulator and
+  sends it to the robot without a reboot
+  ([ARCHITECTURE](docs/ARCHITECTURE.md#7-what-the-robot-learns-from-its-life-stage-6)). Until 2026-10-28 the heads
+  never changed (the step always failed its KL gate), and the step itself was the network imitating itself - a
+  night would have cut the variety of its choices by a third; now it is centred and taken in part when too big.
 - The proximity sensor works (a hand at the face: up to ~1100 counts, 2026-10-24).
 - The first night of stage 6 (2026-10-25 03:30): the heads stayed (KL 0.058 over the 0.05 gate), the sharp-sound zone
   moved +0.01 (habituated); the blob went live without a reboot.
@@ -146,8 +149,15 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   Now the limits go out twice and the goal before the torque, the first move after a switch-on is slow, and since
   19:06 position mode is also saved in the servos' EEPROM (the first 3 switch-ons of a boot), so a servo that misses
   every packet still wakes in position mode. Jerks: 2.0 % of the switch-ons in the hour before, 0.7 % in the hour
-  after. Hangs (~20 an hour) do not depend on the glance speed (12 and 20°/s gave the same). See
-  [HARDWARE](docs/HARDWARE.md#servos) and `tools/v4/jerks.py`.
+  after - but 2 % again over the evening. 2026-10-28: both servos run off at once ~0.85 s after the switch-on,
+  whatever the packets: they seem to finish starting only then, so a move now waits 1 s after the switch-on (a test);
+  and the catch-up after a hang was a bug of the fix (a quick latch packet behind the slow first one). Hangs (~20 an
+  hour) do not depend on the glance speed; they grew gradually from 10-26 afternoon with no firmware change - likely
+  wear. See [HARDWARE](docs/HARDWARE.md#servos) and `tools/v4/jerks.py`.
+- The network's head input (2026-10-28, found checking the whole project): it saw its head pitch with the sign the
+  other way round and its head's own moves it never learned from; now it is its own gaze, eased, as in training.
+  In the simulator a pet now brings a joyful face (0.72-0.74, was 0.23-0.46) - after any pet alike, so the joy of
+  being *answered* is still not learned; it gets cross when poked more reliably and is still never angry when ignored.
 - The Muse (2026-10-26): a small chaotic reservoir network next to the main one. It gives the main network its
   "random" pacemakers (now coloured by the mood) and five ideas (play, show, still, social, surprise), which the
   robot acts when nothing calls for a reaction. It gets bored of its own ideas and learns at night which ones the

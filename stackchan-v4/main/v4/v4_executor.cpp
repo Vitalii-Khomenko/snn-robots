@@ -269,7 +269,7 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
             float hy = 0, hp = 0;
             motion_.getCurrentDeg(hy, hp);
             watch_yaw_ = std::clamp(hy + brain.snn()[SO_ATT_X] * kCamHalfDeg, -kOrientLimitDeg, kOrientLimitDeg);
-            watch_pitch_ = 5.0f - 0.4f * brain.snn()[SO_ATT_Y] * BrainV4::kGazePitchDeg;
+            watch_pitch_ = BrainV4::kGazePitchCenterDeg - 0.4f * brain.snn()[SO_ATT_Y] * BrainV4::kGazePitchDeg;
         }
         watch_until_ms_ = now + kWatchMs;
         if (glance_until_ms_ != 0) {
@@ -306,8 +306,8 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
     }
     bool moved = false;
     switch (mode) {
-        case kHeadLook: moved = command(gy, 5.0f - gp, move_speed * speed_k, now, false, gap, dead); break;
-        case kHeadScan: moved = command(gy, 5.0f - gp, move_speed * 0.6f * speed_k, now, false, gap, dead); break;
+        case kHeadLook: moved = command(gy, BrainV4::kGazePitchCenterDeg - gp, move_speed * speed_k, now, false, gap, dead); break;
+        case kHeadScan: moved = command(gy, BrainV4::kGazePitchCenterDeg - gp, move_speed * 0.6f * speed_k, now, false, gap, dead); break;
         case kHeadLookDown: command(sent_yaw_, -15.0f, 15.0f, now); break;
         case kHeadLookUp: command(sent_yaw_, 22.0f, 15.0f, now); break;
         case kHeadDoze: command(sent_yaw_ * 0.5f, -18.0f, 8.0f, now); break;
