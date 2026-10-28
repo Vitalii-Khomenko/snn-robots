@@ -35,6 +35,7 @@ face):
 | [docs/CREATIVITY.md](docs/CREATIVITY.md) | the Muse: a chaotic reservoir network that gives the robot ideas (built 2026-10-26) |
 | [docs/CONTINGENCY.md](docs/CONTINGENCY.md) | concept: the sense of "I did that" - noticing being answered, the still face, turn-taking |
 | [docs/BODY.md](docs/BODY.md) | the body and its needs: what the diary says the body feels (step 0), sleep pressure (step 1), the body budget (step 2) |
+| [docs/EPISODES.md](docs/EPISODES.md) | concept: episodic memory - a few vivid moments with their context; what the diary says (step 0) |
 | [docs/FOUNDATIONS.md](docs/FOUNDATIONS.md) | what we take from the study of people: Panksepp, Barrett, Damasio, Oudeyer, infant research; how not to get buried |
 | [docs/HISTORY.md](docs/HISTORY.md) | how the project got here (v1 .. v4, platform B), what was learned, where the old code lives |
 | [docs/SPEC_V4.md](docs/SPEC_V4.md) | every dimension: channels, the networks' inputs and outputs, the diary's columns (generated from `tools/v4/spec_v4.py`) |

@@ -367,6 +367,9 @@ def check(case):
             yk = [yoked(minutes, s) for s in (None,) + CT_SEEDS]
             m["acts_yoked"] = sum(r["acts_per_min"] for r in yk) / len(yk)
             m["answers_yoked"] = sum(r["answers"] for r in yk)
+            for k in ("again_after_answer", "joy_after_answer"):
+                vals = [r[k] for r in yk if r[k] is not None]
+                m[k + "_yoked"] = sum(vals) / len(vals) if vals else None
         for k in ("joy_after_answer", "again_after_answer", "acts_per_min", "low_after_still", "angry_after_still"):
             vals = [r[k] for r in runs if r[k] is not None]
             if vals:
@@ -384,6 +387,8 @@ if __name__ == "__main__":
             acts[name] = m["acts_per_min"]
             if "acts_yoked" in m:
                 acts["yoked"], acts["answers_yoked"], acts["answers_contingent"] = m["acts_yoked"], m["answers_yoked"], m["answers"]
+                acts["again"] = (m["again_after_answer"], m["again_after_answer_yoked"])
+                acts["joy"] = (m["joy_after_answer"], m["joy_after_answer_yoked"])
             if "calls_quiet" in m:
                 quiet[name] = (m["calls_quiet"], m["low_quiet"])
             extra = (f"   answers {m['answers']} credits {m['credits']} acts/min {m['acts_per_min']:.2f}"
@@ -415,6 +420,12 @@ if __name__ == "__main__":
           f"(the same {acts.get('answers_yoked', 0)} pets at the same moments, 3 seeds)")
     print(f"   REPORT  acts_ratio_yoked = {yk:.2f}  (above 1: the robot's acts multiply because they are answered, not "
           f"because it is petted)")
+    fmt = lambda x: "-" if x is None else f"{x:+.3f}"
+    if "again" in acts:
+        print(f"   REPORT  the answered act again within 8 s, over chance: answered {fmt(acts['again'][0])}, yoked "
+              f"{fmt(acts['again'][1])} (Piaget's circular reaction: above the yoked)")
+        print(f"   REPORT  a joyful face 1.5 s after a credited answer: answered {fmt(acts['joy'][0])}, yoked "
+              f"{fmt(acts['joy'][1])} (Watson's joy of control: above the yoked)")
     if not ok:
         failed.append(f"contingent vs control: acts_ratio = {ratio:.2f}, wanted >= 1.05")
     # the body (BODY step 3): after a hard stretch, alone and low, it saves itself - report until the robot's diary shows

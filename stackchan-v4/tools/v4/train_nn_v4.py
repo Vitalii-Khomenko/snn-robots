@@ -19,7 +19,7 @@ from snn_v4 import SnnV4
 from spec_v4 import EMOTIONS, HEAD_MODES, NN_OUT, PREV, SNN_OUT
 import contingency as C
 import muse as M
-from teacher_nn import Teacher, acts_of
+from teacher_nn import Teacher, deed_acts
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "out")
@@ -70,7 +70,7 @@ def label(S, rng, policy=None, dev="cpu"):
         if policy is None:
             for n in range(N):
                 Y[n, t] = teachers[n].step(S[n, t], pace[n, t], worlds[n].out)
-                worlds[n].step(*acts_of(Y[n, t]))
+                worlds[n].step(*deed_acts(teachers[n].deed))
                 C.inject(S[n], t + 1, worlds[n].answers)
         else:
             with torch.no_grad():
@@ -79,19 +79,19 @@ def label(S, rng, policy=None, dev="cpu"):
             for n in range(N):
                 executed = decisive(act[n])
                 Y[n, t] = teachers[n].step(S[n, t], pace[n, t], worlds[n].out, executed=executed)
-                worlds[n].step(*acts_of(executed))
+                worlds[n].step(*deed_acts(teachers[n].deed))
                 C.inject(S[n], t + 1, worlds[n].answers)
     return X, Y
 
 
 def decisive(a):
-    """The network's output as the executor uses it: the strongest choice per group, say above 0.5."""
+    """The network's output as the executor uses it: the strongest choice per group; say as it is (the executor's twin
+    has the voice's own thresholds: a call above 0.55, armed again below 0.3)."""
     e = a.copy()
     for idx in [EMO_IDX] + list(GROUPS.values()):
         k = idx[int(np.argmax(a[idx]))]
         e[idx] = 0.0
         e[k] = 1.0
-    e[SAY] = 1.0 if a[SAY] > 0.5 else 0.0
     return e
 
 

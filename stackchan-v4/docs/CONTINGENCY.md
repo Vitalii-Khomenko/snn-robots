@@ -268,6 +268,45 @@ The robot does more of what is answered, not the same act at once. Open.
 someone silent 20 % of the time, so it is not the robot's real day. The diary will tell (`contingency.py DAY`:
 ignored > 0.5, faces).
 
+## 6c. Why the circular reaction is not learned, and a retrain that did not make it (2026-10-28 evening)
+
+**What the simulator shows** (8 seeds, `contingent` against its yoked control):
+- **Calls are at the voice budget in every condition:** 70 in 12 minutes answered, yoked and at random alike (5
+  tokens, one per 10 s). The robot cannot call *more* when answered.
+- **Every pet is answered:** the owner's rule, a reaction call and often a nod. With pets as the answer, the robot's
+  reactions to them fill the "again" window in both conditions.
+- **The detector:** at acts every few seconds its background prior (60 s) outweighed the few moments without an act.
+  Pets at random read as answers: agency at a credit 0.36-0.58, against 0.58-0.65 when really answered. With a 10 s
+  prior: 0.25-0.38 against 0.47-0.66 (`BG_PRIOR_S`). Kept at 60 on the robot until a network trained with 10 goes
+  with it.
+- **Today's network:** the answered act again within 8 s over chance -0.155 answered, -0.160 yoked; joy 0.61 against
+  0.73.
+
+**The retrain** (`out/retrain_nn_2026-10-28_exec.log`, not deployed):
+- the executor's gates in training (`executor_twin.py`, ARCHITECTURE section 4);
+- the answered act again only when that kind of act works (`teacher_nn.WORKS_ON`);
+- idle babble quicker when calls work;
+- random answers in training as dense as a person's (1 / 4-60 s);
+- the 10 s prior.
+
+**Better:**
+- agreement with the teacher 0.842 (0.832);
+- real lives 0.807 (0.775), with sad 3 % and the head down 4 % of them (20 % and 23 % before).
+
+**Not better:**
+- the answered act again -0.094 against yoked -0.116 (sd 0.07: noise);
+- joy 0.83 against 0.85.
+
+**Worse:** the still face failed (low faces 0.0, wanted >= 0.2).
+- With real calls at most one per 10 s, `ignored` (+0.1 per unanswered bid, fading over 5 min) levels off at ~0.77.
+- The teacher withdraws only above 0.75, so the robot stayed in its bids (confused, curious, a call every 10 s).
+
+**Next try:**
+- the still face's thresholds for the budget-limited bids;
+- answers by voice in a scenario pair of their own (a voice is not a touch: no reaction call);
+- an answer opens the executor's reaction window, so the answered act can come back at once (the reaction path costs
+  one token, not 2.5).
+
 ## 7. Open questions
 
 - **How should the owner answer?** Petting and voice are natural. A wave at the camera would be easier to

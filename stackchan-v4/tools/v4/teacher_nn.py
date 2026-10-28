@@ -16,6 +16,7 @@ Training metadata only: the robot runs the trained network, never this code.
 """
 import numpy as np
 
+from executor_twin import ExecTwin
 from spec_v4 import (EMOTIONS, HEAD_MODES, LED_COLORS, LED_PATTERNS, NN_OUT, PREV, SNN_OUT, SOUND_STYLES)
 
 DT = 0.1  # the main network runs at 10 Hz
@@ -115,6 +116,12 @@ WATCH_S = 10.0
 # a look to whoever was seen); above WITHDRAW_ON: quiet and sad. AGENCY_WAIT: the world answers - after a call the head
 # holds still WAIT_S, as if waiting for the answer; idle babble comes more often.
 ANSWER_ON, GAME_REPS, GAME_END_S = 0.55, 3, 30.0
+# Piaget's circular reaction is for what *works*, not for any answer (2026-10-28, an audit: a yoked control - the same
+# pets at the same moments, not caused by the robot - got as many acts and as much "again" as real answers). The
+# answered act comes again only when that kind of act is answered more often than by chance (the detector's
+# works_call / works_gesture / works_face above WORKS_ON; with people who answer 0.13 on average, at random 0.03), and
+# idle babble comes more often when calls work (agency > 0.3 until then: rarely reached in training).
+WORKS_ON = 0.1
 BID_ON, WITHDRAW_ON, BID_SAY_S = 0.45, 0.75, 5.0
 AGENCY_WAIT, WAIT_S = 0.15, 2.5
 JOY_FACES = ["happy", "very_happy", "laughing", "wink"]
@@ -190,6 +197,9 @@ class Teacher:
         self.repeat, self.repeat_t = None, 0.0        # the answered act to do again, in s
         self.game_reps, self.since_answer = 0, 99.0
         self.prev_answered = self.prev_ignored = 0.0
+        # what the body did with the wishes (executor_twin, 2026-10-28): the memory follows it, as on the robot
+        self.ex = ExecTwin()
+        self.deed = {"said": False, "gesture": False, "emotion": EMOTIONS.index("normal")}
 
     # ---- what the network sees of the past (PREV), from the executed state
     def prev_inputs(self, muse, ct=None):
@@ -290,6 +300,8 @@ class Teacher:
         muse = np.asarray(muse)
         pace, ideas = muse[:3], muse[3:]
         agency, answered, ignored = (0.0, 0.0, 0.0) if ct is None else (float(ct[0]), float(ct[1]), float(ct[2]))
+        works = {"call": 0.0, "gesture": 0.0, "face": 0.0} if ct is None else {
+            "call": float(ct[3]), "gesture": float(ct[4]), "face": float(ct[5])}
         y = np.zeros(len(NN_OUT), np.float32)
         touch_now = max(s[S["sal_touch_head"]], s[S["sal_touch_screen"]])
         touch_onset = touch_now > 0.12 and touch_now - self.prev_touch > 0.04
@@ -316,7 +328,8 @@ class Teacher:
         self.prev_answered, self.prev_ignored = answered, ignored
         self.since_answer = 0.0 if answer else self.since_answer + DT
         if answer and not night:
-            if self.last_act is not None and self.last_act_t < 4.5 and self.game_reps < GAME_REPS:
+            if (self.last_act is not None and self.last_act_t < 4.5 and self.game_reps < GAME_REPS and
+                    works[self.last_act] > WORKS_ON):
                 self.repeat, self.repeat_t = self.last_act, 1.5 + (pace[2] + 1.0)  # do it again, 1.5-3.5 s later
                 self.game_reps += 1
         if self.since_answer > GAME_END_S:
@@ -380,7 +393,8 @@ class Teacher:
         elif idea in ("social", "surprise") and (idea_start or (idea == "social" and self.since_sound > 3.5)):
             say = True
         elif (idea != "still" and not withdraw and
-              self.since_sound > (6.0 + 10.0 * (1 - aro)) * (0.6 if agency > 0.3 else 1.0) and pace[0] > 0.55 - 0.3 * aro):
+              self.since_sound > (6.0 + 10.0 * (1 - aro)) * (0.6 if works["call"] > WORKS_ON else 1.0) and
+              pace[0] > 0.55 - 0.3 * aro):
             say = True  # idle babble: ~ every 8-25 s by day, more often while the world answers
         if say:
             self.speak_ticks = 3
@@ -490,19 +504,25 @@ class Teacher:
         if idea == "surprise" and mode == "nod":
             y[O["gest_amp"]], y[O["gest_reps"]] = 0.8, 1.0
 
-        # ---- the memory follows what was really done
-        self.apply(executed if executed is not None else y)
+        # ---- the memory follows what the body did with the wishes: the executor's gates (executor_twin; until
+        # 2026-10-28 the wish itself, which the robot's own-state inputs never were)
+        src = executed if executed is not None else y
+        self.deed = self.ex.step(src, s, night)
+        self.apply(src, self.deed)
         return y
 
-    def apply(self, y):
-        emo = EMOTIONS[int(np.argmax([y[O["emo_" + e]] for e in EMOTIONS]))]
+    def apply(self, y, deed=None):
+        """The memory after a decision: y the wishes (the head's gaze follows them, as BrainV4::executed), deed what was
+        done (the face shown, a call or a gesture started); deed None: the wishes as deeds (the old way)."""
+        emo = (EMOTIONS[deed["emotion"]] if deed is not None
+               else EMOTIONS[int(np.argmax([y[O["emo_" + e]] for e in EMOTIONS]))])
         self.last_act_t += DT
         if emo != self.emo:
             self.emo, self.emo_age = emo, 0.0
             self.last_act, self.last_act_t = "face", 0.0
         else:
             self.emo_age += DT
-        if y[O["say"]] > 0.5:
+        if (deed["said"] if deed is not None else y[O["say"]] > 0.5):
             if self.since_sound > 0.7:
                 self.touch_open = False
                 self.last_act, self.last_act_t = "call", 0.0
@@ -510,7 +530,7 @@ class Teacher:
         else:
             self.since_sound += DT
         mode = HEAD_MODES[int(np.argmax([y[O["head_" + m]] for m in HEAD_MODES]))]
-        if mode in ("nod", "shake", "flinch"):
+        if (deed["gesture"] if deed is not None else mode in ("nod", "shake", "flinch")):
             if self.since_gesture > 0.5:
                 self.touch_open = False
                 self.last_act, self.last_act_t = "gesture", 0.0
@@ -551,6 +571,12 @@ def acts_of(y):
     return bool(y[O["say"]] > 0.5), head in GESTURES, int(np.argmax(y[EMO_IDX]))
 
 
+def deed_acts(deed):
+    """What the body did (Teacher.deed, executor_twin), as the contingency detector sees acts: (a call started, a
+    gesture started, the face shown). People answer these, not the wishes (2026-10-28)."""
+    return deed["said"], deed["gesture"], deed["emotion"]
+
+
 def rollout(snn_seq, rng, world_rng=None):
     """Teacher on a 10 Hz sequence of SNN outputs, with people who answer or not (contingency.AnswerWorld)
     -> (inputs [T, 55], targets [T, 61])."""
@@ -568,7 +594,7 @@ def rollout(snn_seq, rng, world_rng=None):
         X[t, :len(SNN_OUT)] = snn_seq[t]
         X[t, len(SNN_OUT):] = tch.prev_inputs(pace[t], ct)
         Y[t] = tch.step(snn_seq[t], pace[t], ct)
-        world.step(*acts_of(Y[t]))
+        world.step(*deed_acts(tch.deed))
         C.inject(snn_seq, t + 1, world.answers)
     return X, Y
 

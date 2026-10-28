@@ -151,6 +151,10 @@ behavior_test_v4.py          then build, flash, watch
   vacuum cleaner, claps, petting, pokes, being picked up, shaken, covered for the night, the battery, sensor quirks
   such as phantom head touches and false speech at night); `channels.py` turns them into the 13 channels exactly as
   the firmware does (`parity_channels.py`).
+- `executor_twin.py` (2026-10-28, an audit A10): the executor's gates as training sees them - the call budget, the
+  voice's arming and refractory time, the gesture gaps, the face's hold. The teacher's memory (and with it the
+  network's own-state inputs: since_sound, since_gesture, emo_age) follows what the twin did with the wishes, as
+  `BrainV4::executed` does on the robot; people (`contingency.AnswerWorld`) answer the deeds, not the wishes.
 - `teacher_snn.py` is the innate appraisal the SNN learns (zone valence / arousal, salience, habituation, needs,
   attention). `teacher_nn.py` is the behaviour teacher of the main network (memory, the owner's rules: talks often,
   every touch answered, petting never angers, quiet nights, nod / shake used sensibly).
@@ -180,6 +184,7 @@ tools/v4/py body.py 2026-10-28                # the twin's sleep pressure and bo
 tools/v4/py parity_body.py [DAY]              # C++ BodyV4 == the twin on real diary days
 tools/v4/py jerks.py 2026-10-27 [--since HH:MM]  # the head's own jerks (gyro) and hangs per servo rail switch-on, by hour
 tools/v4/py jerks.py --pose 2026-10-28         # the head's real pitch from gravity against the commanded one, around the hangs
+tools/v4/py episodes.py 2026-10-25 ...         # vivid moments per day and context; does yesterday predict today (docs/EPISODES.md)
 tools/v4/py contingency.py --self 2026-10-26  # me or not me: sense events that follow the robot's own acts at once
 python tools/robot/listen.py [SECONDS]        # record the robot's microphone (24 kHz, ms-stamped) -> data/sound/<day>/<time>.wav
 tools/v4/py sound_check.py data/sound/DAY/TIME  # every speech onset of the ear vs the sound and the robot's own acts, + .png
