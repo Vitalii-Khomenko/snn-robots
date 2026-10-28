@@ -7,7 +7,8 @@ Everything below runs from `stackchan-v4/` unless a path says otherwise. Python 
 ## 1. The workflow after any change
 
 1. Firmware change -> `simulator/build.sh && tools/v4/py behavior_test_v4.py` (all PASS).
-2. Network or channel change -> the parity tests (section 4) first.
+2. Network or channel change -> the parity tests (section 4) first. A change of `spec_v4.py` -> `tools/v4/py spec_v4.py`
+   (writes `main/v4/v4_spec.h` and `docs/SPEC_V4.md`, and checks the counts the documents quote: exit 1 if one is off).
 3. `./build.sh build` (no new warnings), then `python3 tools/robot/ota.py firmware` (the robot boots it on trial and
    confirms it after a healthy minute, else it goes back by itself).
 4. Look at the robot's lines for a few minutes (section 5): no `E (`, sane `stats:`, `v4:` and `power:` lines.
@@ -69,6 +70,8 @@ tools/v4/py behavior_test_v4.py                      # 22 cases in parallel, a f
 | stale_imu | held tilted sideways, then the IMU stops answering (`fault imu on`) | the tilt is felt (>= 0.1), then fades (<= 0.05): a frozen reading is not fresh |
 | stale_near | a hand at the face, then the light / proximity chip stops answering (`fault light on`) | felt near (>= 0.1), then nobody (<= 0.05) |
 | play_session_wrap | `play_session` with the millisecond clock wrapping at minute 5 (`--ms-offset 300`) | faces still vary (>= 5), it talks after the wrap |
+| servo_hangs | 20 minutes alone by day; 8 % of the servo rail's switch-ons hang (`fault servo 0.08`, the robot's rate) | the watchdog power-cycles the rail (6 times), the head keeps looking round (3.9 moves a minute; 3.8 without hangs), the voice as without hangs (118 calls) |
+| servo_blocked | the head blocked for 10 minutes (`fault servo 1`), then free | the power cycles back off (8 in 10 minutes instead of ~50), and the head moves again (921° in minutes 13-20) |
 
 **Time.** Firmware tasks (main loop, microphone, camera, voice) run on a virtual RTOS (`simulator/core/vrtos`): each
 in its own thread but strictly one at a time, and time advances only when all wait. The same scenario and seed always
@@ -79,9 +82,10 @@ real ones (do not tune servo-noise filters in the simulator). The light sensor a
 are the robot's (2026-10-28, the diary of 10-26/27: a lit room by day 2-25, a dark night 0): until then a dark room
 read 120 counts (light channel 0.44) and a lit one 3400 (0.82, by the light's anger zone; the robot's day is 0.1-0.33).
 
-**What the simulator does not have** (2026-10-28, an audit): `RobotRuntime` itself - the servo watchdog, OTA, NVS and
-the learned slots, the body's saving across reboots - is not in it; the tasks run one at a time, so races between the
-two cores are not tested; the servos never hang or lose packets; the case's acoustics are simplified. It has the
+**What the simulator does not have** (2026-10-28, an audit): `RobotRuntime` itself - OTA, NVS and the learned slots,
+the body's saving across reboots, the supply's sag - is not in it; the tasks run one at a time, so races between the
+two cores are not tested; the case's acoustics are simplified. The servo watchdog is (`ServoSupervisor`, shared with
+the robot), with the servo rail and servos that hang (`fault servo`). It has the
 faults below, the firmware's clock wrap (`--ms-offset`), and every brain path the robot runs.
 
 **Scenario format.** A `*.scn` file describes the room and the events. `#` starts a comment. Times are `s`, `m:ss` or
@@ -115,6 +119,8 @@ at 0:50 responder call,gesture pet 0.85 0.8 2.0   # a person who answers the rob
 at 0:50 responder random pet 20           # ... or answers at random, every ~20 s (the control);  responder off
 at 1:20 fault imu on                      # injected faults: imu (reads fail), light (the light / proximity chip
                                           # times out), ntp (the clock never syncs); ... off ends it
+at 0:00 fault servo 0.08                  # the servos hang at a rail switch-on with this chance (both, until the rail
+                                          # goes off); fault servo off
 at 1:00 pick_up 0 35                      # held tilted: forward / back (pitch), sideways (roll)
 ```
 

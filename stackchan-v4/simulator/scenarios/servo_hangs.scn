@@ -1,0 +1,9 @@
+# The servos hang as the robot's do (2026-10-28: ~8 % of the rail switch-ons; the hardware stays as it is): both stop
+# taking packets at a switch-on until the rail goes off. Midday alone, as day_alone. The watchdog (ServoSupervisor)
+# and the power-gated moves must keep the head alive; the robot's mood and voice must not suffer.
+duration 20:00
+clock 12:00
+seed 6
+window 170 20 40 30
+lamp desk 100 12 on
+at 0:00 fault servo 0.08

@@ -246,6 +246,12 @@ CASES = [
                        ("near_after", 0.0, 0.05, "the proximity chip stops answering: nobody near, not someone for ever")]),
     ("play_session_wrap", 12, [("n_faces", 5, 30, "the millisecond clock wraps at minute 5: faces still vary"),
                                ("calls_after_wrap", 3, 400, "and it still talks after the wrap")]),
+    # servos that hang like the robot's (2026-10-28: the hardware stays as it is; the watchdog runs in the simulator too)
+    ("servo_hangs", 20, [("repowers", 1, 60, "8 % of the switch-ons hang: the watchdog power-cycles the rail"),
+                         ("moves_per_min", 3, 60, "and the head keeps looking around (day_alone: 3.8)"),
+                         ("calls_per_h", 40, 600, "the voice does not suffer")]),
+    ("servo_blocked", 20, [("repowers", 3, 10, "a head blocked for 10 minutes: the power cycles back off (not one every 12 s)"),
+                           ("travel_after_free", 100, 100000, "free again, the head moves (minutes 13-20, degrees)")]),
 ]
 
 
@@ -324,6 +330,10 @@ def check(case):
     ev, minutes, moves, out = run(name, minutes)
     m = metrics(ev, minutes, moves)
     m.update(trace_metrics(name, out))
+    m["repowers"] = sum(1 for _, tag, x, _ in ev if tag == "runtime" and x.startswith("servo rail power cycle"))
+    travel = [float(l.split("|")[2]) for l in open(os.path.join(out, "summary.txt"))
+              if len(l.split("|")) > 3 and l.split("|")[0].strip().isdigit()]
+    m["travel_after_free"] = sum(travel[12:])
     if name in RUN_AS:
         m["calls_after_wrap"] = sum(1 for t, tag, x, _ in ev if tag == "v4" and x.startswith("call") and t > 320.0)
     m.update(seek_metrics(name, out))

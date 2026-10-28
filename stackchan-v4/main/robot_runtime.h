@@ -4,6 +4,7 @@
 #include "core/brain_loop.h"
 #include "led/led_engine.h"
 #include "motion/motion_engine.h"
+#include "motion/servo_supervisor.h"
 #include "net/learned_store.h"
 #include "net/life_log.h"
 #include "net/ota_server.h"
@@ -68,25 +69,8 @@ private:
     bool body_restored_ = false;
     uint32_t body_save_ms_ = 0;
     static constexpr uint32_t kBodySaveMs = 600000;
-    // Servo watchdog (the bus is write-only on this board: the gyro is the only way to know the head really moves).
-    uint32_t watch_window_ms_ = 0, last_repower_ms_ = 0;
-    float watch_travel_deg_ = 0.0f;
-    int stalled_windows_ = 0;
-    float unseen_deg_ = 0.0f;  // commanded degrees the gyro has not confirmed since it last saw the head turn
-    static constexpr float kUnseenDeg = 25.0f;
-    uint32_t servo_repowers_ = 0;
-    // the head's own jerks (2026-10-27): the gyro's peak in the first 1.5 s after each rail switch-on
-    bool rail_was_on_ = true;
-    uint32_t rail_on_at_ms_ = 0, servo_jerks_ = 0;
-    float rail_peak_ = 0.0f;
-    float rail_peak_xyz_[3] = {0, 0, 0};  // the gyro (deg/s, signed) at that peak, and when (ms after the switch-on)
-    uint32_t rail_peak_ms_ = 0;
-    static constexpr uint32_t kJerkWatchMs = 2500;  // 1.5 s until 2026-10-28 (the servos now start for 1 s)
+    ServoSupervisor servos_{motion_, imu_};  // the servo watchdog (motion/servo_supervisor.h)
     uint32_t panel_recover_ms_ = 0, next_panel_refresh_ms_ = 60000;
-    uint32_t repower_times_[3] = {0, 0, 0};
-    int series_level_ = 0;
-    bool blocked_logged_ = false;
-    uint32_t sag_repower_ms_ = 0, sag_pause_until_ms_ = 0;
     uint32_t next_diagnostics_ms_ = 0;
     uint64_t diagnostics_window_start_us_ = 0;
     uint64_t diagnostics_busy_us_ = 0;

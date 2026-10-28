@@ -425,8 +425,20 @@ uint16_t World::psRaw()
     return static_cast<uint16_t>(std::clamp(counts, 0.0f, 2047.0f));
 }
 
+void World::servoPower(bool on)
+{
+    if (on && !servo_power_ && hang_p_ > 0.0f) {
+        std::uniform_real_distribution<float> u(0.0f, 1.0f);
+        servos_hung_ = u(rng_) < hang_p_;
+        if (servos_hung_) note("servos hung at the switch-on");
+    }
+    if (!on) servos_hung_ = false;
+    servo_power_ = on;
+}
+
 void World::servoWrite(uint8_t id, int raw, uint16_t goal_ms)
 {
+    if (!servo_power_ || servos_hung_) return;  // limp, or hung: the packet is lost
     // Same calibration as MotionEngine: zero 460 (yaw) / 620 (pitch), 0.3125 deg/unit.
     if (id == 1) {
         yaw_target_ = (raw - 460) * 0.3125f;
@@ -563,10 +575,11 @@ void World::applyEvent(const Event& e)
         }
         note("responder %s", a.empty() ? "off" : a[0].c_str());
     } else if (v == "fault") {
-        // fault imu|light|ntp on|off
+        // fault imu|light|ntp on|off;  fault servo P (the chance of a hang at each rail switch-on; 0 / off: none)
         const bool on = a.size() < 2 || a[1] != "off";
         const std::string what = a.empty() ? "" : a[0];
-        if (what == "imu") fault_imu_ = on;
+        if (what == "servo") hang_p_ = on && a.size() > 1 ? std::clamp(std::stof(a[1]), 0.0f, 1.0f) : 0.0f;
+        else if (what == "imu") fault_imu_ = on;
         else if (what == "light") fault_light_ = on;
         else if (what == "ntp") fault_ntp_ = on;
         note("fault %s %s", what.c_str(), on ? "on" : "off");

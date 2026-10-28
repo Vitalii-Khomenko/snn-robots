@@ -82,6 +82,10 @@ public:
     bool faultImu() const { return fault_imu_; }
     bool faultLight() const { return fault_light_; }
     bool faultNtp() const { return fault_ntp_; }
+    // the servo rail (MotionEngine's switch): off, the servos are limp and take no packets; at a switch-on both hang
+    // with the chance `fault servo P` (the robot: ~8 % of the switch-ons, 2026-10-28) until the rail goes off again
+    void servoPower(bool on);
+    bool servosHung() const { return servos_hung_; }
     int batteryPct() const { return battery_pct_; }
 
     // --- gyroscope: the head's real angular rates, deg/s -----------------
@@ -169,6 +173,8 @@ private:
     bool owner_home_ = false;
     bool charging_ = true;
     bool fault_imu_ = false, fault_light_ = false, fault_ntp_ = false;
+    bool servo_power_ = true, servos_hung_ = false;
+    float hang_p_ = 0.0f;
     int battery_pct_ = 100;
 
     // servos

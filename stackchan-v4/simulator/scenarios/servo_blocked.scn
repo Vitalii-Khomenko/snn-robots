@@ -1,0 +1,10 @@
+# A head held or blocked (a cover, a hand, the wall: every switch-on hangs) for 10 minutes: power cycles must back off
+# (3 within 3 minutes, then a wait of 1, 2, 5 ... minutes - each one is a current surge), and the head moves again
+# once it is free.
+duration 20:00
+clock 12:00
+seed 6
+window 170 20 40 30
+lamp desk 100 12 on
+at 2:00 fault servo 1
+at 12:00 fault servo off

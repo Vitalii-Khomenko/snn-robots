@@ -37,6 +37,7 @@ face):
 | [docs/BODY.md](docs/BODY.md) | the body and its needs: what the diary says the body feels (step 0), sleep pressure (step 1), the body budget (step 2) |
 | [docs/FOUNDATIONS.md](docs/FOUNDATIONS.md) | what we take from the study of people: Panksepp, Barrett, Damasio, Oudeyer, infant research; how not to get buried |
 | [docs/HISTORY.md](docs/HISTORY.md) | how the project got here (v1 .. v4, platform B), what was learned, where the old code lives |
+| [docs/SPEC_V4.md](docs/SPEC_V4.md) | every dimension: channels, the networks' inputs and outputs, the diary's columns (generated from `tools/v4/spec_v4.py`) |
 | [docs/AUDIT_2026-10-28_RU.md](docs/AUDIT_2026-10-28_RU.md) | an independent audit of the whole project (another model, in Russian): 24 findings and what was done with each (its section 9) |
 | [BRAIN_V4_PLAN.txt](BRAIN_V4_PLAN.txt), [BRAIN_V4_INPUT_SCALES.txt](BRAIN_V4_INPUT_SCALES.txt) | the owner's design of v4 and the sense scales (in Russian) |
 | `JOURNAL.txt` | the development journal (in Russian, newest first): what was done, seen, measured, left open |

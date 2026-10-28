@@ -11,6 +11,7 @@
 #include "../../main/core/brain_loop.h"
 #include "../../main/led/led_engine.h"
 #include "../../main/motion/motion_engine.h"
+#include "../../main/motion/servo_supervisor.h"
 #include "../../main/power/power_status_engine.h"
 #include "../../main/sensors/camera_engine.h"
 #include "../../main/sensors/imu_engine.h"
@@ -55,6 +56,7 @@ private:
     MotionEngine motion_;
     TouchEngine touch_;
     ImuEngine imu_;
+    ServoSupervisor servos_{motion_, imu_};  // the robot's servo watchdog, against servos that may hang
     MicrophoneEngine mic_;
     PresenceEngine presence_;
     CameraEngine camera_;

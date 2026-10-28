@@ -60,6 +60,12 @@ bool SimRuntime::begin()
     vocal_.begin();
     ESP_LOGI(kTag, "servos");
     if (!motion_.begin()) ESP_LOGE(kTag, "motion begin failed");
+    // the servo rail as on the robot: the world's servos follow packets only while it is on (and may hang at a
+    // switch-on: `fault servo P`)
+    motion_.setRailSwitch([](bool on) {
+        World::get().servoPower(on);
+        return true;
+    });
 
     ESP_LOGI(kTag, "touch");
     if (touch_.begin()) touch_.onTouch([this]() { loop_.headTouch(nowMs()); });
@@ -227,6 +233,13 @@ void SimRuntime::run(uint64_t until_us)
             }
         }
         loop_.afterVoice(now);
+        // the servo watchdog, as on the robot (RobotRuntime::superviseServos; no supply sag here)
+        if (const char* why = servos_.step(now, 0)) {
+            ESP_LOGW(kTag, "servo rail power cycle (%s)", why);
+            motion_.cutPower();
+            servos_.repowered(now);
+            loop_.servoRepowered(now);
+        }
 
         if (msReached(now, next_diagnostics_ms_)) logStats(now);
         if (msReached(now, next_trace_ms_)) {

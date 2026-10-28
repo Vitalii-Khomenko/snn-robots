@@ -71,7 +71,8 @@ turned off again the same day.
 saw a head that hardly moved. The stall rate per move stayed the same (1.1-1.9 per 100 moves); what grew was the number
 of moves. The executor now sends a gaze move at most every 2.5 s and only for a visible change (8° / 5°).
 
-**Servo watchdog** (`RobotRuntime::superviseServos`): if two consecutive
+**Servo watchdog** (`motion/servo_supervisor.*`, run by `RobotRuntime::superviseServos` and by the simulator, whose servos
+hang with `fault servo P` since 2026-10-28): if two consecutive
 2 s windows had ≥10° commanded and <1.5° real rotation (gyro), it switches
 VM EN off for 500 ms and on again and resyncs the motion model; at most
 once per 10 s. One window was not enough (slow drift below the gyro's
