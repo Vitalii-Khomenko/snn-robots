@@ -86,6 +86,11 @@ def datagrams(day, hours=None, root=None):
             if len(d) < HEADER.size or d[:4] != b"SCL1":
                 continue
             _, kind, n, nv, boot, _ = HEADER.unpack_from(d)
+            # a datagram whose size does not fit its kind is skipped, not trusted (lifelogd.checked)
+            if kind == KIND_V4 and len(d) != HEADER.size + 8 + n * (10 + 2 * nv):
+                continue
+            if kind == KIND_LINE and len(d) < HEADER.size + 4:
+                continue
             yield t, kind, n, nv, boot, d
 
 

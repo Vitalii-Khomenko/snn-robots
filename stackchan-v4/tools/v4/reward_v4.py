@@ -45,6 +45,10 @@ def reward(ticks):
     sp = c("raw_speech") > 0.5
     sustained = np.convolve(sp[::-1].astype(np.int32), np.ones(int(2 / DT), np.int32))[:T][::-1] >= int(1 / DT)
     own_voice = np.convolve((c("said") > 0).astype(np.int32), np.ones(int(5 / DT), np.int32))[:T] > 0
+    # since 2026-10-27 morning the firmware holds its own voice's tail and voiceless sounds out of raw_speech (voice
+    # check, kOwnVoiceTailMs; the ear_voice column exists from then): a reply 1 s after a call is a reply (2026-10-28,
+    # an audit: the 5 s mask threw away exactly the quick answers the contingency is about)
+    own_voice &= ~np.isfinite(v[:, D.col("ear_voice")])
     ev["talk"] = onsets(sp, int(2 / DT)) & sustained & ~own_voice
     ev["near"] = onsets(c("raw_near_raw") > 150, int(3 / DT))
     ev["shake"] = onsets(c("raw_accel_sd") > 0.3, int(2 / DT))
@@ -57,7 +61,13 @@ def reward(ticks):
     # (ahead[i]: contact in [i, i + 60 s]; the act itself must be answered after it, so look from the next tick)
     ahead_next = np.concatenate([ahead[1:], [False]])
     acted = (c("said") > 0) | (c("gesture") > 0)
-    ev["left_alone"] = acted & recent & ~ahead_next
+    # ... and only when that minute was seen: the same boot, no gap (2026-10-28, an audit: a call in the last minute of
+    # a recording, before a reboot or a gap in the diary counted as unanswered)
+    n_ahead = int(60 / DT)
+    later = np.minimum(np.arange(T) + n_ahead, T - 1)
+    seen = (later - np.arange(T) == n_ahead) & (ticks["boot"][later] == ticks["boot"]) & \
+        (np.abs((ticks["ms"][later].astype(np.int64) - ticks["ms"].astype(np.int64)) - 60000) < 5000)
+    ev["left_alone"] = acted & recent & ~ahead_next & seen
     valid = ((ticks["flags"] & D.FLAG_DRIVES) > 0) & ((ticks["flags"] & D.FLAG_NIGHT) == 0)
     r = np.zeros(T, np.float32)
     counts = {}

@@ -3,7 +3,10 @@
 
   data/life/YYYY-MM-DD/HH.scl   every datagram as received: uint16 length, float64 receive time (unix s), payload
   data/life/YYYY-MM-DD/log.txt  the robot's log lines, readable (receive time, boot id, ms since boot, text)
-  data/life/robot.json          where the robot is (its address, for tools/robot/ota.py) and its current boot id
+  data/life/robot.json          where the robot is (its address, for tools/robot/ota.py), its current boot id and the
+                                MAC it was first seen with: a datagram from another MAC (ARP table) moves the address
+                                no more (2026-10-28, an audit: any UDP sender could take the robot's address and be
+                                sent the OTA token). A new robot: delete robot.json.
 
 Plain python, no packages: it runs as a systemd user service (tools/robot/lifelogd.service). Every minute it prints
 one line: datagrams, ticks and lines received, and how many datagrams were lost on the way (gaps in their numbers).
@@ -24,6 +27,46 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 HEADER = struct.Struct("<4sBBHII")  # magic, kind, n, n_values, boot id, datagram seq
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+TICK_BYTES = 4 + 4 + 2  # a kind 3 tick: seq, ms, flags, then n_values float16
+
+
+def checked(data):
+    """(kind, n, boot, seq) of a well-formed datagram, else None: the size must fit the kind (2026-10-28, an audit: a
+    16-byte kind 2 datagram stopped the service with a struct.error, after it was already stored)."""
+    if len(data) < HEADER.size or data[:4] != b"SCL1":
+        return None
+    _, kind, n, nv, boot, seq = HEADER.unpack_from(data)
+    if kind == 3:
+        if len(data) != HEADER.size + 8 + n * (TICK_BYTES + 2 * nv) or n == 0:
+            return None
+    elif kind == 2:
+        if len(data) < HEADER.size + 4:
+            return None
+    elif kind != 1:  # platform B's ticks (history): kept as they come
+        return None
+    return kind, n, boot, seq
+
+
+def mac_of(address):
+    """The MAC the PC's ARP table has for this IPv4 address, or None."""
+    try:
+        for line in open("/proc/net/arp").read().splitlines()[1:]:
+            w = line.split()
+            if len(w) >= 4 and w[0] == address and w[3] != "00:00:00:00:00:00":
+                return w[3].lower()
+    except OSError:
+        pass
+    return None
+
+
+def write_robot(path, info):
+    """robot.json, atomically (ota.py may read it at any moment)."""
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(info, f)
+    os.replace(tmp, path)
 
 
 class Day:
@@ -95,6 +138,11 @@ def main():
     print(f"lifelogd: listening on udp {a.port}, writing {a.dir}", flush=True)
     last_seq = {}  # boot id -> last datagram seq
     robot = None  # (address, boot id) last written to robot.json
+    robot_path = os.path.join(a.dir, "robot.json")
+    try:
+        pinned_mac = json.load(open(robot_path)).get("mac")
+    except (OSError, ValueError):
+        pinned_mac = None
     stats = dict(dgrams=0, ticks=0, lines=0, lost=0, bad=0)
     # the silence watch: nothing from the robot for 2 minutes is written into the day's log.txt (it froze on
     # 2026-10-11 18:10 and nobody knew when), and so is its return
@@ -111,15 +159,22 @@ def main():
                 break
             now = time.time()
             if data:
-                if len(data) < HEADER.size or data[:4] != b"SCL1":
+                head = checked(data)
+                mac = None
+                if head is not None and robot is not None and robot[0] != sender[0]:
+                    mac = mac_of(sender[0])
+                    if pinned_mac and mac != pinned_mac:  # another device, or one the ARP table does not know yet
+                        head = None
+                        stats["foreign"] = stats.get("foreign", 0) + 1
+                if head is None:
                     stats["bad"] += 1
                 else:
-                    _, kind, n, _, boot, seq = HEADER.unpack_from(data)
+                    kind, n, boot, seq = head
                     if robot != (sender[0], boot):
                         robot = (sender[0], boot)
                         os.makedirs(a.dir, exist_ok=True)
-                        with open(os.path.join(a.dir, "robot.json"), "w") as f:
-                            json.dump(dict(address=sender[0], boot=f"{boot:08x}", since=now), f)
+                        pinned_mac = pinned_mac or mac or mac_of(sender[0])
+                        write_robot(robot_path, dict(address=sender[0], boot=f"{boot:08x}", since=now, mac=pinned_mac))
                     prev = last_seq.get(boot)
                     if prev is not None and seq > prev + 1:
                         stats["lost"] += seq - prev - 1

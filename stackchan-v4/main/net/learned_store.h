@@ -23,7 +23,7 @@ public:
     learned::View view() const { return learned::View{base_}; }
     uint32_t version() const { return base_ ? version_ : 0; }
     char slot() const { return slot_; }
-    bool onTrial() const { return trial_; }
+    bool onTrial() const { return trial_.load(); }
     // A new blob is on trial: switch to it now (set by the update server's task, taken by the main loop).
     void requestSwitch() { switch_.store(true); }
     bool takeSwitchRequest() { return switch_.exchange(false); }
@@ -32,7 +32,9 @@ public:
     // The blob on trial failed: forget it (the caller then open()s the confirmed one again).
     void revert();
 
-    // Writing a new blob into the slot that is not live (net/ota_server.h). Not while one is on trial.
+    // Writing a new blob into the slot that is not live (net/ota_server.h). Not while one is on trial, nor while a
+    // written one waits for the main loop to switch to it (pending_: 2026-10-28, an audit - a second upload in that
+    // moment erased the slot about to be opened).
     bool beginWrite(size_t total);
     bool write(const void* data, size_t size);
     // Checks the blob and puts it on trial (the caller then asks for the switch).
@@ -43,10 +45,9 @@ private:
     const uint8_t* base_ = nullptr;
     uint32_t handle_ = 0, old_handle_ = 0;  // esp_partition_mmap_handle_t
     bool mapped_ = false, old_mapped_ = false;
-    std::atomic<bool> switch_{false};
+    std::atomic<bool> switch_{false}, pending_{false}, trial_{false};
     uint32_t version_ = 0;
-    char slot_ = 'a';
-    bool trial_ = false;
+    std::atomic<char> slot_{'a'};
     // write state
     const void* wpart_ = nullptr;  // esp_partition_t*
     size_t wtotal_ = 0, wdone_ = 0;

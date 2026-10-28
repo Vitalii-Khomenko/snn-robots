@@ -115,6 +115,7 @@ void PresenceEngine::update()
         // 16-bit register, so 65535 is the normalization ceiling - not a
         // calibrated lux value, just a relative brightness signal.
         als_raw_ = als_raw;
+        als_ok_ms_ = poll_ms ? poll_ms : 1;
         light_level01_ = static_cast<float>(als_raw) / 65535.0f;
 
         if (light_baseline_ < 0.0f) {
@@ -129,6 +130,7 @@ void PresenceEngine::update()
         return;
     }
     last_raw_ = raw;
+    ps_ok_ms_ = poll_ms ? poll_ms : 1;
 
     if (!baseline_valid_) {
         baseline_       = raw;

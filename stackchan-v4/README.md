@@ -154,6 +154,15 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   and the catch-up after a hang was a bug of the fix (a quick latch packet behind the slow first one). Hangs (~20 an
   hour) do not depend on the glance speed; they grew gradually from 10-26 afternoon with no firmware change - likely
   wear. See [HARDWARE](docs/HARDWARE.md#servos) and `tools/v4/jerks.py`.
+- A parallel audit (2026-10-28, `docs/AUDIT_2026-10-28_RU.md`, 24 findings) checked against the code and fixed where
+  confirmed: the learned blob's structure is validated (it could be read past its end); the diary receiver no longer
+  dies on a short datagram, and the robot's address (where the OTA token goes) is pinned to its MAC; a new firmware
+  is confirmed only when healthy (brain, gyro, diary), else it rolls back in 3 minutes; no second upload while a blob
+  waits for its switch, and a trial blob that does not read is dropped at once; without a clock the night rules hold
+  while the room is dark (were daytime after 2 minutes); stale sensors no longer count as working; the night's reward
+  counts quick spoken replies and no longer punishes a call whose next minute was never seen; the replay gate checks
+  every decision, not the median. Open: the action/intent contract (A10), rest as a state not a face (A14), memory
+  across reboots (A15), the hangs' hardware cause (A13).
 - The network's head input (2026-10-28, found checking the whole project): it saw its head pitch with the sign the
   other way round and its head's own moves it never learned from; now it is its own gaze, eased, as in training.
   In the simulator a pet now brings a joyful face (0.72-0.74, was 0.23-0.46) - after any pet alike, so the joy of

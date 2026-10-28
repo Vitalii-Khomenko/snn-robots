@@ -94,9 +94,11 @@ def upload(kind, path):
         sys.exit(f"  the robot is back but the new {kind} is not on trial: {s}")
     print(f"  rebooted, new {kind} on trial; waiting for a healthy minute ...", flush=True)
     # a rollback shows below as "back to the old one" (the robot reboots into it and runs on)
-    s = wait_status(lambda s: s["uptime_s"] >= 65, 200, "a healthy minute")
+    # the robot confirms once it is healthy (a minute, then the brain, gyro and diary checked: RobotRuntime::
+    # confirmFirmware) and goes back to the old one if it is not within 3 minutes
+    s = wait_status(lambda s: not s[trial_key] or s["uptime_s"] >= 190, 280, "a healthy minute")
     if s[trial_key]:
-        sys.exit(f"  still on trial after a minute: {s}")
+        sys.exit(f"  still on trial after 3 minutes: {s}")
     changed = s["firmware"] != before["firmware"]
     if not changed:
         sys.exit(f"  the robot went back to the old {kind}: {s}")

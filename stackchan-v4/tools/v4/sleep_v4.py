@@ -15,7 +15,7 @@ sleeps, and gets the result without a reboot.
               (reward over 20 s), or after which the world turned out other than the robot expected (curiosity: the
               error of a 1 s forward model of the channels over 5 s), comes a little more often - its bias up 0.05 at
               most a night; one nobody answered, a little less; none below -0.4 (every idea stays possible)
-  5. gates    enough life; the replay matches; the heads change little (KL, choices); all behaviour tests pass in the
+  5. gates    enough life; the replay matches (<= 1 % of a boot's decisions off by > 0.05); the heads change little (KL, choices); all behaviour tests pass in the
               simulator with the new blob - otherwise the robot keeps what it has
   6. send     tools/robot/ota.py learned (switched in between two ticks, a minute on trial, no reboot)
 
@@ -59,7 +59,8 @@ MIN_HOURS = 1.0       # of daytime life before anything is learned (--min-hours)
 MIN_EVENTS = 5
 KL_MAX, FLIP_MAX = 0.05, 0.15
 ALPHA_MIN = 0.1      # the smallest share of a night's step on the heads (blend)
-REPLAY_MAX_ERR = 0.05
+REPLAY_BAD_ERR = 0.05   # a decision replays wrong when an emotion's probability is off by more (replay)
+REPLAY_MAX_BAD = 0.01   # a boot is learned from when at most this share of its decisions replays wrong
 ADAPTIVE = ["loud", "sharp", "voice", "near", "light", "motion"]  # touch, shake, tilt keep the owner's innate rules
 ZONE_STEP, ZONE_RELAX = 0.01, 0.005
 SAY = NN_OUT.index("say")
@@ -143,7 +144,11 @@ def base_model():
 
 
 def replay(m, boots):
-    """GRU + emotion head over every boot's decisions -> features [h, emotion probs], and the replay error."""
+    """GRU + emotion head over every boot's decisions -> features [h, emotion probs], and per boot the share of
+    decisions whose replayed emotions are off by more than REPLAY_BAD_ERR, and the 99th percentile of the error.
+
+    (2026-10-28, an audit: the gate was the median - half of the decisions could be wrong and pass. Real boots: p99
+    <= 0.007, share above 0.05 <= 0.00014, the rare misses after diary gaps.)"""
     feats, errs = [], []
     with torch.no_grad():
         for b in boots:
@@ -153,8 +158,14 @@ def replay(m, boots):
             p = torch.softmax(e[..., :len(EMO_IDX)], -1)
             feats.append(torch.cat([z, p], -1)[0])
             logged = torch.tensor(b["nn"][:, EMO_IDX], dtype=torch.float32)
-            errs.append(float((p[0] - logged).abs().max(-1).values.median()))
+            err = (p[0] - logged).abs().max(-1).values.numpy()
+            errs.append((float((err > REPLAY_BAD_ERR).mean()), float(np.quantile(err, 0.99))))
     return feats, errs
+
+
+def replay_ok(err):
+    bad_share, p99 = err
+    return bad_share <= REPLAY_MAX_BAD and p99 <= REPLAY_BAD_ERR
 
 
 def heads_out(m, f):
@@ -377,8 +388,11 @@ def main():
     heads_new = None
     if n_day >= MIN_HOURS * 36000:  # decisions at 10 Hz
         feats, errs = replay(m, boots)
-        say(lines, f"  replay: median |emotion error| per boot {', '.join(f'{e:.3f}' for e in errs)}")
-        use = [i for i, e in enumerate(errs) if e <= REPLAY_MAX_ERR]
+        say(lines, "  replay, per boot (share of decisions off by > %.2f / p99 of the error): %s"
+            % (REPLAY_BAD_ERR, ", ".join(f"{a:.4f}/{q:.3f}" for a, q in errs)))
+        use = [i for i, e in enumerate(errs) if replay_ok(e)]
+        if len(use) < len(boots):
+            say(lines, f"  {len(boots) - len(use)} boot(s) replay wrong: not learned from")
         F_all = torch.cat([feats[i][torch.from_numpy(boots[i]["day_mask"])] for i in use]) if use else torch.zeros(0, 85)
         G = np.concatenate([returns(boots[i]["r"])[boots[i]["day_mask"]] for i in use]) if use else np.zeros(0)
         events = sum(int((np.abs(boots[i]["r"][boots[i]["day_mask"]]) > 0).sum()) for i in use)
@@ -423,8 +437,10 @@ def main():
     if heads_new is None:
         heads_new = LR.heads_of(m)
     version = int(dt.datetime.now().strftime("%y%m%d%H"))
-    os.makedirs(STORE, exist_ok=True)
-    blob_path = os.path.join(STORE, f"v{version}.bin")
+    # a dry run's candidate goes with the reports, not into the store of the robot's versions
+    store = REPORTS if a.dry_run else STORE
+    os.makedirs(store, exist_ok=True)
+    blob_path = os.path.join(store, f"v{version}{'_dry' if a.dry_run else ''}.bin")
     open(blob_path, "wb").write(LR.pack(version, heads_new, new_shift, new_mbias, nn=LR.nn_id(m.state_dict())))
     say(lines, f"  candidate {os.path.relpath(blob_path, ROOT)} (version {version})")
     if not behaviour_gate(blob_path, lines):

@@ -28,8 +28,17 @@ struct Entry {
 static_assert(sizeof(Header) == 32 && sizeof(Entry) == 48, "blob layout (tools/v4/sleep_v4.py)");
 inline constexpr char kMagic[4] = {'V', '4', 'L', '1'};
 
-// A blob in memory (checked by the caller: magic, size, CRC). find() -> the float array called name if it has exactly
-// `count` values, else nullptr.
+// Does entry e lie inside a blob of `total` bytes with `count` entries: float32, 4-aligned, after the table, its data
+// within the blob? (Subtractions only: offset + count * 4 could wrap a uint32.)
+inline bool entryOk(const Entry& e, uint32_t count, uint32_t total)
+{
+    const uint32_t table_end = static_cast<uint32_t>(sizeof(Header) + count * sizeof(Entry));
+    return e.type == 2 && e.offset % 4 == 0 && e.offset >= table_end && e.offset <= total &&
+           e.count <= (total - e.offset) / 4u;
+}
+
+// A blob in memory, checked by valid() (magic, size, CRC, the table and every entry). find() -> the float array
+// called name if it has exactly `count` values, else nullptr.
 struct View {
     const uint8_t* base = nullptr;
 
@@ -38,11 +47,11 @@ struct View {
     {
         if (!base) return nullptr;
         const auto* hd = reinterpret_cast<const Header*>(base);
+        if (hd->total < sizeof(Header) || hd->count > (hd->total - sizeof(Header)) / sizeof(Entry)) return nullptr;
         const auto* e = reinterpret_cast<const Entry*>(base + sizeof(Header));
         for (uint32_t i = 0; i < hd->count; ++i, ++e) {
             if (std::strncmp(e->name, name, sizeof(e->name)) != 0) continue;
-            if (e->type != 2 || e->count != static_cast<uint32_t>(count) || e->offset % 4 != 0 ||
-                e->offset + e->count * 4u > hd->total)
+            if (count < 0 || e->count != static_cast<uint32_t>(count) || !entryOk(*e, hd->count, hd->total))
                 return nullptr;
             return reinterpret_cast<const float*>(base + e->offset);
         }
@@ -61,13 +70,20 @@ inline uint32_t crc32(const uint8_t* p, size_t n, uint32_t crc = 0)
     return ~crc;
 }
 
-// A whole blob checked: magic, size within `size`, CRC.
+// A whole blob checked: magic, size within `size`, CRC, and its structure - the entry table inside the blob, every
+// entry's data inside it too (2026-10-28, an audit: a CRC-correct blob whose count or offsets pointed past its end
+// made find() read outside it).
 inline bool valid(const uint8_t* p, size_t size)
 {
     if (!p || size < sizeof(Header)) return false;
     const auto* hd = reinterpret_cast<const Header*>(p);
-    return std::memcmp(hd->magic, kMagic, 4) == 0 && hd->total >= sizeof(Header) && hd->total <= size &&
-           crc32(p + sizeof(Header), hd->total - sizeof(Header)) == hd->crc;
+    if (std::memcmp(hd->magic, kMagic, 4) != 0 || hd->total < sizeof(Header) || hd->total > size) return false;
+    if (hd->count > (hd->total - sizeof(Header)) / sizeof(Entry)) return false;
+    if (crc32(p + sizeof(Header), hd->total - sizeof(Header)) != hd->crc) return false;
+    const auto* e = reinterpret_cast<const Entry*>(p + sizeof(Header));
+    for (uint32_t i = 0; i < hd->count; ++i)
+        if (!entryOk(e[i], hd->count, hd->total)) return false;
+    return true;
 }
 
 }  // namespace learned

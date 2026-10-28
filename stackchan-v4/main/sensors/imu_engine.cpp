@@ -48,6 +48,7 @@ void ImuEngine::update(bool suppressShake)
         return;
     }
     ++reads_;
+    last_read_ms_ = static_cast<uint32_t>(esp_timer_get_time() / 1000) | 1u;
 
     float x, y, z;
     imu_->getAccelerometer(x, y, z);

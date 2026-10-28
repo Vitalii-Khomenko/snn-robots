@@ -150,7 +150,7 @@ tools/v4/py contingency.py --self 2026-10-26  # me or not me: sense events that 
 python tools/robot/listen.py [SECONDS]        # record the robot's microphone (24 kHz, ms-stamped) -> data/sound/<day>/<time>.wav
 tools/v4/py sound_check.py data/sound/DAY/TIME  # every speech onset of the ear vs the sound and the robot's own acts, + .png
 tools/v4/py voice_check.py data/sound/DAY/TIME  # the voice check over a recording;  parity_voice_check.py: C++ == twin
-tools/v4/py sleep_v4.py --dry-run              # the night without sending: replay, reward, AWR, zones, gates
+tools/v4/py sleep_v4.py --dry-run              # the night without sending: replay, reward, heads, zones, gates (candidate: out/sleep/v*_dry.bin)
 tools/v4/py sleep_v4.py --dry-run --min-hours 0.05   # the whole chain on a few minutes of life (a test)
 journalctl --user -u sleep-v4                  # last night; one line per night in data/life/sleep_v4.log
 python3 tools/robot/ota.py status              # learned_version / learned_slot / learned_trial on the robot
@@ -165,6 +165,9 @@ send the innate blob, the next nights start from the new network.
 
 - `tools/robot/lifelogd.py` (systemd user service `lifelogd`) receives the UDP diary into
   `data/life/<day>/<hour>.scl` and `log.txt`; `compress-diary.timer` gzips finished days at 04:30 (~5x smaller).
+  A datagram whose size does not fit its kind is dropped (a 16-byte one stopped the service until 2026-10-28), and
+  `robot.json` (the address `ota.py` sends the token to) keeps the robot's MAC from the ARP table: a datagram from
+  another MAC no longer moves the address. A new robot: delete `data/life/robot.json`.
 - `tools/v4/py diary.py 2026-10-25` - a day's summary (hours, losses, channels, faces, calls, gestures).
 - In Python: `ticks, lines = diary.load(day)`; `ticks["v"][:, diary.col("snn_valence")]`; `lines` are all log lines.
 

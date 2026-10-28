@@ -130,6 +130,8 @@ private:
     BodyV4 body_;
     float body_yaw_ = 0.0f, body_pitch_ = 0.0f;
     bool body_head_ = false, hurt_ = false;
+    uint32_t lit_ms_ = 0;  // the room was last lit (night rules without a clock)
+    static constexpr float kLitRoom = 0.04f;
 
     // the camera's last frame (~7 fps): motion share and centre
     float motion_[3] = {0, 0, 0};

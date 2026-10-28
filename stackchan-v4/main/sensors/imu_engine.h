@@ -1,4 +1,5 @@
 #pragma once
+#include <esp_timer.h>
 #include <functional>
 #include <memory>
 #include <bmi270.h>
@@ -70,7 +71,14 @@ public:
     // in the afternoon, the accelerometer fine): the servo watchdog then saw "commanded motion, no rotation" and
     // power-cycled the servos every 12 s. Silent = exactly zero on all three axes for 1 s (a live gyro has a
     // zero-rate offset of a few 0.06 deg/s steps); after 2 s the chip is re-initialised (at most every 30 s).
-    bool gyroAlive() const { return frozen_samples_ < 50; }
+    bool gyroAlive() const { return frozen_samples_ < 50 && fresh(); }
+    // the IMU read successfully within the last kFreshMs (2026-10-28, an audit: with reads failing the last values and
+    // gyroAlive() stayed - the servo watchdog then took a dead gyro's silence for a hung head)
+    bool fresh() const
+    {
+        return last_read_ms_ != 0 && static_cast<uint32_t>(esp_timer_get_time() / 1000) - last_read_ms_ < kFreshMs;
+    }
+    static constexpr uint32_t kFreshMs = 500;
     uint32_t gyroRestarts() const { return gyro_restarts_; }
     // for the servo watchdog's log line: how many readings in a row were identical, bit for bit
     int gyroRepeats() const { return repeat_samples_; }
@@ -137,6 +145,7 @@ private:
     float gyro_[3] = {0.0f, 0.0f, 0.0f};
     uint32_t last_gyro_ms_ = 0;
     uint32_t reads_ = 0, fails_ = 0;
+    uint32_t last_read_ms_ = 0;
     int frozen_samples_ = 0, repeat_samples_ = 0;
     uint32_t last_restart_ms_ = 0, gyro_restarts_ = 0;
     float max_omega_ = 0.0f;

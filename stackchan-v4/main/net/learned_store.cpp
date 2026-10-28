@@ -63,9 +63,17 @@ bool LearnedStore::open()
     }
     const auto* p = static_cast<const uint8_t*>(map);
     if (!learned::valid(p, part->size)) {
-        ESP_LOGI(kTag, "weights_%c holds no learned blob: innate networks", new_slot);
         esp_partition_munmap(handle);
+        if (trial_) {
+            // the blob on trial does not read (its flash went bad): forget it now and open the confirmed one - left on
+            // trial it would have been confirmed after a minute, and the good blob's slot taken for the next upload
+            ESP_LOGW(kTag, "weights_%c: the blob on trial does not read: back to the confirmed slot", new_slot);
+            revert();
+            return open();
+        }
+        ESP_LOGI(kTag, "weights_%c holds no learned blob: innate networks", new_slot);
         slot_ = new_slot;
+        pending_ = false;
         return false;
     }
     handle_ = handle;
@@ -73,7 +81,8 @@ bool LearnedStore::open()
     base_ = p;
     version_ = learned::View{p}.version();
     slot_ = new_slot;
-    ESP_LOGI(kTag, "weights_%c: learned blob version %u%s", slot_, static_cast<unsigned>(version_),
+    pending_ = false;
+    ESP_LOGI(kTag, "weights_%c: learned blob version %u%s", new_slot, static_cast<unsigned>(version_),
              trial_ ? " (new, on trial)" : "");
     return true;
 }
@@ -88,16 +97,27 @@ void LearnedStore::releaseOld()
 void LearnedStore::confirm()
 {
     if (!trial_) return;
-    trial_ = false;
     nvs_handle_t h;
-    if (nvs_open(kNs, NVS_READWRITE, &h) != ESP_OK) return;
-    nvs_set_u8(h, "slot", slot_ == 'b' ? 1 : 0);
-    nvs_erase_key(h, "next");
-    nvs_erase_key(h, "tries");
-    nvs_commit(h);
+    if (nvs_open(kNs, NVS_READWRITE, &h) != ESP_OK) {
+        ESP_LOGE(kTag, "confirm: NVS does not open: the blob stays on trial");
+        return;
+    }
+    // the slot first (an interrupted confirm leaves "next" too: the next boot puts the same blob on trial again)
+    esp_err_t err = nvs_set_u8(h, "slot", slot_ == 'b' ? 1 : 0);
+    if (err == ESP_OK) err = nvs_commit(h);
+    if (err == ESP_OK) {
+        nvs_erase_key(h, "next");
+        nvs_erase_key(h, "tries");
+        err = nvs_commit(h);
+    }
     nvs_close(h);
+    if (err != ESP_OK) {
+        ESP_LOGE(kTag, "confirm: NVS write failed (%s): the blob stays on trial", esp_err_to_name(err));
+        return;
+    }
+    trial_ = false;
     ESP_LOGI(kTag, "learned blob version %u (slot %c) confirmed after a healthy minute", static_cast<unsigned>(version_),
-             slot_);
+             slot_.load());
 }
 
 void LearnedStore::revert()
@@ -113,7 +133,7 @@ void LearnedStore::revert()
 
 bool LearnedStore::beginWrite(size_t total)
 {
-    if (trial_) return false;  // the other slot is the fallback of the blob on trial
+    if (trial_ || pending_) return false;  // the other slot is the fallback of the blob on trial / about to be opened
     const esp_partition_t* part = partition(idleSlot());
     if (!part || total < sizeof(learned::Header) || total > part->size) return false;
     // erase what the blob needs, rounded up to whole 4 KB sectors
@@ -159,10 +179,12 @@ bool LearnedStore::finishWrite()
     if (esp_partition_write(part, 0, whead_, sizeof(whead_)) != ESP_OK) return false;
     nvs_handle_t h;
     if (nvs_open(kNs, NVS_READWRITE, &h) != ESP_OK) return false;
-    nvs_set_u8(h, "next", idleSlot() == 'b' ? 1 : 0);
-    nvs_set_u8(h, "tries", 0);
-    const bool ok = nvs_commit(h) == ESP_OK;
+    esp_err_t err = nvs_set_u8(h, "next", idleSlot() == 'b' ? 1 : 0);
+    if (err == ESP_OK) err = nvs_set_u8(h, "tries", 0);
+    if (err == ESP_OK) err = nvs_commit(h);
     nvs_close(h);
+    const bool ok = err == ESP_OK;
+    if (ok) pending_ = true;  // no new upload until the main loop has opened this one
     ESP_LOGI(kTag, "new learned blob version %u in slot %c: on trial", static_cast<unsigned>(hd.version), idleSlot());
     return ok;
 }

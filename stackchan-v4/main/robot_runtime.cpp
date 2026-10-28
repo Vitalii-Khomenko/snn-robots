@@ -564,15 +564,42 @@ void RobotRuntime::logBootReason()
 
 // A firmware that came over the air is on trial (bootloader rollback): after a healthy minute it stays. One that
 // crashes or hangs before that boots back into the previous one.
+// A new firmware is confirmed only when it works (2026-10-28, an audit: after any minute, whatever ran): the brain
+// decides with trained networks and no faults, the gyro is alive, and the diary reaches the PC (Wi-Fi and UDP up -
+// without them the robot could not be flashed again). Not healthy within kConfirmGiveUpMs: back to the previous one.
 void RobotRuntime::confirmFirmware(uint32_t now)
 {
     if (firmware_confirmed_ || now < 60000) return;
-    firmware_confirmed_ = true;
     const esp_partition_t* run = esp_ota_get_running_partition();
     esp_ota_img_states_t state = ESP_OTA_IMG_UNDEFINED;
-    if (esp_ota_get_state_partition(run, &state) == ESP_OK && state == ESP_OTA_IMG_PENDING_VERIFY) {
-        esp_ota_mark_app_valid_cancel_rollback();
-        ESP_LOGI(kTag, "firmware in %s confirmed after a healthy minute", run->label);
+    if (esp_ota_get_state_partition(run, &state) != ESP_OK || state != ESP_OTA_IMG_PENDING_VERIFY) {
+        firmware_confirmed_ = true;  // not on trial
+        return;
+    }
+    const bool brain_ok = loop_.brain().trained() && loop_.brain().nnFaults() == 0;
+    const bool imu_ok = imu_.gyroAlive();
+    const bool link_ok = wifi_.isConnected() && life_.sent() > 0;
+    if (brain_ok && imu_ok && link_ok) {
+        const esp_err_t err = esp_ota_mark_app_valid_cancel_rollback();
+        if (err == ESP_OK) {
+            firmware_confirmed_ = true;
+            ESP_LOGI(kTag, "firmware in %s confirmed after a healthy minute", run->label);
+        } else if (now - confirm_log_ms_ >= 10000) {
+            confirm_log_ms_ = now;
+            ESP_LOGE(kTag, "firmware confirm failed: %s", esp_err_to_name(err));
+        }
+        return;
+    }
+    if (now - confirm_log_ms_ >= 10000) {
+        confirm_log_ms_ = now;
+        ESP_LOGW(kTag, "firmware on trial not healthy yet: brain %d, gyro %d, link %d", brain_ok ? 1 : 0, imu_ok ? 1 : 0,
+                 link_ok ? 1 : 0);
+    }
+    if (now >= kConfirmGiveUpMs) {
+        ESP_LOGE(kTag, "firmware on trial not healthy after %u s: back to the previous one",
+                 static_cast<unsigned>(kConfirmGiveUpMs / 1000));
+        vTaskDelay(pdMS_TO_TICKS(500));  // the line reaches the diary
+        esp_ota_mark_app_invalid_rollback_and_reboot();
     }
 }
 

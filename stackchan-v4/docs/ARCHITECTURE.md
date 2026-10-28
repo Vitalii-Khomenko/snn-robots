@@ -48,6 +48,11 @@ simulator 25 s of pokes every 0.8 s no longer anger it; the first annoyed face c
 | - | motion_x, motion_y | where the motion is (-1..1) | for attention |
 | - | light_x, light_y, light_spot | the picture's brightest spot (a lamp, a window; -1..1) and how NEW it is (0..1): its excess over how bright that place in the room has looked (13 directions 15° apart from head yaw + place in the picture; each keeps its usual peak, up in 4 s of frames, down in 2 min, forgotten in 15 min; novelty starts 0.15 above it), less what was already looked at (habituation over 3 min) - 2026-10-25. Read from every frame that is not dark and taken while the head turns slower than 12°/s (2026-10-26: the calm head turns ~40 % of the time; frame_ok 0.5 in the diary = a frame for the spot only) | for attention |
 
+A sensor counts as working only while it reads: the proximity and light sensor within the last 2 s, the IMU within
+0.5 s (since 2026-10-28, an audit: after an I2C failure the last values and the ok flags stayed - a frozen sensor read
+as someone near or a lit room, and a dead gyro's silence looked to the servo watchdog like a hung head). A channel
+whose sensor does not read holds its value (proximity, light) or reads no tilt and shake (IMU).
+
 Slow clocks (minutes, hours) are computed in code, not by the SNN: a spiking network cannot count minutes (v3's lesson,
 2026-10-03). `tools/v4/channels.py` is the same encoder for training; a parity test keeps them identical (error 0).
 
@@ -179,7 +184,7 @@ The network decides **what**; `V4Executor` decides only **how**, inside fixed ru
 |---|---|---|
 | face | the chosen emotion: 21 pixel-art faces (below); eyes follow the SNN's attention | a choice must last 2 ticks; a shown face stays >= 1.5 s |
 | head mode | the chosen mode, debounced | a mode counts once the network has kept it for two decisions (a one-decision wish - a flinch at a touch's very start - is ignored) |
-| voice | the droid babble (BabbleNet + synth) with the network's style and mood | call budget 5 tokens, 1 per 10 s (a reaction may spend the last one); **silent 21:45-06:00** and for the first 2 min of a boot without clock |
+| voice | the droid babble (BabbleNet + synth) with the network's style and mood | call budget 5 tokens, 1 per 10 s (a reaction may spend the last one); **silent 21:45-06:00**; without a clock (no Wi-Fi / NTP) for the first 2 min of a boot and then while the room is dark (lit in the last minute: day; until 2026-10-28 daytime rules after 2 min whatever the hour) |
 | LEDs | colour, pattern, brightness, rate | brightness <= 6 % at night |
 | head | look / scan to the gaze, look up / down, doze; gestures on the network's wish: nod 5-12°, shake 5-14°, 1-3 repeats; flinch +6° at 60°/s, at most one every 15 s (12° at 160°/s until 2026-10-25 evening, 8° at 90°/s and every 1.5 s until 10-26: 9 flinches in 13 minutes at the owner's sounds) | nod / shake at most every 4 s; flinch every 1.5 s at most; no nod, shake or flinch at night; gaze moves at most every 4 s and only for >= 12° yaw / 8° pitch (the servos hang more often the more packets they get; 2.5 s / 8° until 2026-10-25); with nothing attended for 10 s (attention <= 0.12) the wandering gaze keeps a place 5-11 s (shorter in a lively mood) and turns only for >= 20° (2026-10-25 evening, the owner: a whizz of the motors every few seconds - 11 moves a minute of ~14°); a turn of 0.8 s or more is eased (half a cosine, peak 7-20°/s; HARDWARE, servos); something new in view (attention > 0.12) is turned to 1.5x faster, still eased (at the wander's speed a lamp was no longer new when the head got there; 2.5x jerked right after a glance), aimed once (head yaw + attention x 30°, within ±75°) and again only after the head has been still 0.8 s - the picture is not renewed during a turn, and re-aiming every tick from the turning head ran after a lamp at the picture's edge to -88..-100° (2026-10-27, the owner: "it jerks its head far left and back"); curious glances (2026-10-26, the owner: "add creativity and unpredictability"): while it wanders by day, at a random moment every 40-150 s the head turns 40-70° to one side at 12°/s (the other side when it already looks aside), a little up or down, looks 4-9 s and goes back (55-90° at 20°/s for 3-7 s the first hours: the owner saw the head jerk far aside and back) - its own xorshift generator, so the simulator's world keeps its random numbers (simulator, a day alone: yaw -57..48°, beyond 30° 34 % of the time, 5.5 moves a minute); the hold of a place is drawn by chance too; at night the head only sinks into the doze (no look / scan); gesture keyframes <= 8 commands/s; yaw ±100°, pitch -20..35° |
 
@@ -315,14 +320,24 @@ Learning happens on the PC at night; the robot only receives the result, without
 - **In flash** (`main/net/learned_store.*`): the partitions `weights_a` / `weights_b`, NVS namespace `learned`. A new
   blob (`PUT /learned`, `tools/robot/ota.py learned FILE`) goes into the idle slot, the main loop switches to it between
   two ticks, watches it for a minute and confirms it; if the main network fails on it, the robot goes back to the
-  previous blob, also without a reboot. No blob: the innate (compiled-in) networks.
+  previous blob, also without a reboot. No blob: the innate (compiled-in) networks. Since 2026-10-28 (a parallel audit,
+  `docs/AUDIT_2026-10-28_RU.md`): a blob is taken only if its entry table and every array lie inside it (a
+  CRC-correct blob with a bad count or offset read outside the partition); no upload is accepted while a written blob
+  waits for the switch; a trial blob that does not read is dropped at once (left on trial it was confirmed after a
+  minute and the good blob's slot taken for the next upload); a confirm stays a trial until NVS has it.
+- **A new firmware** is confirmed once it is healthy - a minute up, the brain deciding with trained networks and no
+  faults, the gyro alive, the diary reaching the PC - and goes back to the old one if it is not within 3 minutes
+  (until 2026-10-28 after any minute, whatever ran).
 - **The night sleep** (`tools/v4/sleep_v4.py`, timer `sleep-v4` at 03:30, the owner sleeps and nothing reboots):
   1. *replay* - every decision of the last 3 days is run again through the GRU and the emotion head from the diary
      (the analyzer's numbers + the network's own-state inputs); the replayed emotions must match the logged ones;
   2. *reward* (`tools/v4/reward_v4.py`) - how people answered: a stroke on the head +1, a gentle tap on the face +0.5,
-     being talked to +0.5 (speech of >= 1 s that is not the tail of the robot's own voice), someone coming close
-     +0.3; shaken -1, tilted -0.5, poked hard -0.5, calling or gesturing at someone who then leaves it alone for a
-     minute -0.3; night ticks count nothing; returns discounted over ~5 s (gamma 0.98 per decision);
+     being talked to +0.5 (speech of >= 1 s that is not the tail of the robot's own voice; since 2026-10-28 a reply
+     1 s after a call counts too where the firmware already holds its own voice out of `raw_speech` - from 10-27
+     morning; the 5 s mask threw the quick replies away), someone coming close +0.3; shaken -1, tilted -0.5, poked
+     hard -0.5, calling or gesturing at someone who then leaves it alone for a minute -0.3 (only when that minute was
+     seen: the same boot, no gap in the diary); night ticks count nothing; returns discounted over ~5 s (gamma 0.98
+     per decision);
   3. *heads* - the action heads move towards the choices that got more reward than expected and away from those
      that got less: the advantage over a ridge value baseline, centred, in units of its spread, clipped at ±3; the
      target of a decision is the heads' own distribution with the odds of the choice made times exp(A / 2), so a
@@ -334,7 +349,7 @@ Learning happens on the PC at night; the robot only receives the result, without
      owner's innate rules): in the alarm zone > 5 % of the day with nothing bad after -> +0.01 (habituation);
      alarm followed by rough handling in > 30 % of >= 5 cases -> -0.01 (sensitization); alarm < 1 % -> back towards 0
      by 0.005;
-  5. *gates* - at least 1 h of daytime life and 5 reward events; replay error <= 0.05; KL <= 0.05 and <= 15 % of the
+  5. *gates* - at least 1 h of daytime life and 5 reward events; a boot is learned from only if <= 1 % of its decisions replay with an emotion off by > 0.05 and the 99th percentile is <= 0.05 (the median until 2026-10-28: half the decisions could be wrong); KL <= 0.05 and <= 15 % of the
      choices changed (a step beyond that is taken in part: half, a quarter ... down to a tenth of the way); all behaviour tests pass in the simulator with the new blob. Otherwise the robot keeps what it
      has;
   6. *send* - `ota.py learned`, a minute on trial on the robot. History: `data/learned/v<version>.bin` (the version

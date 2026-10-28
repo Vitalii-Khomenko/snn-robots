@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <functional>
 #include <driver/i2c_master.h>
+#include <esp_timer.h>
 
 // LTR-553ALS-WA proximity + ambient-light sensor, next to the camera.
 // Listed in the CoreS3 hardware spec but *not* exposed by the BSP at all -
@@ -22,8 +23,10 @@ public:
     uint16_t lastRaw() const { return last_raw_; }
     // Brain v4: the proximity reading over its slow quiet baseline (counts), and whether the sensor answers at all.
     float nearOverBaseline() const { return baseline_valid_ && last_raw_ > baseline_ ? last_raw_ - baseline_ : 0.0f; }
-    bool proximityOk() const { return baseline_valid_; }
-    bool lightOk() const { return light_baseline_ >= 0.0f; }
+    // ... and only while its readings are fresh (2026-10-28, an audit: after an I2C failure the last values and the ok
+    // flags stayed - a frozen sensor read as someone standing near, or as a lit room)
+    bool proximityOk() const { return baseline_valid_ && fresh(ps_ok_ms_); }
+    bool lightOk() const { return light_baseline_ >= 0.0f && fresh(als_ok_ms_); }
     uint16_t alsRaw() const { return als_raw_; }
     uint16_t alsIrRaw() const { return als_ch1_; }
     uint8_t psHigh() const { return ps_status_; }  // PS_DATA_1 as read (bit 7: saturated)
@@ -51,6 +54,12 @@ public:
     float relativeLightDelta() const { return light_level01_ - light_baseline_; }
 
 private:
+    static bool fresh(uint32_t ok_ms)
+    {
+        return ok_ms != 0 && static_cast<uint32_t>(esp_timer_get_time() / 1000) - ok_ms < kFreshMs;
+    }
+    static constexpr uint32_t kFreshMs = 2000;
+    uint32_t ps_ok_ms_ = 0, als_ok_ms_ = 0;  // the last successful reads
     esp_err_t writeReg(uint8_t reg, uint8_t value);
     esp_err_t readReg(uint8_t reg, uint8_t* value);
     bool readPsData(uint16_t* out);

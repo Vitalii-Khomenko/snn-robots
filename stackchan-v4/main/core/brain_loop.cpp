@@ -184,7 +184,7 @@ void BrainLoop::updateChannels(uint32_t now, float sharpEv, const Env& env)
     // gravity direction: pitch / (pi/2), roll / pi
     r.imuPitch = std::atan2(-ax, std::sqrt(ay * ay + az * az)) / 1.57079633f;
     r.imuRoll = std::atan2(ay, az) / 3.14159265f;
-    r.imuOk = accel_n_ >= accel_.size() && !imu_masked;
+    r.imuOk = accel_n_ >= accel_.size() && !imu_masked && e_.imu.fresh();
     r.nearRaw = e_.presence.nearOverBaseline();
     r.nearOk = e_.presence.proximityOk();
     r.als = e_.presence.alsRaw();
@@ -226,9 +226,13 @@ void BrainLoop::tick(uint32_t now, const Env& env)
     brain_.setContingency(contingency_out_.data());  // the last tick's (it is computed after the executor)
     const bool decided = brain_.tick(channels_);
     decided_tick_ = decided;
-    // the owner's sleep (21:45-06:00): the executor keeps silent and dim; before the clock is synced it might be night
-    // too (a reboot at 3 am): quiet for the first 2 minutes, then a clock that never comes means daytime rules
-    night_ = env.timeSynced ? (env.hour >= 21.75f || env.hour < 6.0f) : now < 120000;
+    // the owner's sleep (21:45-06:00): the executor keeps silent and dim. Before the clock is synced it might be night
+    // too (a reboot at 3 am without Wi-Fi): quiet for the first 2 minutes, and after them while the room is dark - the
+    // owner's night is dark (the light channel < 0.02 in every night hour, 2026-10-27), a lit room is day. (Until
+    // 2026-10-28, an audit: daytime rules after 2 minutes whatever the hour.)
+    if (channels_[CH_LIGHT] >= kLitRoom) lit_ms_ = now ? now : 1;
+    const bool dark = lit_ms_ == 0 || now - lit_ms_ > 60000;
+    night_ = env.timeSynced ? (env.hour >= 21.75f || env.hour < 6.0f) : (now < 120000 || dark);
     const uint32_t calls = exec_.calls(), gestures = exec_.gestures();
     if (brain_.trained()) {
         exec_.apply(brain_, decided, night_, now, done_);

@@ -59,6 +59,8 @@ private:
 
     uint32_t logged_tick_ = 0;
     bool firmware_confirmed_ = false;
+    uint32_t confirm_log_ms_ = 0;
+    static constexpr uint32_t kConfirmGiveUpMs = 180000;
     float last_travel_deg_ = 0.0f;
     uint32_t volume_save_ms_ = 0;  // the speaker volume goes into NVS at this time (0 = nothing to save)
     // Servo watchdog (the bus is write-only on this board: the gyro is the only way to know the head really moves).
