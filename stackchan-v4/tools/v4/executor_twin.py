@@ -12,7 +12,7 @@ The gates mirror main/v4/v4_executor.cpp and main/voice/babble_voice.cpp, at the
   voice   a call starts when say rises above SAY_ON with the voice armed (say fell below SAY_REARM since the last call),
           the phrase over and REFRACTORY_S since the last; or at once in a reaction (a touch, a surprise, a threat:
           REACTION_S). The budget: TOKENS_MAX tokens, one per TOKEN_S; a call costs one and needs IDLE_TOKENS (a
-          reaction: REACTION_TOKENS). Silent at night.
+          reaction, or within TURN_S after an answer rose above TURN_ON: REACTION_TOKENS). Silent at night.
   head    a mode counts once wished at two decisions in a row; a nod or shake starts on the mode's rising edge at most
           every GESTURE_GAP_S, a flinch at most every FLINCH_GAP_S (and 1.5 s after any gesture); none at night.
   face    a new face is shown once FACE_HOLD_S has passed since the last change.
@@ -29,10 +29,12 @@ HEAD_IDX = [O["head_" + m] for m in HEAD_MODES]
 NOD, SHAKE, FLINCH = (HEAD_MODES.index(m) for m in ("nod", "shake", "flinch"))
 
 SAY_ON, SAY_REARM = 0.55, 0.3
-TOKENS_START, TOKENS_MAX, TOKEN_S, IDLE_TOKENS, REACTION_TOKENS = 3.0, 5.0, 10.0, 2.5, 1.0
+# V4Executor::kTokensMax, kTokenMs, kIdleTokens, kReactionTokens (5, 10 s, 2.5, 1 until 2026-10-28: ~6 calls a minute)
+TOKENS_START, TOKENS_MAX, TOKEN_S, IDLE_TOKENS, REACTION_TOKENS = 3.0, 6.0, 5.0, 1.0, 0.5
 REFRACTORY_S, REACTION_MIN_S, REACTION_S = 0.7, 0.15, 0.5
 GESTURE_GAP_S, FLINCH_GAP_S, FLINCH_AFTER_S = 4.0, 15.0, 1.5
 FACE_HOLD_S = 1.5
+TURN_ON, TURN_S = 0.3, 4.0  # V4Executor::kTurnOn, kTurnMs
 
 
 def phrase_s(length):
@@ -49,9 +51,11 @@ class ExecTwin:
         self.wish_prev, self.mode, self.prev_mode = 0, 0, 0
         self.gesture_left, self.since_gesture, self.since_flinch = 0.0, 99.0, 99.0
         self.shown, self.face_age = 0, 99.0
+        self.prev_answered, self.turn_t = 0.0, 0.0
 
-    def step(self, y, s, night):
-        """One decision: the wishes y (NN_OUT), the analyzer's numbers s, the night -> what was done:
+    def step(self, y, s, night, answered=0.0):
+        """One decision: the wishes y (NN_OUT), the analyzer's numbers s, the night, the detector's answered pulse -> what
+        was done:
         {"said": a call started, "gesture": a nod / shake / flinch started, "emotion": the face shown (index)}."""
         # voice (the reaction window and the budget as V4Executor::applyVoice; arming as BabbleVoice::step)
         touch = max(s[S["sal_touch_head"]], s[S["sal_touch_screen"]])
@@ -70,7 +74,9 @@ class ExecTwin:
         if not reaction:
             self.reaction_open = False
         self.prev_reaction = reaction
-        allow = not night and self.tokens >= (REACTION_TOKENS if reaction else IDLE_TOKENS)
+        self.turn_t = TURN_S if (answered > TURN_ON and self.prev_answered <= TURN_ON) else max(0.0, self.turn_t - DT)
+        self.prev_answered = answered
+        allow = not night and self.tokens >= (REACTION_TOKENS if reaction or self.turn_t > 0 else IDLE_TOKENS)
         if self.reaction_open:
             may = say > SAY_ON and allow and self.since_call >= REACTION_MIN_S
         else:

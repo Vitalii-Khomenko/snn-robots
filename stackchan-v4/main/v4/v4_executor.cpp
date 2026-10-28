@@ -24,6 +24,7 @@ int argmaxRange(const NnV4::Out& o, int at, int count)
 void V4Executor::apply(const BrainV4& brain, bool decided, bool night, uint32_t now, BrainV4::Executed& done)
 {
     held_ = 0;
+    night_ = night;
     if (!brain.nnValid()) return;
     // the Muse's ideas as they come (the log line only: the network decides what to make of them)
     static constexpr const char* kIdeaNames[5] = {"play", "show", "still", "social", "surprise"};
@@ -75,7 +76,7 @@ void V4Executor::applyVoice(const BrainV4& brain, bool night, uint32_t now, Brai
     const auto& o = brain.nn();
     const auto& s = brain.snn();
     if (last_token_ms_ == 0) last_token_ms_ = now;
-    tokens_ = std::min(5.0f, tokens_ + static_cast<float>(now - last_token_ms_) / 10000.0f);
+    tokens_ = std::min(kTokensMax, tokens_ + static_cast<float>(now - last_token_ms_) / kTokenMs);
     last_token_ms_ = now;
     // a reaction (a touch, a fright) may spend the last tokens and cut idle babble short; it stays a reaction 0.5 s
     const float touch = std::max(s[SO_SAL_TOUCH_HEAD], s[SO_SAL_TOUCH_SCREEN]);
@@ -98,7 +99,11 @@ void V4Executor::applyVoice(const BrainV4& brain, bool night, uint32_t now, Brai
     a.play = o[NO_STYLE_PLAY];
     a.grumble = o[NO_STYLE_GRUMBLE];
     // Night: silent, whatever the network wants (the owner sleeps next to the robot) - a safety rule, not a choice.
-    const bool budget = tokens_ >= (reaction ? 1.0f : 2.5f);
+    const float answered = brain.contingency()[CT_ANSWERED];
+    if (answered > kTurnOn && prev_answered_ <= kTurnOn) turn_until_ms_ = (now + kTurnMs) | 1u;
+    prev_answered_ = answered;
+    const bool turn = turn_until_ms_ != 0 && msWithin(now, turn_until_ms_, kTurnMs);
+    const bool budget = tokens_ >= (reaction || turn ? kReactionTokens : kIdleTokens);
     const bool allowed = !night && budget;
     if (vocal_.step(a, allowed, static_cast<int>(shown_), reaction)) {
         tokens_ -= 1.0f;
@@ -120,6 +125,29 @@ void V4Executor::applyLeds(const BrainV4& brain, bool night)
     const int p = argmaxRange(o, kNoPatternAt, kNoPatternCount);
     const float bright = night ? std::min(o[NO_LED_BRIGHT], 0.06f) : o[NO_LED_BRIGHT];
     led_.setPattern(kLedRgb[c][0], kLedRgb[c][1], kLedRgb[c][2], p, bright, o[NO_LED_RATE]);
+}
+
+bool V4Executor::remember(const MemoryV4::Episode& e, uint32_t now)
+{
+    const bool watching = watch_until_ms_ != 0 && !msReached(now, watch_until_ms_);
+    if (night_ || gesture_ != Gesture::None || reaction_ticks_ > 0 || watching || glance_until_ms_ != 0 ||
+        memory_until_ms_ != 0)
+        return false;
+    const float yaw = std::clamp(e.yawDeg, -kOrientLimitDeg, kOrientLimitDeg);
+    const float pitch = BrainV4::kGazePitchCenterDeg + kMemoryPitchUpDeg;
+    const float travel_s = 1.5708f * std::hypot(yaw - sent_yaw_, pitch - sent_pitch_) / (0.5f * kMemorySpeedDegS);
+    // the eyes and the bubble to the side the head turns, the way the eyes follow attention (setGaze: + right)
+    const int side = yaw >= sent_yaw_ ? 1 : -1;
+    command(yaw, pitch, kMemorySpeedDegS, now, true);
+    memory_until_ms_ = (now + static_cast<uint32_t>(travel_s * 1000.0f) + kMemoryHoldMs) | 1u;
+    const bool good = e.valence > 0.0f;
+    face_.showMemory(good, side, kMemoryFaceMs);
+    const int date = static_cast<int>(e.date);
+    const int minute = static_cast<int>(e.minute);
+    ESP_LOGI(kTag, "memory: a %s moment (%s, %.2f) of %02d-%02d %02d:%02d - looks to %.0f deg", good ? "good" : "bad",
+             MemoryV4::kindName(static_cast<int>(e.kind)), static_cast<double>(e.strength), (date / 100) % 100,
+             date % 100, minute / 60, minute % 60, static_cast<double>(yaw));
+    return true;
 }
 
 // The head's own chance (glances, how long a place is kept): a generator of its own, seeded by the moment it is
@@ -246,6 +274,16 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
             }
         }
         return;
+    }
+
+    // ---- remembering: the head looks for a moment to where the remembered moment was (remember())
+    if (memory_until_ms_ != 0) {
+        if (!night && !msReached(now, memory_until_ms_)) {
+            held_ |= kGazeOwn;
+            return;
+        }
+        memory_until_ms_ = 0;
+        wander_hold_ms_ = 0;  // back to the network's gaze at once
     }
 
     // ---- where to look

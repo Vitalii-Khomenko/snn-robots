@@ -13,9 +13,9 @@ constexpr uint32_t kAroundMs = 120000;   // somebody is around: a touch, someone
 constexpr uint32_t kActQuietMs = 1000;   // a call / a gesture after this quiet is a new act
 constexpr float kTauNowS = 300.0f, kTauBgS = 1800.0f, kTauPulseS = 3.0f, kTauIgnoredS = 300.0f;
 constexpr float kPrior = 3.0f;           // acts' worth of "chance" before a kind of act means anything
-// the background rate's prior, seconds with no answer (contingency.py BG_PRIOR_S: 10 tells pets at random from answers
-// better, 2026-10-28; 60 until a network trained with it goes with it)
-constexpr float kBgPriorS = 60.0f;
+// the background rate's prior, seconds with no answer (contingency.py BG_PRIOR_S; 60 until 2026-10-28: with acts every
+// few seconds it outweighed the few moments without one, and pets at random moments read as answers)
+constexpr float kBgPriorS = 10.0f;
 constexpr float kIgnoreStep = 0.1f;  // per unanswered call or gesture (a face is not a bid: nobody answers every face)
 constexpr float kWindowS = (kWinHiMs - kWinLoMs) / 1000.0f;
 

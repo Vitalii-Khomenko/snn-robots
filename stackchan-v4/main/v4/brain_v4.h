@@ -38,6 +38,7 @@ public:
     const MuseV4::Out& ideas() const { return muse_out_; }
     // the sense of "I did that" (contingency_v4.h, CT order): the main network sees it from the next decision on
     void setContingency(const float* ct) { std::copy(ct, ct + v4::CT_COUNT, ct_.begin()); }
+    const std::array<float, v4::CT_COUNT>& contingency() const { return ct_; }
     NnV4& network() { return nn_; }
     // the own-state inputs (v4_spec.h Prev) of the main network's last decision: the diary keeps them (stage 6)
     const std::array<float, v4::PV_COUNT>& lastPrev() const { return prev_; }

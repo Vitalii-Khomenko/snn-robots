@@ -27,6 +27,9 @@ public:
     // picture went black while the robot kept living, 2026-10-11): software reset, init, backlight, full redraw.
     void recoverPanel(bool reset = true);
     void setEmotion(Emotion e);
+    // Remembering a moment (docs/EPISODES.md): the memory face for `ms` over the emotion (side -1 left, +1 right).
+    void showMemory(bool good, int side, uint32_t ms);
+    bool memoryShown() const;
     // Eye direction, -1..1 (right, up positive).
     void setGaze(float x, float y);
     // A blink on request (the policy's blink output); the idle blink timer keeps running.
@@ -74,6 +77,9 @@ private:
     lv_obj_t* pixel_face_ = nullptr;
     Emotion emotion_ = Emotion::Normal;
     Emotion from_emotion_ = Emotion::Normal;            // pixel face: the dissolve's start
+    uint32_t memory_until_ms_ = 0;                       // remembering (showMemory) until
+    bool memory_good_ = true, memory_was_ = false;
+    int memory_side_ = 1;
     float morph_t_ = 1.0f;                               // 0..1 through the change of emotion
     bool full_redraw_ = true;                            // pixel face: the whole screen next time (boot, panel recovery)
     static const face::PixelGrid& shownGrid();

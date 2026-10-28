@@ -1,4 +1,31 @@
-# Episodic memory: a story of its own (concept, 2026-10-28)
+# Episodic memory: a story of its own (concept, 2026-10-28; first steps built the same evening)
+
+**The owner's answers (2026-10-28 evening):** yes to a short glance and a special face when the robot remembers; the
+bad moments are remembered too.
+
+**Built** (steps 1 and 4 below, ARCHITECTURE sections 4 and 7):
+- **The night picks the moments.** `episodes.table`: the 16 strongest good moments of the last 3 days (pets 1.0,
+  taps and talk 0.6, someone near 0.4) and the 8 strongest bad ones (a shake 1.0, a poke 0.7, a tilt 0.6, a big fright
+  0.6).
+  - Strength: the kind's weight x (0.6 + 0.4 x the analyzer's arousal then: McGaugh) x 0.8 per day of age.
+  - Each moment keeps its time of day, where the head pointed, someone around or not, the room lit or dark.
+  - They go to the robot in the learned blob (`mem.episodes`, 24 x 8 floats) and the night's report lists the
+    strongest.
+- **The robot remembers** (`main/v4/memory_v4.*`, `V4Executor::remember`). By day, when the present is like a
+  remembered moment - the same time of day within 20 minutes, the room lit or dark as then, someone around or not as
+  then - the head turns for a moment to where it happened, a little up, holds 2.5 s and comes back. The face shows
+  the remembering face for 3.5 s:
+  - good: amber, dreamy half-closed eyes, a soft smile, a heart in a thought bubble;
+  - bad: violet, a worried brow, a crooked mouth, a little storm in the bubble.
+
+  Each moment is remembered at most once a day, one every 10 minutes at most. A reaction, a gesture, something new
+  in view or a glance come first. The log: `memory: a good moment (pet, 0.90) of 10-27 14:03 - looks to 45 deg`.
+- **Tested** (`memory_recall`): two moments in the blob, a pet at 14:03 to the right and a shake at 14:25 to the
+  left. The pet is remembered 4 s after the clock syncs, the shake 10 minutes later; each time the head looks
+  within 15° of where it happened.
+- **The first night's table** (10-26 .. 28): pets in the early morning (06:11-07:08) and the evening (17:10-21:06),
+  shakes at 16:25-21:06, frights.
+- **Not yet:** the expectation as an input of the main network (step 2), prioritized replay (step 3).
 
 The third stage of the owner's road (2026-10-27: contingency, then the body, then episodic memory) and the audit's
 A15: *"after a reboot the robot keeps nothing of its recent history; there is no episodic memory and no model of a

@@ -74,7 +74,11 @@ def id_of(arrays):
     return None if a is None or len(a) != 2 else (int(a[0]) << 16) | int(a[1])
 
 
-def pack(version, heads=None, shift=None, muse_bias=None, nn=None):
+MEM_ROWS, MEM_FIELDS = 24, 8  # main/v4/memory_v4.h kMax, kFields: minute, valence, strength, yaw, around, lit, kind, date
+
+
+def pack(version, heads=None, shift=None, muse_bias=None, nn=None, episodes=None):
+    """episodes: the remembered moments (episodes.table: up to MEM_ROWS rows of MEM_FIELDS; docs/EPISODES.md)."""
     arrays = []
     if heads is not None:
         assert nn is not None, "the heads need the fingerprint of their network (nn_id)"
@@ -88,6 +92,11 @@ def pack(version, heads=None, shift=None, muse_bias=None, nn=None):
         b = np.clip(np.asarray(muse_bias, np.float32), -MUSE_BIAS_MAX, MUSE_BIAS_MAX)
         assert b.shape == (8,)
         arrays.append(("muse.bias", b))
+    if episodes is not None:
+        e = np.zeros((MEM_ROWS, MEM_FIELDS), np.float32)
+        rows = np.asarray(episodes, np.float32).reshape(-1, MEM_FIELDS)[:MEM_ROWS]
+        e[:len(rows)] = rows
+        arrays.append(("mem.episodes", e.ravel()))
     offset = HEADER.size + ENTRY.size * len(arrays)
     table, data = b"", b""
     for name, a in arrays:

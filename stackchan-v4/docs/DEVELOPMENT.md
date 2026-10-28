@@ -70,6 +70,7 @@ tools/v4/py behavior_test_v4.py                      # 22 cases in parallel, a f
 | stale_imu | held tilted sideways, then the IMU stops answering (`fault imu on`) | the tilt is felt (>= 0.1), then fades (<= 0.05): a frozen reading is not fresh |
 | stale_near | a hand at the face, then the light / proximity chip stops answering (`fault light on`) | felt near (>= 0.1), then nobody (<= 0.05) |
 | play_session_wrap | `play_session` with the millisecond clock wrapping at minute 5 (`--ms-offset 300`) | faces still vary (>= 5), it talks after the wrap |
+| memory_recall | a blob with two remembered moments (a pet at 14:03 to the right, a shake at 14:25 to the left); someone near who talks | each remembered once, the second >= 10 minutes later, the head looking within 15° of where it happened |
 | servo_hangs | 20 minutes alone by day; 8 % of the servo rail's switch-ons hang (`fault servo 0.08`, the robot's rate) | the watchdog power-cycles the rail (6 times), the head keeps looking round (3.9 moves a minute; 3.8 without hangs), the voice as without hangs (118 calls) |
 | servo_blocked | the head blocked for 10 minutes (`fault servo 1`), then free | the power cycles back off (8 in 10 minutes instead of ~50), and the head moves again (921° in minutes 13-20) |
 

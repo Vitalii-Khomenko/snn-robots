@@ -1,0 +1,11 @@
+# Remembering (docs/EPISODES.md): the blob (behavior_test_v4.MEMORY_ROWS) holds a pet at 14:03 (to the right, 45 deg)
+# and being shaken at 14:25 (to the left, -50 deg), both with someone around in a lit room. Someone sits near and talks
+# now and then; the robot should remember the pet soon after its clock syncs and the shaking ten minutes later, each
+# time with a glance to where it happened and the remembering face.
+duration 16:00
+clock 14:00
+seed 7
+room_light on
+owner home
+at 0:05 person owner enter 0 1.0
+every 0:30 from 0:20 until 15:50 talk 0 1.5 0.6

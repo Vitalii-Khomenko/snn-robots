@@ -10,7 +10,7 @@ g++ -std=c++17 -O2 -Wall -Wextra -o "$here/face_preview" "$here/face_preview.cpp
 names="$("$here/face_preview" "$here/faces.ppm" "${1:-pixel}")"
 magick "$here/faces.ppm" "$root/docs/faces.png"
 echo "wrote $root/docs/faces.png"
-# the named sheet: cut the 21 screens apart, label them, put them together again at 2x
+# the named sheet: cut the screens apart (21 emotions + 2 remembering), label them, put them together again at 2x
 tiles="$here/tiles"
 rm -rf "$tiles" && mkdir -p "$tiles"
 i=0

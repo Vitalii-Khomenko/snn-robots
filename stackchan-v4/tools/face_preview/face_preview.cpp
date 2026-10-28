@@ -109,11 +109,13 @@ int main(int argc, char** argv)
     const char* out = argc > 1 ? argv[1] : "faces.ppm";
     // argv[2]: "vector" draws the smooth vector faces instead of the pixel ones
     const bool pixel = face::kPixelFace && !(argc > 2 && std::strcmp(argv[2], "vector") == 0);
-    const int cols = 7, rows = (kEmotionCount + cols - 1) / cols;
+    // the 21 emotions, then (pixel face) the two remembering faces (docs/EPISODES.md)
+    const int n = kEmotionCount + (pixel ? 2 : 0);
+    const int cols = 7, rows = (n + cols - 1) / cols;
     const int W = face::kScreenW, H = face::kScreenH, gap = 6;
     const int OW = cols * (W + gap), OH = rows * (H + gap);
     std::vector<uint8_t> img(static_cast<size_t>(OW * OH * 3), 40);
-    for (int e = 0; e < kEmotionCount; ++e) {
+    for (int e = 0; e < n; ++e) {
         Canvas c(W, H);
         c.clear(face::kBackground);
         face::Anim a;
@@ -122,7 +124,8 @@ int main(int argc, char** argv)
         if (pixel) {  // as FaceEngine draws it
             a.pulse = 0.8f;
             static face::PixelGrid grid;
-            face::renderPixelFace(static_cast<Emotion>(e), a, grid);
+            if (e < kEmotionCount) face::renderPixelFace(static_cast<Emotion>(e), a, grid);
+            else face::renderMemoryFace(e == kEmotionCount, 1, a, grid);
             grid.flush(c);
         } else {
             face::renderFace(face::shapeFor(static_cast<Emotion>(e)), a, c);
@@ -143,6 +146,7 @@ int main(int argc, char** argv)
     std::fwrite(img.data(), 1, img.size(), f);
     std::fclose(f);
     for (int e = 0; e < kEmotionCount; ++e) std::printf("%d:%s ", e, emotionName(static_cast<Emotion>(e)));
+    if (pixel) std::printf("%d:RememberGood %d:RememberBad ", kEmotionCount, kEmotionCount + 1);
     std::printf("\n");
     return 0;
 }

@@ -13,7 +13,7 @@ import sys
 import numpy as np
 
 import diary as D
-from reward_v4 import REWARDS, reward
+from reward_v4 import REWARDS, events, reward
 
 DT = 0.05
 GOOD = {"pet", "tap", "talk", "near"}
@@ -54,6 +54,69 @@ def moments(day):
     return out, ctx
 
 
+# ---- the remembered moments (step 2; main/v4/memory_v4.h): what the night gives the robot to remember
+KINDS = ["pet", "tap", "talk", "near", "shake", "tilt", "poke", "fright"]  # memory_v4.cpp kindName
+GOOD_W = {"pet": 1.0, "tap": 0.6, "talk": 0.6, "near": 0.4}
+BAD_W = {"shake": 1.0, "poke": 0.7, "tilt": 0.6, "fright": 0.6}
+N_GOOD, N_BAD = 16, 8   # learned.MEM_ROWS = 24
+OLDER = 0.8             # a day older weighs this much less
+SAME_MIN = 10.0         # moments of one kind closer than this are one moment
+
+
+def vivid(day, days_ago=0):
+    """A day's vivid moments as memory rows: [minute, valence, strength, yaw, around, lit, kind, date]. Strength: the
+    kind's weight x (0.6 + 0.4 x the analyzer's arousal then: emotion picks what is kept, McGaugh) x OLDER^days_ago;
+    around and lit as the firmware sees them (BrainLoop: somebody heard, moving or near in the last 2 minutes; the
+    light channel >= 0.04)."""
+    t, _ = D.load(day)
+    if t is None:
+        return []
+    v = t["v"]
+    c = lambda n: np.nan_to_num(v[:, D.col(n)])
+    ev, valid = events(t)
+    thr = c("snn_threat") > 0.6
+    ev["fright"] = thr & ~np.r_[False, thr[:-1]]
+    speech = np.where(np.isfinite(v[:, D.col("ear_speech")]), c("ear_speech"), c("raw_speech"))
+    somebody = (speech > 0.4) | (c("ch_motion") > 0.1) | (c("ch_near") > 0.3)
+    around = np.convolve(somebody.astype(np.int32), np.ones(int(120 / DT), np.int32))[:len(v)] > 0
+    minute, yaw = c("raw_hour") * 60.0, c("head_yaw_deg")
+    lit, arousal = c("ch_light") >= 0.04, np.clip(c("snn_arousal"), 0, 1)
+    date = int(day[2:4] + day[5:7] + day[8:10])
+    rows = []
+    for kind, w in list(GOOD_W.items()) + list(BAD_W.items()):
+        good = kind in GOOD_W
+        cand = []
+        for i in np.flatnonzero(ev[kind] & valid & (minute > 0)):
+            strength = w * (0.6 + 0.4 * arousal[i]) * OLDER ** days_ago
+            cand.append([minute[i], 1.0 if good else -1.0, strength, yaw[i], float(around[i]), float(lit[i]),
+                         float(KINDS.index(kind)), float(date)])
+        cand.sort(key=lambda r: -r[2])
+        kept = []
+        for r in cand:
+            if all(abs(r[0] - k[0]) >= SAME_MIN for k in kept):
+                kept.append(r)
+        rows += kept
+    return rows
+
+
+def table(days):
+    """The moments to remember from these days (the last is the newest): the N_GOOD strongest good ones and the N_BAD
+    strongest bad ones."""
+    rows = []
+    for k, day in enumerate(days):
+        rows += vivid(day, len(days) - 1 - k)
+    good = sorted([r for r in rows if r[1] > 0], key=lambda r: -r[2])[:N_GOOD]
+    bad = sorted([r for r in rows if r[1] < 0], key=lambda r: -r[2])[:N_BAD]
+    return np.array(good + bad, np.float32).reshape(-1, 8)
+
+
+def describe(row):
+    m, d = int(row[0]), int(row[7])
+    return (f"{(d // 100) % 100:02d}-{d % 100:02d} {m // 60:02d}:{m % 60:02d} {KINDS[int(row[6])]} "
+            f"({'good' if row[1] > 0 else 'bad'} {row[2]:.2f}, yaw {row[3]:.0f}, {'someone around' if row[4] else 'alone'}, "
+            f"{'lit' if row[5] else 'dark'})")
+
+
 def rates(ms, ctx, good):
     """Per context (hour, lit, around): good (or bad) moments per hour of that context."""
     cnt = {}
@@ -64,6 +127,10 @@ def rates(ms, ctx, good):
 
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--table"]:
+        for r in table(sys.argv[2:]):
+            print(describe(r))
+        sys.exit(0)
     days = sys.argv[1:]
     per = {}
     for day in days:

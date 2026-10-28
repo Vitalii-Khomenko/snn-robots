@@ -12,6 +12,8 @@ sleeps, and gets the result without a reboot.
   4. zones    habituation: a channel that sits in its alarm zone a lot without anything bad following moves its
               alarm border up (0.01 a night); one whose alarm is followed by rough handling moves it down; one that
               is rarely alarming drifts back; |shift| <= 0.15 (learned.py, main/v4/zone_shift.h)
+  4c. memory  the most vivid moments of these days, good and bad, with their context (episodes.table): by day the
+              robot remembers one when the present is like it (main/v4/memory_v4.h, docs/EPISODES.md)
   4b. muse    the Muse's ideas (muse.py, docs/CREATIVITY.md): an idea after which people answered more than usual
               (reward over 20 s), or after which the world turned out other than the robot expected (curiosity: the
               error of a 1 s forward model of the channels over 5 s), comes a little more often - its bias up 0.05 at
@@ -42,6 +44,7 @@ import torch
 import torch.nn.functional as F
 
 import diary as D
+import episodes as EP
 import learned as LR
 import muse as MU
 from nn_v4 import EMO_IDX, GROUPS, NnV4
@@ -603,6 +606,11 @@ def main():
     if not np.allclose(new_mbias, mbias):
         changed = True
         parts.append(f"Muse ({int((~np.isclose(new_mbias, mbias)).sum())} idea bias(es))")
+    mem = EP.table(days)
+    if len(mem):
+        changed = True
+        parts.append(f"memories ({int((mem[:, 1] > 0).sum())} good, {int((mem[:, 1] < 0).sum())} bad)")
+        say(lines, "  memories, the strongest: " + "; ".join(EP.describe(r) for r in mem[:3]))
     if not changed:
         return finish(lines, started, "nothing new: the robot keeps what it has")
     say(lines, "  new: " + ", ".join(parts) + ("" if heads_new is not None else "; the heads as they were"))
@@ -613,7 +621,8 @@ def main():
     store = REPORTS if a.dry_run else STORE
     os.makedirs(store, exist_ok=True)
     blob_path = os.path.join(store, f"v{version}{'_dry' if a.dry_run else ''}.bin")
-    open(blob_path, "wb").write(LR.pack(version, heads_new, new_shift, new_mbias, nn=LR.nn_id(m.state_dict())))
+    open(blob_path, "wb").write(LR.pack(version, heads_new, new_shift, new_mbias, nn=LR.nn_id(m.state_dict()),
+                                        episodes=mem if len(mem) else None))
     say(lines, f"  candidate {os.path.relpath(blob_path, ROOT)} (version {version})")
     if not behaviour_gate(blob_path, lines):
         return finish(lines, started, "gate failed: the robot keeps what it has")

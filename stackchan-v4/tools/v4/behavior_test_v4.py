@@ -22,6 +22,37 @@ LEARNED = None  # --learned FILE: run every scenario with this learned blob (the
 # cases that run another scenario with extra simulator options (2026-10-28, an audit A21): the firmware's millisecond
 # clock wraps (49.7 days of uptime) 5 minutes into a play session
 RUN_AS = {"play_session_wrap": ("play_session", ["--ms-offset", "300"])}
+# the memory test (docs/EPISODES.md): two remembered moments of its own - a pet at 14:03 to the right, being shaken at
+# 14:25 to the left, someone around, the room lit - in the blob being judged (or the innate one)
+MEMORY_ROWS = [[14 * 60 + 3, 1, 0.9, 45, 1, 1, 0, 261027], [14 * 60 + 25, -1, 0.8, -50, 1, 1, 4, 261027]]
+
+
+def memory_blob():
+    import learned as LR
+    heads = shift = mbias = nn = None
+    if LEARNED:
+        _, arrays = LR.unpack(open(LEARNED, "rb").read())
+        if "nn.act1_w" in arrays:
+            heads, nn = {k: arrays["nn." + k] for k in LR.HEADS}, LR.id_of(arrays)
+        shift, mbias = arrays.get("zones.shift"), arrays.get("muse.bias")
+    path = os.path.join(ROOT, "simulator", "out", "memory_test" + ("_learned" if LEARNED else "") + ".bin")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, "wb").write(LR.pack(1, heads, shift, mbias, nn=nn, episodes=MEMORY_ROWS))
+    return path
+
+
+def memory_metrics(ev, out):
+    """The memory test: which moments were remembered, when, and did the head look to where they were."""
+    import csv
+    rec = [(t, "good" in x) for t, tag, x, _ in ev if tag == "v4" and x.startswith("memory:")]
+    rows = [(float(r["t_s"]), float(r["head_yaw"])) for r in csv.DictReader(open(os.path.join(out, "trace.csv")))]
+    looked = []
+    for t, good in rec:
+        want = MEMORY_ROWS[0][3] if good else MEMORY_ROWS[1][3]
+        # a turn of up to ~100 deg, eased at the glances' speed, after the servos' 1 s start: there within 8 s
+        looked.append(any(t <= ts <= t + 8.0 and abs(y - want) < 15.0 for ts, y in rows))
+    return {"memories_good": sum(1 for _, g in rec if g), "memories_bad": sum(1 for _, g in rec if not g),
+            "memory_looked": sum(looked) / len(looked) if looked else None}
 # what the simulator's trace (10 Hz) shows of a channel in a window: (column, from s, to s, max | mean)
 TRACE = {"stale_imu": {"tilt_held": ("tilt", 65, 80, max), "tilt_after": ("tilt", 100, 360, "mean")},
          "stale_near": {"near_held": ("near", 60, 70, max), "near_after": ("near", 80, 360, "mean")}}
@@ -43,7 +74,11 @@ def run(name, minutes):
     out = os.path.join(ROOT, "simulator", "out", "v4_" + name + ("_learned" if LEARNED else ""))
     scn, extra = RUN_AS.get(name, (name, []))
     cmd = [SIM, os.path.join(SCN, scn + ".scn"), "--out", out, "--minutes", str(minutes)] + extra
-    subprocess.run(cmd + (["--learned", LEARNED] if LEARNED else []), check=True, stdout=subprocess.DEVNULL)
+    if name == "memory_recall":
+        cmd += ["--learned", memory_blob()]
+    elif LEARNED:
+        cmd += ["--learned", LEARNED]
+    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
     ev = []
     for line in open(os.path.join(out, "log.txt"), errors="ignore"):
         m = LINE.match(line.strip())
@@ -121,8 +156,11 @@ def metrics(ev, minutes, moves=0):
     # isolated touches (5 s after the one before): in a burst of taps every 2 s the robot cannot answer each one (a call
     # in 10 s, a nod in 4 s: the voice budget and the servos' power peaks) - it gets cross instead (the pokes test)
     isolated = [t for i, t in enumerate(touches) if i == 0 or t - touches[i - 1] >= 5.0]
+    # answered: a call, a gesture or a new face within 2 s (2026-10-28, the owner: a pet need not always be answered by
+    # voice - a nod, a loving face; until then a call or a gesture)
     answered = sum(1 for t in isolated if any(t <= c <= t + 2.0 for c in calls) or
-                   any(t <= g <= t + 2.0 for g, _ in gestures))
+                   any(t <= g <= t + 2.0 for g, _ in gestures) or any(t < f <= t + 2.0 for f, _ in faces))
+    voiced = sum(1 for t in isolated if any(t <= c <= t + 2.0 for c in calls))
     share = collections.Counter()
     end = minutes * 60.0
     for i, (t, f) in enumerate(faces):
@@ -130,6 +168,7 @@ def metrics(ev, minutes, moves=0):
     total = sum(share.values()) or 1.0
     return {
         "touches": len(touches), "touch_answered_frac": answered / len(isolated) if isolated else None,
+        "touch_voiced_frac": voiced / len(isolated) if isolated else None,
         "calls": len(calls), "calls_per_h": len(calls) / (minutes / 60.0),
         "n_faces": len(set(f for _, f in faces)), "faces": dict(share),
         "angry_faces": sum(1 for _, f in faces if f in ("Angry", "Annoyed")),
@@ -197,7 +236,8 @@ def contingency_metrics(ev, minutes):
 
 # (scenario, minutes, [(metric, min, max, why)])
 CASES = [
-    ("touch_response", 9, [("touch_answered_frac", 0.9, 1.01, "answers every isolated touch (voice or gesture within 2 s)")]),
+    ("touch_response", 9, [("touch_answered_frac", 0.9, 1.01, "answers every isolated touch (a call, a gesture or a new face within 2 s)"),
+                           ("touch_voiced_frac", 0.3, 1.01, "report: of them by voice")]),
     ("pokes", 5, [("cross", 2, 600, "poked every 0.8 s for 60 s it gets cross (an annoyed / angry face or a head shake; 25 s are tolerated since 2026-10-25), 3 seeds")]),
     ("petting", 6, [("angry_after_touch", 0, 0, "petting never angers"), ("touch_answered_frac", 0.8, 1.01, "answers the hand"),
                     ("nods_per_touch", 0.2, 5, "nods 'yes' to the hand (owner 2026-10-24: the head hardly moved)")]),
@@ -250,6 +290,10 @@ CASES = [
     ("servo_hangs", 20, [("repowers", 1, 60, "8 % of the switch-ons hang: the watchdog power-cycles the rail"),
                          ("moves_per_min", 3, 60, "and the head keeps looking around (day_alone: 3.8)"),
                          ("calls_per_h", 40, 600, "the voice does not suffer")]),
+    # remembering (docs/EPISODES.md, 2026-10-28): the moments in the blob come back at their time of day, once each
+    ("memory_recall", 16, [("memories_good", 1, 1, "the pet of 14:03 is remembered, once"),
+                           ("memories_bad", 1, 1, "being shaken at 14:25 too, at least 10 minutes later"),
+                           ("memory_looked", 1.0, 1.01, "each time the head looks to where it happened (within 15 deg)")]),
     ("servo_blocked", 20, [("repowers", 3, 10, "a head blocked for 10 minutes: the power cycles back off (not one every 12 s)"),
                            ("travel_after_free", 100, 100000, "free again, the head moves (minutes 13-20, degrees)")]),
 ]
@@ -330,6 +374,8 @@ def check(case):
     ev, minutes, moves, out = run(name, minutes)
     m = metrics(ev, minutes, moves)
     m.update(trace_metrics(name, out))
+    if name == "memory_recall":
+        m.update(memory_metrics(ev, out))
     m["repowers"] = sum(1 for _, tag, x, _ in ev if tag == "runtime" and x.startswith("servo rail power cycle"))
     travel = [float(l.split("|")[2]) for l in open(os.path.join(out, "summary.txt"))
               if len(l.split("|")) > 3 and l.split("|")[0].strip().isdigit()]

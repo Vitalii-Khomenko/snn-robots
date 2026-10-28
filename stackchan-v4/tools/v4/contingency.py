@@ -35,11 +35,11 @@ WIN_LO_MS, WIN_HI_MS = 500, 4000
 REACT_MS, NO_ACT_MS, AROUND_MS, ACT_QUIET_MS = 3000, 5000, 120000, 1000
 TAU_NOW, TAU_BG, TAU_PULSE, TAU_IGNORED = 300.0, 1800.0, 3.0, 300.0
 PRIOR, IGNORE_STEP = 3.0, 0.1
-# the background rate's prior: BG_PRIOR_S seconds with no answer. With acts every few seconds the moments without one
-# are few, the prior outweighs them and chance looks rare - in the simulator pets at random moments read as answers
-# (agency 0.36-0.58 against 0.58-0.65 when really answered); with 10 s: 0.25-0.38 against 0.47-0.66 (2026-10-28). The
-# robot keeps 60 until a network trained with 10 goes with it (the network learned its inputs with 60).
-BG_PRIOR_S = 60.0
+# the background rate's prior: BG_PRIOR_S seconds with no answer (60 until 2026-10-28: with acts every few seconds the
+# moments without one are few, the prior outweighed them and chance looked rare - in the simulator pets at random
+# moments read as answers, agency 0.36-0.58 against 0.58-0.65 when really answered; with 10 s: 0.25-0.38 against
+# 0.47-0.66)
+BG_PRIOR_S = 10.0
 WINDOW_S = (WIN_HI_MS - WIN_LO_MS) / 1000.0
 F = np.float32
 INPUTS = ["active", "said", "gesture", "face", "raw_head_ev", "raw_screen_ev", "ch_touch_head", "ch_touch_screen",

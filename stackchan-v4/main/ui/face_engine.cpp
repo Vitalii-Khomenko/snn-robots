@@ -206,6 +206,16 @@ void FaceEngine::setEmotion(Emotion emotion)
     dirty_ = true;
 }
 
+void FaceEngine::showMemory(bool good, int side, uint32_t ms)
+{
+    memory_good_ = good;
+    memory_side_ = side < 0 ? -1 : 1;
+    memory_until_ms_ = (nowMs() + ms) | 1u;
+    dirty_ = true;
+}
+
+bool FaceEngine::memoryShown() const { return memory_until_ms_ != 0 && msWithin(nowMs(), memory_until_ms_, 60000); }
+
 void FaceEngine::drawEvent(lv_event_t* event)
 {
     auto* self = static_cast<FaceEngine*>(lv_event_get_user_data(event));
@@ -438,14 +448,18 @@ void FaceEngine::update()
     const uint32_t now = nowMs();
     if (now - last_frame_ms_ < 30) return;  // LVGL refreshes at ~30 Hz anyway
     const bool panel = face::kPixelFace && msWithin(now, volume_panel_until_ms_.load());
-    const bool ui = ui_dirty_.exchange(false) || panel != panel_shown_;
-    if (!animate(now) && !frame_pending_ && !ui) return;
+    const bool memory = face::kPixelFace && memoryShown();
+    const bool ui = ui_dirty_.exchange(false) || panel != panel_shown_ || memory != memory_was_;
+    memory_was_ = memory;
+    if (!animate(now) && !frame_pending_ && !ui && !memory) return;
     int c1 = 0, r1 = 0, c2 = face::kPixCols - 1, r2 = face::kPixRows - 1;  // what to redraw (pixels)
     if constexpr (face::kPixelFace) {
         // The pixel face: render the next grid here and redraw only the pixels that changed - nothing at all when an
         // animation step lands on the same pixels (a blink is ~1/10 of the screen instead of all of it).
         face::renderPixelFace(emotion_, anim_, g_to);
-        if (morph_t_ < 1.0f) {
+        if (memory) {
+            face::renderMemoryFace(memory_good_, memory_side_, anim_, g_next);
+        } else if (morph_t_ < 1.0f) {
             face::renderPixelFace(from_emotion_, anim_, g_from);
             face::dissolve(g_from, g_to, morph_t_, g_next);
         } else {

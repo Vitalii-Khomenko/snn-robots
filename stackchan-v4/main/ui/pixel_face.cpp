@@ -67,6 +67,10 @@ constexpr Glyph kQuestionMark{4, 6, {".##.", "#..#", "...#", "..#.", "....", "..
 constexpr Glyph kAngerMark{5, 5, {".+.+.", "++.++", ".....", "++.++", ".+.+."}};
 constexpr Glyph kSparkle{3, 3, {".*.", "***", ".*."}};
 constexpr Glyph kDot{1, 1, {"#"}};
+// the thought bubble of remembering, and what is in it
+constexpr Glyph kBubble{9, 7, {"..#####..", ".#.....#.", "#.......#", "#.......#", "#.......#", ".#.....#.", "..#####.."}};
+constexpr Glyph kBubbleHeart{5, 4, {"++.++", "+++++", ".+++.", "..+.."}};
+constexpr Glyph kBubbleStorm{5, 4, {"..++.", ".++..", "..++.", ".++.."}};
 
 constexpr int kEyeTop = 6, kBrowRow = 3, kMouthTop = 17;
 
@@ -299,6 +303,27 @@ void renderPixelFace(Emotion e, const Anim& a, PixelGrid& out)
             mouth(out, kMouthSmile, kMouthTop + sy, t);
             break;
     }
+}
+
+void renderMemoryFace(bool good, int side, const Anim& a, PixelGrid& out)
+{
+    out.clear();
+    const uint32_t t = good ? kAmber : kViolet;
+    const int s = side < 0 ? -1 : 1;
+    const bool beat = a.pulse >= 0.5f;
+    // eyes half closed, looking up to the side of the memory; the bubble on that side, rising from small dots
+    const int dx = 2 * s, dy = -1;
+    // a bad memory: a worried brow over the far eye only (the bubble takes the near one's place)
+    if (!good) draw(out, kBrowWorry, s > 0 ? leftCol(kBrowWorry) + dx : rightCol(kBrowWorry) + dx, kBrowRow + 1 + dy, t,
+                    kCyan, s < 0);
+    eyes(out, kEyeHalf, kEyeHalf, kEyeTop + 3, dx, dy, false, t);
+    mouth(out, good ? kMouthSmile : kMouthSideDown, kMouthTop + 1, t, kCoral, s);
+    const int bx = s > 0 ? kPixCols - kBubble.w - 1 : 1, by = 0;
+    draw(out, kBubble, bx, by, kPaper);
+    draw(out, good ? kBubbleHeart : kBubbleStorm, bx + 2, by + 2 - (good && beat ? 1 : 0), t, good ? kCoral : kCyan);
+    // the trail of little dots from between the eyes up to the bubble
+    draw(out, kDot, s > 0 ? bx - 2 : bx + kBubble.w + 1, by + 5, kPaper);
+    draw(out, kDot, s > 0 ? bx - 4 : bx + kBubble.w + 3, by + 7, kPaper);
 }
 
 void dissolve(const PixelGrid& from, const PixelGrid& to, float t, PixelGrid& out)

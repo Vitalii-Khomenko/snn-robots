@@ -307,6 +307,42 @@ ignored > 0.5, faces).
 - an answer opens the executor's reaction window, so the answered act can come back at once (the reaction path costs
   one token, not 2.5).
 
+## 6d. The owner's answers, a second retrain, deployed (2026-10-28, 19:13)
+
+The owner: *"if the network wants to call, let it - improve the piggy bank"; "the answer to every pet may change and
+grow, as you see fit"; "fix the detector".*
+
+**What changed:**
+- **The voice budget** (`V4Executor::kTokensMax` ...): 6 tokens, one per 5 s, a call needs 1 (a reaction or an
+  answer's turn 0.5) - a ceiling of ~12 calls a minute against a stuck voice only. It was 5, one per 10 s, idle 2.5:
+  the robot held back 45 % of the calls it wanted.
+- **An answer opens a turn:** for 4 s after the answered pulse rises, a call costs what a reaction does.
+- **A touch is answered,** the first after 8 s by voice, the others in a run of strokes about one in three; the rest
+  by a nod, the head leaning up into the hand, a loving face. A new face now counts as an answer in the tests.
+- **The detector's background prior 10 s** (was 60).
+- **The still face's thresholds:** bids above 0.4, withdrawal above 0.6 (0.45 / 0.75).
+- **The network:** `20feb312`, trained with all of it and the executor twin (`out/retrain_nn_2026-10-28_turn.log`):
+  agreement 0.820, real lives 0.793.
+
+**Results** (8 seeds, answered against the yoked control):
+
+| | answered | yoked |
+|---|---|---|
+| a joyful face after an answer | 0.88 | 0.82 |
+| the answered act again within 8 s, over chance | +0.04 | +0.03 |
+| acts a minute | 16.6 | 17.8 |
+
+All behaviour tests pass, the still face too.
+
+**Still not reached:** a circular reaction of its own. The robot answers more and enjoys an answer a little more than a
+pet at random, but it does not repeat the answered act more than the yoked control does.
+
+**Watch on the robot:**
+- the real lives' census shows more sad faces (29 %, 20 % before; the training world has a silent person 20 % of the
+  time); on the robot `ignored` was above 0.6 for 0.6-1.7 % of the day;
+- the calls a minute with people around;
+- the body's load (calls count in it: `kRefSayS` 5.5 a minute is from the old budget).
+
 ## 7. Open questions
 
 - **How should the owner answer?** Petting and voice are natural. A wave at the camera would be easier to

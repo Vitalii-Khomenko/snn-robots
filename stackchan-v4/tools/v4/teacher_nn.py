@@ -122,7 +122,10 @@ ANSWER_ON, GAME_REPS, GAME_END_S = 0.55, 3, 30.0
 # works_call / works_gesture / works_face above WORKS_ON; with people who answer 0.13 on average, at random 0.03), and
 # idle babble comes more often when calls work (agency > 0.3 until then: rarely reached in training).
 WORKS_ON = 0.1
-BID_ON, WITHDRAW_ON, BID_SAY_S = 0.45, 0.75, 5.0
+TOUCH_VOICE_GAP_S = 8.0  # a touch this long after the last is answered by voice; closer ones about one in three
+# (0.45, 0.75 until 2026-10-28: with real calls, at most one per 10 s by the voice budget, `ignored` levels off at ~0.77 -
+# the robot ignored stayed in its bids and never turned quietly sad)
+BID_ON, WITHDRAW_ON, BID_SAY_S = 0.4, 0.6, 5.0
 AGENCY_WAIT, WAIT_S = 0.15, 2.5
 JOY_FACES = ["happy", "very_happy", "laughing", "wink"]
 
@@ -197,6 +200,7 @@ class Teacher:
         self.repeat, self.repeat_t = None, 0.0        # the answered act to do again, in s
         self.game_reps, self.since_answer = 0, 99.0
         self.prev_answered = self.prev_ignored = 0.0
+        self.touch_voice, self.since_touch_prev = True, 99.0  # this touch is answered by voice; s since the last touch
         # what the body did with the wishes (executor_twin, 2026-10-28): the memory follows it, as on the robot
         self.ex = ExecTwin()
         self.deed = {"said": False, "gesture": False, "emotion": EMOTIONS.index("normal")}
@@ -306,6 +310,7 @@ class Teacher:
         touch_now = max(s[S["sal_touch_head"]], s[S["sal_touch_screen"]])
         touch_onset = touch_now > 0.12 and touch_now - self.prev_touch > 0.04
         self.since_touch = 0.0 if touch_onset else self.since_touch + DT
+        self.since_touch_prev += DT
         events = {"touch_onset": touch_onset,
                   # news that is not a touch (a touch is its own news: answered as a touch, not as a fright). The
                   # analyzer's surprise peaks a tick or two after the touch's onset: 1.5 s after a touch onset a rise
@@ -317,6 +322,12 @@ class Teacher:
         self.prev_touch, self.prev_sur = touch_now, s[S["surprise"]]
         self.prev_over, self.prev_threat = s[S["over"]], s[S["threat"]]
         if events["touch_onset"]:
+            # A touch is always answered, but not always by voice (2026-10-28, the owner: "the answer to every pet may
+            # change and grow"): the first touch after a while gets a call; within a run of strokes about one in three
+            # (the jitter pacemaker), the others a nod, the head leaning up into the hand, a loving face. Every pet took
+            # a call and the voice budget was spent on them.
+            self.touch_voice = self.since_touch_prev > TOUCH_VOICE_GAP_S or pace[2] > 0.25
+            self.since_touch_prev = 0.0
             self.touch_open, self.touch_age = True, 0.0
         night = s[S["sleepiness"]] > 0.65
 
@@ -380,7 +391,7 @@ class Teacher:
         say = False
         if night:
             pass  # silent at night: the owner sleeps next to the robot (the executor enforces it too)
-        elif self.touch_open and self.since_sound > 0.7:
+        elif self.touch_open and self.touch_voice and self.since_sound > 0.7:
             say = True
         elif (events["surprise_onset"] or events["threat_onset"] or events["over_onset"]) and self.since_sound > 0.7:
             say = True
@@ -507,7 +518,7 @@ class Teacher:
         # ---- the memory follows what the body did with the wishes: the executor's gates (executor_twin; until
         # 2026-10-28 the wish itself, which the robot's own-state inputs never were)
         src = executed if executed is not None else y
-        self.deed = self.ex.step(src, s, night)
+        self.deed = self.ex.step(src, s, night, answered)
         self.apply(src, self.deed)
         return y
 

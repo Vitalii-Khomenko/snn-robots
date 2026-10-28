@@ -34,6 +34,19 @@ def onsets(on, quiet_ticks):
 
 
 def reward(ticks):
+    """-> r [T] per tick, {event: count}."""
+    ev, valid = events(ticks)
+    r = np.zeros(len(valid), np.float32)
+    counts = {}
+    for k, w in REWARDS.items():
+        e = ev[k] & valid
+        r[e] += w
+        counts[k] = int(e.sum())
+    return r, counts
+
+
+def events(ticks):
+    """-> {event: bool [T]} (the ticks where each rewarded event happens) and valid [T] (by day, networks driving)."""
     v = ticks["v"]
     c = lambda n: np.nan_to_num(v[:, D.col(n)])
     T = len(v)
@@ -69,13 +82,7 @@ def reward(ticks):
         (np.abs((ticks["ms"][later].astype(np.int64) - ticks["ms"].astype(np.int64)) - 60000) < 5000)
     ev["left_alone"] = acted & recent & ~ahead_next & seen
     valid = ((ticks["flags"] & D.FLAG_DRIVES) > 0) & ((ticks["flags"] & D.FLAG_NIGHT) == 0)
-    r = np.zeros(T, np.float32)
-    counts = {}
-    for k, w in REWARDS.items():
-        e = ev[k] & valid
-        r[e] += w
-        counts[k] = int(e.sum())
-    return r, counts
+    return ev, valid
 
 
 if __name__ == "__main__":

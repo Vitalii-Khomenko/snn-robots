@@ -31,6 +31,11 @@ struct PixelGrid {
 // One frame of an emotion with the animation state (gaze, blink, shake, phase, pulse as in face_style.h's Anim).
 void renderPixelFace(Emotion e, const Anim& a, PixelGrid& out);
 
+// Remembering (2026-10-28, docs/EPISODES.md): the face of a recalled moment, shown for a few seconds over the emotion -
+// dreamy half-closed eyes looking to the side the head glances to (side -1 left, +1 right), a thought bubble there; a
+// good moment: amber, a soft smile, a heart in the bubble; a bad one: violet, worried brows, a little storm in it.
+void renderMemoryFace(bool good, int side, const Anim& a, PixelGrid& out);
+
 // A change of emotion: every pixel switches from `from` to `to` at its own moment of t 0..1 (a pixel dissolve).
 void dissolve(const PixelGrid& from, const PixelGrid& to, float t, PixelGrid& out);
 

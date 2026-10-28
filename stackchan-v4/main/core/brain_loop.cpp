@@ -239,6 +239,14 @@ void BrainLoop::tick(uint32_t now, const Env& env)
     }
     said_tick_ = exec_.calls() != calls;
     gesture_tick_ = exec_.gestures() != gestures;
+    // remembering (docs/EPISODES.md): a moment of the last days like this one - the same time of day, light, someone
+    // around or not (somebody heard, seen moving or near in the last 2 minutes)
+    if (env.timeSynced) memory_.clock(env.hour);
+    if (brain_.trained() && !night_) {
+        const bool around = last_somebody_ms_ != 0 && now - last_somebody_ms_ < 120000;
+        const int k = memory_.candidate(now, env.timeSynced, env.hour, channels_[CH_LIGHT] >= kLitRoom, around);
+        if (k >= 0 && exec_.remember(memory_.episode(k), now)) memory_.recalled(k, now);
+    }
     {
         ContingencyV4::In in;
         in.ms = now;
@@ -361,6 +369,10 @@ int BrainLoop::useLearned(const learned::View& v)
             zones_.shift[c] = std::isfinite(s[c]) ? std::clamp(s[c], -v4::kZoneShiftMax, v4::kZoneShiftMax) : 0.0f;
         ++taken;
     }
+    // the remembered moments (sleep_v4.py, episodes.py table)
+    const float* mem = v.find("mem.episodes", MemoryV4::kMax * MemoryV4::kFields);
+    memory_.set(mem);
+    if (mem) ++taken;
     // the Muse: which ideas the owner answered (sleep_v4.py learn_muse)
     const float* mb = v.find("muse.bias", muse_data::kOuts);
     bool mb_ok = mb != nullptr;

@@ -33,6 +33,7 @@
 #include "../core/vrtos.h"
 #include "../world/world.h"
 #include "platform.h"
+#include "../../main/core/ms_clock.h"
 
 using sim::World;
 
@@ -316,6 +317,16 @@ void FaceEngine::update()
     if (world().takeScreenTap()) screen_touch_pending_.store(true);
 }
 void FaceEngine::setEmotion(Emotion e) { emotion_ = e; }
+void FaceEngine::showMemory(bool good, int side, uint32_t ms)
+{
+    memory_good_ = good;
+    memory_side_ = side < 0 ? -1 : 1;
+    memory_until_ms_ = static_cast<uint32_t>(esp_timer_get_time() / 1000 + ms) | 1u;
+}
+bool FaceEngine::memoryShown() const
+{
+    return memory_until_ms_ != 0 && msWithin(static_cast<uint32_t>(esp_timer_get_time() / 1000), memory_until_ms_, 60000);
+}
 void FaceEngine::setGaze(float x, float y)
 {
     gaze_dx_ = static_cast<int>(std::lround(std::clamp(x, -1.0f, 1.0f) * kGazeRangeX));

@@ -20,6 +20,7 @@
 #include "../v4/channel_encoder.h"
 #include "../v4/contingency_v4.h"
 #include "../v4/learned_blob.h"
+#include "../v4/memory_v4.h"
 #include "../v4/v4_executor.h"
 #include "../v4/zone_shift.h"
 
@@ -99,6 +100,7 @@ public:
     const ContingencyV4::Out& contingency() const { return contingency_out_; }
     // the body (docs/BODY.md): the sleep pressure (the diary's raw_stamina is 1 - it)
     const BodyV4& body() const { return body_; }
+    const MemoryV4& memory() const { return memory_; }
     // what a reboot keeps (RobotRuntime saves it): the body as it was, switched off for offS seconds
     void restoreBody(const BodyV4::Saved& s, float offS) { body_.restore(s, offS); }
     // diagnostics
@@ -130,6 +132,7 @@ private:
     ContingencyV4 contingency_;
     ContingencyV4::Out contingency_out_{};
     BodyV4 body_;
+    MemoryV4 memory_;  // the remembered moments (docs/EPISODES.md), from the learned blob
     float body_yaw_ = 0.0f, body_pitch_ = 0.0f;
     bool body_head_ = false, hurt_ = false;
     uint32_t lit_ms_ = 0;  // the room was last lit (night rules without a clock)

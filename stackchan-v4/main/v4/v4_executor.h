@@ -6,11 +6,12 @@
 #include "../ui/face_engine.h"
 #include "../voice/babble_voice.h"
 #include "brain_v4.h"
+#include "memory_v4.h"
 
 // Brain v4's "muscles" (BRAIN_V4_PLAN.txt section 7): the main network decides WHAT (emotion, voice, LEDs, head
 // mode); this only does HOW, inside physical and safety limits:
 //   face   - the chosen emotion (a face stays at least 1.5 s so its morph can be seen); the eyes follow attention
-//   voice  - BabbleVoice with the network's style, mood, register, length, rate; the call budget (~6 a minute,
+//   voice  - BabbleVoice with the network's style, mood, register, length, rate; the call budget (~12 a minute,
 //            reactions may spend the last tokens); SILENT at night 21:45-06:00 (the owner sleeps next to the robot)
 //   LEDs   - colour, pattern (steady / breathe / pulse / flicker / wave), brightness, rate; dim at night
 //   head   - gaze targets and the gesture library: nod "yes" (pitch), shake "no" (yaw), flinch, look down / up,
@@ -42,6 +43,12 @@ public:
                              // network's gaze (look / scan / hold by day)
     };
     uint8_t held() const { return held_; }
+    // Remembering a moment (MemoryV4, docs/EPISODES.md): the head turns for a moment to where it happened, a little up,
+    // and the face shows the remembering face; false when something comes first (night, a gesture, a reaction,
+    // something new in view, a glance) - then it is not remembered now.
+    bool remember(const MemoryV4::Episode& e, uint32_t nowMs);
+    static constexpr uint32_t kMemoryHoldMs = 2500, kMemoryFaceMs = 3500;
+    static constexpr float kMemorySpeedDegS = 40.0f, kMemoryPitchUpDeg = 6.0f;
 
     static constexpr float kYawLimitDeg = 100.0f, kPitchMinDeg = -20.0f, kPitchMaxDeg = 35.0f;
     static constexpr uint32_t kMinCommandGapMs = 120;  // servo bus: <= ~8 packets/s (gesture keyframes)
@@ -90,6 +97,18 @@ public:
     static constexpr uint32_t kGlanceGapMinMs = 40000, kGlanceGapMaxMs = 150000, kGlanceHoldMinMs = 4000,
                               kGlanceHoldMaxMs = 9000;
     static constexpr float kGlanceYawMinDeg = 40.0f, kGlanceYawMaxDeg = 70.0f, kGlanceSpeedDegS = 40.0f;
+    // An answer opens a turn (2026-10-28, the owner: answers and the circular reaction): for kTurnMs after the detector's
+    // answered pulse rises above kTurnOn a call costs what a reaction does (1 token, not 2.5) - the robot can answer an
+    // answer at once, as in a proto-conversation, even when idle babble has spent the budget (calls were at the budget
+    // in every simulator scenario, answered or not: the answered call could not come again).
+    static constexpr float kTurnOn = 0.3f;
+    // The call budget, a piggy bank: kTokensMax tokens, one more every kTokenMs; a call costs one and needs kIdleTokens
+    // (a reaction or an answer's turn: kReactionTokens). 2026-10-28, the owner: "if the network wants to call, let it" -
+    // it was 5 tokens, one per 10 s, idle 2.5 (~6 calls a minute): the robot called at that ceiling in every scenario and
+    // held back 45 % of the calls it wanted (~10 a minute on the robot). Now a ceiling of ~12 a minute, against a stuck
+    // voice only.
+    static constexpr float kTokensMax = 6.0f, kTokenMs = 5000.0f, kIdleTokens = 1.0f, kReactionTokens = 0.5f;
+    static constexpr uint32_t kTurnMs = 4000;
     // the flinch: at most one every kFlinchGapMs by day (2026-10-26: 9 in 13 minutes at the owner's sounds)
     static constexpr uint32_t kFlinchGapMs = 15000;
     static constexpr uint32_t kGestureGapMs = 4000;    // nod / shake at most every 4 s
@@ -120,6 +139,8 @@ private:
     uint32_t last_token_ms_ = 0, calls_ = 0;
     int reaction_ticks_ = 0;
     float prev_touch_ = 0.0f;
+    float prev_answered_ = 0.0f;
+    uint32_t turn_until_ms_ = 0;  // an answer's turn is open until (kTurnMs)
     // head
     Gesture gesture_ = Gesture::None;
     uint32_t gesture_start_ms_ = 0, last_gesture_ms_ = 0, last_command_ms_ = 0, gestures_ = 0, nods_ = 0, shakes_ = 0;
@@ -141,4 +162,6 @@ private:
     uint32_t idea_log_ms_[5] = {0, 0, 0, 0, 0};  // the next curious glance; the end of the present one (0: none)
     bool attended_ = false;
     uint8_t held_ = 0;  // this tick's Held bits
+    uint32_t memory_until_ms_ = 0;  // the remembering glance holds the head until
+    bool night_ = false;
 };
