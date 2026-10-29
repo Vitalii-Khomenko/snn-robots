@@ -51,8 +51,9 @@ public:
     static float usual(float hour);
 
     static constexpr float kTauWakeH = 12.0f, kTauSleepH = 3.0f, kEffortTauS = 600.0f;
-    // a usual day: diary 2026-10-27 08-16 h, after contingency step 3 (2.5, 4 a minute, 0.15 from 10-26 before)
-    static constexpr float kRefDegS = 2.3f, kRefSayS = 5.5f / 60.0f, kRefArousal = 0.16f;
+    // a usual day: diary 2026-10-29 07-16 h, with the looser voice budget and network 20feb312 (2.3, 5.5 a minute, 0.16
+    // from 10-27 before: with them a usual day of 10-29 was a load of 1.38, tired from mid-morning)
+    static constexpr float kRefDegS = 3.0f, kRefSayS = 7.6f / 60.0f, kRefArousal = 0.14f;
     static constexpr float kWDeg = 0.4f, kWSay = 0.3f, kWArousal = 0.3f;
     static constexpr float kLoadGain = 2.0f, kLoadLo = 0.25f, kLoadHi = 3.0f;
     static constexpr float kDayStartH = 6.0f, kDayEndH = 21.75f, kDegTickMax = 20.0f;

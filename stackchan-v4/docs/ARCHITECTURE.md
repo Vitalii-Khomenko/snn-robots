@@ -266,8 +266,8 @@ are not touch_screen events for the brain; a tap on the face above the open bar 
 
 **The body** (`main/v4/body_v4.cpp`, twin `tools/v4/body.py`, concept [BODY](BODY.md), step 1 2026-10-27): after
 the executor, every tick, the sleep pressure (Borbely's process S):
-- **load:** a 10-minute average of head travel, calls and the analyzer's arousal against a usual day (2.3°/s, 5.5 a
-  minute, 0.16); load = 1 + 2 x (effort - 1), 0.25 .. 3;
+- **load:** a 10-minute average of head travel, calls and the analyzer's arousal against a usual day (3.0°/s, 7.6 a
+  minute, 0.14: 2026-10-29, with the looser voice budget); load = 1 + 2 x (effort - 1), 0.25 .. 3;
 - **awake:** the pressure rises towards 1 with 12 h / load; **asleep** (night rules, or a nap: the sleepy face shown
   and the body quiet - no call, the head still - for 20 s; the face alone until 2026-10-28, BODY 4a) it drains with
   3 h;

@@ -337,11 +337,23 @@ All behaviour tests pass, the still face too.
 **Still not reached:** a circular reaction of its own. The robot answers more and enjoys an answer a little more than a
 pet at random, but it does not repeat the answered act more than the yoked control does.
 
+**The next day on the robot (2026-10-29), and a fix of the detector:**
+- **A regression in pokes.** Over 12 seeds, 20feb312 got cross at pokes in 3 runs (the old network in 11). The test
+  had passed on lucky seeds; the night's gate caught it.
+- **The cause: a poke is no answer.** The robot's reaction calls to pokes counted as unanswered bids, `ignored` rose
+  and the robot turned sad. The teacher on the same analyzer numbers would have been annoyed (173 decisions); the
+  network was sad (709). In training pokes never reached the detector.
+- **The fix:** any touch, a rough one too, resets `ignored`, and an act right after it is a reaction, not a bid
+  (`rough` in `ContingencyV4::step`). Cross in all 12 runs (1-5 each).
+- **With it**, the answered act again within 8 s over chance: +0.047 answered against +0.023 yoked (8 seeds, about two
+  standard errors): a first hint of the circular reaction, not yet sure.
+- **On the robot:** 7-9 calls a minute by day; sad faces rare, `ignored` above 0.6 in 0-3 % of an hour.
+
 **Watch on the robot:**
 - the real lives' census shows more sad faces (29 %, 20 % before; the training world has a silent person 20 % of the
   time); on the robot `ignored` was above 0.6 for 0.6-1.7 % of the day;
 - the calls a minute with people around;
-- the body's load (calls count in it: `kRefSayS` 5.5 a minute is from the old budget).
+- the body's load (calls count in it): re-referenced to the usual day of 10-29 the next morning (BODY section 3).
 
 ## 7. Open questions
 

@@ -101,12 +101,18 @@ void ContingencyV4::step(const In& in, Out& out, Credit& credit)
         around_seen_ = true;
     }
     const bool around = within(around_seen_, now, last_around_ms_, kAroundMs);
+    // A rough touch (a poke: the touch channel in its anger zone) answers no act, but nobody who pokes the robot ignores
+    // it, and what the robot does right after is a reaction to it, not a bid (2026-10-29: poked every 0.8 s, its reaction
+    // calls went unanswered, `ignored` rose and the robot turned sad instead of cross - in training pokes never reached
+    // the detector).
+    const bool rough = (in.headEv > 0.0f && !cond[kPet]) || (in.screenEv > 0.0f && !cond[kTap]);
 
     if (!in.active) {
         for (auto& p : pending_) p.live = false;
     } else {
         const bool no_act = !within(act_seen_, now, last_act_ms_, kNoActMs);
         if (around && no_act) bg_s_ += dt;
+        if (rough) ignored_ = 0.0f;
         for (int a = 0; a < kAnswers; ++a) {
             if (!onset[a]) continue;
             // the latest bid (a call, a gesture) in the window, else the latest face (2026-10-28, an audit: the latest act
@@ -150,7 +156,7 @@ void ContingencyV4::step(const In& in, Out& out, Credit& credit)
         }
     }
     for (int a = 0; a < kAnswers; ++a)
-        if (onset[a]) {
+        if (onset[a] || (a == 0 && rough)) {
             last_answer_ms_ = now;
             answer_seen_ = true;
         }

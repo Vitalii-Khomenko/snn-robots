@@ -51,9 +51,10 @@ overtired; this robot does not, whatever happened.
 
 **In the robot** (`BodyV4`, after the executor every tick):
 
-- **The load:** a 10-minute average of what the body did, against a usual day (2026-10-27 08-16 h, after
-  contingency step 3; 2.5°/s, 4 calls a minute and 0.15 from 10-26 before - the robot calls more since step 3):
-  - effort = 0.4 x head travel / 2.3° per s + 0.3 x calls / 5.5 a minute + 0.3 x arousal / 0.16;
+- **The load:** a 10-minute average of what the body did, against a usual day (2026-10-29 07-16 h, with the looser
+  voice budget: 3.0°/s, 7.6 calls a minute, arousal 0.14; 2.3, 5.5 and 0.16 from 10-27 before - with them a usual day
+  of 10-29 was a load of 1.38 and the robot felt tired from mid-morning):
+  - effort = 0.4 x head travel / 3.0° per s + 0.3 x calls / 7.6 a minute + 0.3 x arousal / 0.14;
   - load = 1 + 2 x (effort - 1), within 0.25 .. 3. A usual day is 1. Play counts double; an idle hour builds
     pressure at a quarter of the rate.
 - **Awake:** S -> 1 with 12 h / load.

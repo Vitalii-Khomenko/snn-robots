@@ -30,7 +30,7 @@ from spec_v4 import DIARY, EMOTIONS
 
 TAU_WAKE_H, TAU_SLEEP_H = 12.0, 3.0  # adults ~18 h and ~4 h (Borbely & Achermann); a child's run faster
 EFFORT_TAU_S = 600.0                 # the load is the last ~10 minutes'
-REF_DEG_S, REF_SAY_S, REF_AROUSAL = 2.3, 5.5 / 60.0, 0.16  # a usual day (diary 2026-10-27 08-16 h, after contingency step 3)
+REF_DEG_S, REF_SAY_S, REF_AROUSAL = 3.0, 7.6 / 60.0, 0.14  # a usual day (diary 2026-10-29 07-16 h; 2.3, 5.5, 0.16 from 10-27 before)
 W_DEG, W_SAY, W_AROUSAL = 0.4, 0.3, 0.3
 TIRED_FELT = 2.0                     # channels.TIRED_FELT (channels imports this file)
 LOAD_GAIN, LOAD_LO, LOAD_HI = 2.0, 0.25, 3.0  # load = 1 + LOAD_GAIN * (effort - 1): play counts, idle rests

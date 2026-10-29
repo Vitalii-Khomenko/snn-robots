@@ -111,6 +111,9 @@ class Detector:
         if onset[0] or onset[1] or onset[3] or near > F(50) or motion > F(0.1):
             self.last_around = now
         around = self._within(self.last_around, now, AROUND_MS)
+        # a rough touch (a poke) answers no act, but it is not being ignored, and the act right after is a reaction
+        # (ContingencyV4, 2026-10-29)
+        rough = (head_ev > 0 and not cond[0]) or (screen_ev > 0 and not cond[1])
 
         if not active:
             self.pending = []
@@ -118,6 +121,8 @@ class Detector:
             no_act = not self._within(self.last_act, now, NO_ACT_MS)
             if around and no_act:
                 self.bg_s += dt
+            if rough:
+                self.ignored = 0.0
             for a in range(5):
                 if not onset[a]:
                     continue
@@ -151,7 +156,7 @@ class Detector:
                     self.pending.remove(oldest)
                     self._finish(oldest)
                 self.pending.append([now, k, around, set()])
-        if any(onset):
+        if any(onset) or rough:
             self.last_answer = now
         if any(act):
             self.last_act = now

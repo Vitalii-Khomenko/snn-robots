@@ -364,12 +364,14 @@ def held_out(m, boots, use, feats, lines, rng=None):
     choices that were followed by more reward there? The mean improvement() over that day with a 95 % interval from a
     bootstrap over its minutes. -> (mean, lo, hi) in units of the train days' advantage spread, x 1000; None when
     there is one day only."""
-    days = sorted({boots[i]["day"] for i in use})
+    # days with daytime decisions (the night runs at 03:30: the newest day has only its night yet - 2026-10-29 it was
+    # judged on 0 decisions and the gate passed on NaN)
+    days = sorted({boots[i]["day"] for i in use if boots[i]["day_mask"].sum() >= 6000})
     if len(days) < 2:
         say(lines, "  held-out check: one day only - not judged")
         return None
-    tr = [i for i in use if boots[i]["day"] != days[-1]]
-    te = [i for i in use if boots[i]["day"] == days[-1]]
+    tr = [i for i in use if boots[i]["day"] in days[:-1] and boots[i]["day_mask"].any()]
+    te = [i for i in use if boots[i]["day"] == days[-1] and boots[i]["day_mask"].any()]
     F_tr, A_tr, act_tr, ok_tr, wv, spread, _ = prepare(m, boots, tr, feats)
     A_tr = np.clip((A_tr - A_tr.mean()) / spread, -A_CLIP, A_CLIP).astype(np.float32)
     new = train_heads(m, F_tr, act_tr, A_tr, ok_tr)
@@ -586,7 +588,7 @@ def main():
             ho = held_out(m, boots, use, feats, lines)
             if kl > KL_MAX or flip > FLIP_MAX:
                 say(lines, "  gate: the heads would change too much even in part - kept")
-            elif ho is not None and ho[2] < 0:
+            elif ho is not None and not ho[2] >= 0:  # NaN fails too
                 say(lines, "  gate: on the held-out day the step favours what turned out worse - kept")
             else:
                 heads_new = LR.heads_of(new if alpha == 1.0 else cand)
