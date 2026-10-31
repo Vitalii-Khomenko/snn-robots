@@ -35,6 +35,10 @@ public:
         float stamina = 1;               // 1 - the sleep pressure (BodyV4; until 2026-10-27 the servos' travel)
         float budget = 1;                // the body budget (BodyV4, docs/BODY.md step 2)
         bool clockOk = false;
+        // the morning's own sleep, 0..1 (BrainLoop::nightRules, 2026-10-31): 1 while the morning waits for the owner
+        // (after 06:00, dark and quiet), then down to 0 over 3 minutes from the moment someone came. Tired as the
+        // night's ramp; not a diary column (diary.morning_of rebuilds it from the night flag)
+        float morning = 0;
     };
     using Out = std::array<float, v4::kSnnInputs>;
 

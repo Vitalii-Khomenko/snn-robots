@@ -133,7 +133,49 @@ def raw_for_channels(ticks):
     """The raw sense readings the robot logged -> channels.encode's input dict, and the hour of day of every tick."""
     v = ticks["v"]
     raw = {r: v[:, col("raw_" + r)].astype(np.float32) for r in RAW}
+    raw["morning"] = morning_of(ticks)
     return raw, raw["hour"].copy()
+
+
+WAKE_RAMP_MS = 180000  # BrainLoop::kWakeRampMs
+MORNING_SINCE = 1793430000.0  # 2026-10-31 08:00 CET: the firmware with the morning's own sleep came after it
+
+
+def morning_of(ticks):
+    """The morning's own sleep the channels got every tick (ChannelEncoder::Raw::morning, BrainLoop::nightRules,
+    2026-10-31), from the night flag: 1 while the night rules hold after 06:00 with the clock synced (the morning waits
+    for the owner), then down to 0 over 3 minutes from the tick they ended - when the tick before was under them with
+    the clock synced (a reboot by day starts awake). The encoder uses the last tick's value. A ramp begun in an hour
+    not loaded is not seen; before MORNING_SINCE there was none (the night ended at 06:00)."""
+    v, flags = ticks["v"], ticks["flags"]
+    out = np.zeros(len(flags), np.float32)
+    if not (np.nan_to_num(ticks["unix"]) >= MORNING_SINCE).any():
+        return out
+    clock = np.nan_to_num(v[:, col("raw_clock_ok")]) > 0
+    hour = np.nan_to_num(v[:, col("raw_hour")])
+    night = (flags & FLAG_NIGHT) > 0
+    clock_night = (hour >= 21.75) | (hour < 6.0)
+    for b in np.unique(ticks["boot"]):
+        idx = np.flatnonzero(ticks["boot"] == b)
+        idx = idx[np.argsort(ticks["seq"][idx], kind="stable")]
+        after, wake, prev_synced_night = 0.0, None, False
+        for i in idx:
+            out[i] = after  # what the encoder got: the value after the tick before
+            if not clock[i]:
+                after, wake = 0.0, None
+            elif night[i] and not clock_night[i]:
+                after, wake = 1.0, None
+            else:
+                if not night[i] and prev_synced_night:
+                    wake = int(ticks["ms"][i])
+                if wake is not None:
+                    after = max(0.0, 1.0 - ((int(ticks["ms"][i]) - wake) & 0xFFFFFFFF) / WAKE_RAMP_MS)
+                    if after <= 0.0:
+                        wake = None
+                else:
+                    after = 0.0
+            prev_synced_night = bool(clock[i] and night[i])
+    return out
 
 
 def summary(day):

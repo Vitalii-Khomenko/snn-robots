@@ -53,6 +53,8 @@ tools/v4/py behavior_test_v4.py                      # 22 cases in parallel, a f
 | pokes | taps every 0.8 s | it gets cross (annoyed / angry face or a head shake): >= 2 over 3 seeds (one seed until 2026-10-28: 1 run in 12 has none, the night gate failed by chance) |
 | petting | slow strokes | never angry after a touch; answers the hand (the first strokes at 0:52, after the simulated clock's sync at 0:40: a stroke in that very tick was not answered once the light sensor read like the robot's, 2026-10-28) |
 | night_quiet | a night | no calls at all; sleepy most of the time |
+| sleep_in | 06:30, dark, nobody up; the owner's hand at 07:00 (a Saturday, 2026-10-31) | no call before the hand, tired as at night; talks within 10 minutes after it, awake 5 minutes after |
+| early_riser | 06:05, dark; the light on at 06:08 (a weekday) | silent while dark; talks once the light is on |
 | play_session | play | >= 5 different faces, talks |
 | day_alone | an empty room by day | babbles 40..600 calls/h, moods change (>= 4 faces in 20 min; 5 until 2026-10-28: with the head input as trained 4-6 over 12 seeds, the fifth had been a 2-6 s flicker) |
 | learn_rough | shaken, picked up | frightened (scared / dizzy / surprised / flinch) |

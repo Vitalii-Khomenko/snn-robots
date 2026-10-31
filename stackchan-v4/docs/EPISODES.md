@@ -23,6 +23,9 @@ bad moments are remembered too.
 - **Tested** (`memory_recall`): two moments in the blob, a pet at 14:03 to the right and a shake at 14:25 to the
   left. The pet is remembered 4 s after the clock syncs, the shake 10 minutes later; each time the head looks
   within 15° of where it happened.
+  - 2026-10-30 the night's gate failed on it (one look of two). The head was at +53° and the moment at -50°; the
+    glance was timed from the gaze target sent the same tick (-9°), for 41° instead of 103°, and ended halfway.
+    Now the turn is timed from where the head is, with the servos' 1 s start, and the test gives each turn its time.
 - **The first night's table** (10-26 .. 28): pets in the early morning (06:11-07:08) and the evening (17:10-21:06),
   shakes at 16:25-21:06, frights.
 - **Not yet:** the expectation as an input of the main network (step 2), prioritized replay (step 3).

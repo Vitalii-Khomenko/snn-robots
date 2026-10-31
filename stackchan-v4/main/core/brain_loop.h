@@ -137,6 +137,17 @@ private:
     bool body_head_ = false, hurt_ = false;
     uint32_t lit_ms_ = 0;  // the room was last lit (night rules without a clock)
     static constexpr float kLitRoom = 0.04f;
+    // the owner's night (21:45-06:00) and the morning that waits for the owner (nightRules, 2026-10-31)
+    bool nightRules(uint32_t now, float hour);
+    static constexpr float kNightStartH = 21.75f, kNightEndH = 6.0f, kMorningLatestH = 9.0f;
+    static constexpr float kMorningNear = 0.3f, kMorningVoice = 0.3f, kMorningMotion = 0.1f;
+    static constexpr uint32_t kMorningLitMs = 20000, kWakeRampMs = 180000;
+    uint32_t lit_since_ms_ = 0;  // the room lit since (0: dark now)
+    uint32_t wake_ms_ = 0;       // someone came this morning while it slept (the wake ramp; 0: none running)
+    bool awake_ = false;         // this day began (someone came, or kMorningLatestH); false through the clock's night
+    bool synced_night_ = false;  // the last tick was under night rules with the clock synced
+    bool morning_logged_ = false;
+    float morning_ = 0.0f;       // ChannelEncoder::Raw::morning for the next tick
 
     // the camera's last frame (~7 fps): motion share and centre
     float motion_[3] = {0, 0, 0};

@@ -107,7 +107,8 @@ void ChannelEncoder::update(const Raw& r, Out& out)
     const double hunger = clamp01(std::max(1.0 - r.battery, 1.0 - static_cast<double>(r.budget) / kBudgetFelt));
     // the clock, and the sleep pressure above a usual day's at this hour (stamina = 1 - pressure, BodyV4; docs/BODY.md)
     const double felt = r.clockOk ? std::max(0.0, (1.0 - r.stamina) - static_cast<double>(BodyV4::usual(r.hour))) : 0.0;
-    const double tired = clamp01(0.75 * (r.clockOk ? nightRamp(r.hour) : 0.0) + kTiredFelt * felt);
+    const double ramp = r.clockOk ? std::max(static_cast<double>(nightRamp(r.hour)), static_cast<double>(r.morning)) : 0.0;
+    const double tired = clamp01(0.75 * ramp + kTiredFelt * felt);
     lonely_t_ += dt;
     if (r.headEv > 0 || r.screenEv > 0 || r.headHold > 0 || r.speech > kContactSpeech || near_ > kContactNear)
         lonely_t_ = 0.0;

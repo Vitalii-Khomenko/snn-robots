@@ -24,6 +24,9 @@ Raw inputs (dict of float32 arrays [T], missing ones default to 0):
   battery     0..1, stamina 0..1 (1 - the sleep pressure, body.py; until 2026-10-27 the servos' travel: 1),
   hour        0..24, clock_ok 1 when the clock is synced
   budget      the body budget 0..1 (body.py; missing = 1): hunger is the larger of 1 - battery and 1 - budget / 0.7
+  morning     the morning's own sleep 0..1 (BrainLoop::nightRules, 2026-10-31; missing = 0): 1 while the morning waits
+              for the owner, then down to 0 over 3 minutes - tired as the night's ramp. Not in RAW (no diary column):
+              diary.morning_of rebuilds it from the night flag
 """
 import numpy as np
 from numba import njit
@@ -73,8 +76,9 @@ def _clamp(x, lo=0.0, hi=1.0):
 
 
 @njit(cache=True)
-def _encode(R, out, state):
-    """R [T, len(RAW)], out [T, 18]. state [STATE_N] carries the filters between calls (zeros = fresh boot)."""
+def _encode(R, M, out, state):
+    """R [T, len(RAW)], M [T] the morning's own sleep, out [T, 18]. state [STATE_N] carries the filters between calls
+    (zeros = fresh boot)."""
     a_loud = 1.0 - np.exp(-DT / LOUD_TAU)
     a_voice = 1.0 - np.exp(-DT / VOICE_TAU)
     k_sharp = np.exp(-DT / SHARP_TAU)
@@ -171,7 +175,7 @@ def _encode(R, out, state):
 
         hunger = _clamp(max(1.0 - battery, 1.0 - budget / BUDGET_FELT))  # off USB the battery; the budget below 0.7
         felt = max(0.0, (1.0 - stamina) - _usual(hour)) if clock_ok > 0 else 0.0
-        tired = _clamp(0.75 * (_night_ramp(hour) if clock_ok > 0 else 0.0) + TIRED_FELT * felt)
+        tired = _clamp(0.75 * (max(_night_ramp(hour), M[t]) if clock_ok > 0 else 0.0) + TIRED_FELT * felt)
         lonely_t += DT
         if head_ev > 0 or screen_ev > 0 or head_hold > 0 or speech > CONTACT_SPEECH or near > CONTACT_NEAR:
             lonely_t = 0.0
@@ -225,7 +229,8 @@ def encode(raw, state=None):
         R[:, RAW.index("stamina")] = 1.0
     # the body budget: missing or NaN (diaries before 2026-10-27 evening) is full
     R[:, RAW.index("budget")] = np.nan_to_num(np.asarray(raw["budget"], np.float64), nan=1.0) if "budget" in raw else 1.0
+    M = np.nan_to_num(np.asarray(raw["morning"], np.float64)) if "morning" in raw else np.zeros(T)
     out = np.zeros((T, len(SNN_IN)), np.float64)
-    _encode(R, out, new_state() if state is None else state)
+    _encode(R, M, out, new_state() if state is None else state)
     assert out.shape[1] == len(CHANNELS) + 5
     return out.astype(np.float32)

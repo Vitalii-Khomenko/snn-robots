@@ -1,0 +1,11 @@
+# A Saturday (2026-10-31): the owner sleeps on after 06:00 next to the robot, the room dark and quiet. The morning
+# waits for them (BrainLoop::nightRules): no calls, tired as at night, until the owner's hand at 07:00; then it wakes
+# over a few minutes and talks.
+duration 40:00
+clock 06:30
+seed 3
+room_light off
+at 30:00 touch_head 300
+at 30:20 touch_head 300
+at 31:00 person owner enter 0 0.6
+every 1:00 from 32:00 until 39:00 talk 0 1.5 0.6

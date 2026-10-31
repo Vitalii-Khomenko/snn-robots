@@ -68,6 +68,7 @@ KL_MAX, FLIP_MAX = 0.05, 0.15
 ALPHA_MIN = 0.1      # the smallest share of a night's step on the heads (blend)
 REPLAY_BAD_ERR = 0.05   # a decision replays wrong when an emotion's probability is off by more (replay)
 REPLAY_MAX_BAD = 0.01   # a boot is learned from when at most this share of its decisions replays wrong
+REPLAY_CARRY_SEQ = 1200  # a boot's next part goes on from the last when at most this many ticks (1 min) are missing
 ADAPTIVE = ["loud", "sharp", "voice", "near", "light", "motion"]  # touch, shake, tilt keep the owner's innate rules
 ZONE_STEP, ZONE_RELAX = 0.01, 0.005
 SAY = NN_OUT.index("say")
@@ -111,15 +112,21 @@ def boot_ids(lines):
 
 
 def load_life(days):
-    """Per boot: the decided ticks with a full input (the own-state columns exist since 2026-10-24 13:22)."""
+    """Per boot and day: the decided ticks with a full input (the own-state columns exist since 2026-10-24 13:22). A
+    boot that runs past midnight gives one part per day, with its id and the seq of its first and last decision: the
+    replay goes on from the day before (replay), the held-out check splits by day; its network and firmware are those
+    of its boot line, logged on the day it started."""
     S0, P0 = D.col("snn_" + SNN_OUT[0]), D.col("pv_" + PREV[0])
     N0 = D.col("nn_" + NN_OUT[0])
     boots = []
+    ids = {}
     for day in days:
         t, lines = D.load(day)
         if t is None:
             continue
-        ids = boot_ids(lines)
+        for b, (nn, fw) in boot_ids(lines).items():
+            known = ids.get(b, (None, None))
+            ids[b] = (nn if nn is not None else known[0], fw if fw is not None else known[1])
         r, _ = reward(t)
         for b in np.unique(t["boot"]):
             m = t["boot"] == b
@@ -133,7 +140,8 @@ def load_life(days):
             # the reward between two decisions goes to the earlier one
             idx = np.flatnonzero(dec)
             rd = np.add.reduceat(rb, idx) if len(idx) else np.zeros(0)
-            boots.append(dict(day=day, dec_idx=idx, nn_id=ids.get(b, (None, None))[0], fw=ids.get(b, (None, None))[1],
+            boots.append(dict(day=day, boot=int(b), seq=(int(seq[idx[0]]), int(seq[idx[-1]])), dec_idx=idx,
+                              nn_id=ids.get(b, (None, None))[0], fw=ids.get(b, (None, None))[1],
                               said=v[:, D.col("said")] > 0.5, gest=v[:, D.col("gesture")] > 0.5,
                               held=v[:, D.col("held")], att=v[:, D.col("snn_att_strength")],
                               x=np.concatenate([v[dec][:, S0:S0 + len(SNN_OUT)], v[dec][:, P0:P0 + len(PREV)]], 1),
@@ -180,12 +188,22 @@ def replay(m, boots):
     decisions whose replayed emotions are off by more than REPLAY_BAD_ERR, and the 99th percentile of the error.
 
     (2026-10-28, an audit: the gate was the median - half of the decisions could be wrong and pass. Real boots: p99
-    <= 0.007, share above 0.05 <= 0.00014, the rare misses after diary gaps.)"""
+    <= 0.007, share above 0.05 <= 0.00014, the rare misses after diary gaps.)
+
+    A boot's part of the next day goes on from the GRU state its part of the day before ended with, as the robot's
+    network did (until 2026-10-31 every part started from zero: a boot running past midnight replayed wrong for its
+    first minutes after 00:00 - on 10-31 2.4 % of the decisions to 03:35, and the night did not learn from the boot
+    the robot was living)."""
     feats, errs = [], []
+    state = {}  # boot -> (seq of its last decision, the GRU state after it)
     with torch.no_grad():
         for b in boots:
             x = torch.tensor(b["x"], dtype=torch.float32)[None]
-            z, _ = m.gru(x)
+            last = state.get(b.get("boot"))
+            h0 = last[1] if last is not None and 0 < b["seq"][0] - last[0] <= REPLAY_CARRY_SEQ else None
+            z, h = m.gru(x, h0)
+            if "boot" in b:
+                state[b["boot"]] = (b["seq"][1], h)
             e = m.emo(z)
             p = torch.softmax(e[..., :len(EMO_IDX)], -1)
             feats.append(torch.cat([z, p], -1)[0])

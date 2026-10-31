@@ -41,6 +41,9 @@ def random_raw(T, rng):
     r["stamina"] = 1.0 - (0.55 + 0.4 * np.sin(np.arange(T) / 600))  # the sleep pressure, above and below usual
     r["hour"] = (20.5 + np.arange(T) * 0.05 / 3600 * 30) % 24
     r["clock_ok"] = np.ones(T)
+    # the morning's own sleep (not a RAW column): held at 1, then a 3 minute wake ramp, by day
+    k = np.arange(T)
+    r["morning"] = np.where(k % 12000 < 4000, 1.0, np.clip(1.0 - (k % 12000 - 4000) * 0.05 / 180.0, 0.0, 1.0))
     return r
 
 
@@ -53,11 +56,11 @@ def main():
                     os.path.join(HERE, "..", "..", "main", "v4", "body_v4.cpp"), "-o", exe], check=True)
     T = 40000
     raw = random_raw(T, np.random.default_rng(1))
-    R = np.stack([raw[n] for n in RAW], 1).astype(np.float32)
+    R = np.stack([raw[n] for n in RAW] + [raw["morning"]], 1).astype(np.float32)  # the morning after the RAW row
     R.tofile(os.path.join(OUT, "raw.bin"))
     subprocess.run([exe, os.path.join(OUT, "raw.bin"), os.path.join(OUT, "ch.bin")], check=True)
     cpp = np.fromfile(os.path.join(OUT, "ch.bin"), np.float32).reshape(T, -1)
-    py = encode({n: R[:, i] for i, n in enumerate(RAW)})
+    py = encode({**{n: R[:, i] for i, n in enumerate(RAW)}, "morning": R[:, len(RAW)]})
     err = np.abs(cpp - py).max(0)
     print("max |C++ - Python| per channel:", np.round(err, 5))
     print("channel ranges:", np.round(py.min(0), 2), np.round(py.max(0), 2))

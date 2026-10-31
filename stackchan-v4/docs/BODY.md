@@ -79,6 +79,21 @@ overtired; this robot does not, whatever happened.
 - **A quiet day:** pressure below usual is not felt, and the evening is the clock's.
 - **The night still belongs to the clock and the owner.** Sleep starts 21:00-21:45 and the night rules are
   unchanged, so it is never up later.
+- **The morning waits for the owner (2026-10-31).** On Saturday 10-31 the owner slept on next to the robot in the
+  dark; at 06:00 the night ended by the clock, and from 06:26 it called 9 times a minute until the owner woke at 07:13
+  and turned it down (Sunday 10-25: calls from 06:34, the owner's first touch 06:52). Now after 06:00 it sleeps on -
+  night rules, and the tired channel held at the night's 0.75 (`ChannelEncoder::Raw::morning`) - until someone comes:
+  a touch, the room lit for 20 s, someone near (> 0.3), a voice for a while (the voice channel > 0.3), someone seen
+  moving; at 09:00 at the latest. Then it wakes over 3 minutes (a reboot by day starts awake).
+  - The diary, 7 mornings 10-25..31: on the weekdays the first of these came at 06:00-06:21, when the robot called
+    first anyway (no change); on the weekend 18 and 51 minutes after its first call. None came in the night hours
+    (00:30-06:00), the light only when it was really on.
+  - The log: `morning: 06:00, dark and quiet - sleeps on until someone comes`, `morning: up at 07:13 (a touch)`.
+  - The simulator: `sleep_in` (06:30, dark, nobody up; the owner's hand at 07:00: 0 calls before it, tired 0.75, 63
+    calls in the 10 minutes after, awake 5 minutes after the hand) and `early_riser` (06:05, the light on at 06:08:
+    silent before, talks after).
+  - Not a diary column: `diary.morning_of` rebuilds it from the night flag (the channels' twin, `channels.encode`'s
+    `morning`).
 
 **First try, rejected (offline, the analyzer's C++ on 2026-10-26 with a new tired channel):** tired = 0.75 x night
 + 0.6 x S, with no alerting signal.

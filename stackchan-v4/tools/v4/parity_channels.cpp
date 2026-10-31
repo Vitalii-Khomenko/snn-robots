@@ -7,17 +7,17 @@ int main(int argc, char** argv)
     if (argc < 3) return 1;
     FILE* f = std::fopen(argv[1], "rb");
     FILE* g = std::fopen(argv[2], "wb");
-    float row[v4::RAW_COUNT];
+    float row[v4::RAW_COUNT + 1];  // + the morning's own sleep (not a RAW column)
     ChannelEncoder enc;
     ChannelEncoder::Out out{};
-    while (std::fread(row, sizeof(float), v4::RAW_COUNT, f) == v4::RAW_COUNT) {
+    while (std::fread(row, sizeof(float), v4::RAW_COUNT + 1, f) == v4::RAW_COUNT + 1) {
         ChannelEncoder::Raw r;
         r.energy = row[0]; r.speech = row[1]; r.sharpEv = row[2]; r.headEv = row[3]; r.headHold = row[4];
         r.screenEv = row[5]; r.accelSd = row[6]; r.imuPitch = row[7]; r.imuRoll = row[8]; r.imuOk = row[9] > 0;
         r.nearRaw = row[10]; r.nearOk = row[11] > 0; r.als = row[12]; r.alsOk = row[13] > 0; r.motionFrac = row[14];
         r.motionX = row[15]; r.motionY = row[16]; r.frameOk = row[17] > 0.75f; r.lightOk = row[17] > 0.25f; r.battery = row[18]; r.stamina = row[19];
         r.hour = row[20]; r.clockOk = row[21] > 0; r.lightX = row[22]; r.lightY = row[23]; r.lightStr = row[24];
-        r.headYaw = row[25]; r.budget = row[26];
+        r.headYaw = row[25]; r.budget = row[26]; r.morning = row[v4::RAW_COUNT];
         enc.update(r, out);
         std::fwrite(out.data(), sizeof(float), out.size(), g);
     }

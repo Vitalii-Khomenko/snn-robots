@@ -49,13 +49,20 @@ def memory_metrics(ev, out):
     looked = []
     for t, good in rec:
         want = MEMORY_ROWS[0][3] if good else MEMORY_ROWS[1][3]
-        # a turn of up to ~100 deg, eased at the glances' speed, after the servos' 1 s start: there within 8 s
-        looked.append(any(t <= ts <= t + 8.0 and abs(y - want) < 15.0 for ts, y in rows))
+        # the turn from where the head was, eased at the glances' 20 deg/s peak, after the servos' 1 s start, and a
+        # second to spare (8 s for any turn until 2026-10-31: a 103 deg one takes 9)
+        y0 = next((y for ts, y in rows if ts >= t), 0.0)
+        within = 2.0 + 1.5708 * abs(want - y0) / 20.0
+        looked.append(any(t <= ts <= t + within and abs(y - want) < 15.0 for ts, y in rows))
     return {"memories_good": sum(1 for _, g in rec if g), "memories_bad": sum(1 for _, g in rec if not g),
             "memory_looked": sum(looked) / len(looked) if looked else None}
 # what the simulator's trace (10 Hz) shows of a channel in a window: (column, from s, to s, max | mean)
 TRACE = {"stale_imu": {"tilt_held": ("tilt", 65, 80, max), "tilt_after": ("tilt", 100, 360, "mean")},
-         "stale_near": {"near_held": ("near", 60, 70, max), "near_after": ("near", 80, 360, "mean")}}
+         "stale_near": {"near_held": ("near", 60, 70, max), "near_after": ("near", 80, 360, "mean")},
+         "sleep_in": {"tired_asleep": ("tired", 300, 1795, "mean"), "tired_woken": ("tired", 2100, 2400, "mean")}}
+# calls in a window of the run (s): {scenario: {metric: (from, to)}}
+CALLS_IN = {"sleep_in": {"calls_asleep": (0, 1799), "calls_woken": (1800, 2400)},
+            "early_riser": {"calls_dark": (0, 179), "calls_up": (180, 900)}}
 
 
 def trace_metrics(name, out):
@@ -242,6 +249,14 @@ CASES = [
     ("petting", 6, [("angry_after_touch", 0, 0, "petting never angers"), ("touch_answered_frac", 0.8, 1.01, "answers the hand"),
                     ("nods_per_touch", 0.2, 5, "nods 'yes' to the hand (owner 2026-10-24: the head hardly moved)")]),
     ("night_quiet", 40, [("calls", 0, 0, "silent at night (the owner sleeps)"), ("sleepy_frac", 0.3, 1.01, "sleeps")]),
+    # the morning waits for the owner (2026-10-31, BrainLoop::nightRules: on Saturday it called 9 a minute from 06:26
+    # next to the sleeping owner)
+    ("sleep_in", 40, [("calls_asleep", 0, 0, "after 06:00 in the dark, nobody up: silent until the owner's hand at 07:00"),
+                      ("tired_asleep", 0.7, 1.01, "and asleep (tired as at night)"),
+                      ("calls_woken", 3, 600, "woken, it talks within the next 10 minutes"),
+                      ("tired_woken", 0.0, 0.1, "awake 5 minutes after the hand")]),
+    ("early_riser", 15, [("calls_dark", 0, 0, "06:05, dark, nobody up: silent"),
+                         ("calls_up", 3, 600, "the owner switches the light on at 06:08: the morning starts")]),
     ("play_session", 12, [("n_faces", 5, 30, "a variety of faces"), ("calls", 3, 400, "talks")]),
     ("day_alone", 20, [("calls_per_h", 40, 600, "babbles by itself by day"),
                        ("moves_per_min", 3, 60, "looks around by itself (owner 2026-10-24: the head hardly moved)"),
@@ -374,6 +389,8 @@ def check(case):
     ev, minutes, moves, out = run(name, minutes)
     m = metrics(ev, minutes, moves)
     m.update(trace_metrics(name, out))
+    for key, (a, b) in CALLS_IN.get(name, {}).items():
+        m[key] = sum(1 for t, tag, x, _ in ev if tag == "v4" and x.startswith("call") and a <= t <= b)
     if name == "memory_recall":
         m.update(memory_metrics(ev, out))
     m["repowers"] = sum(1 for _, tag, x, _ in ev if tag == "runtime" and x.startswith("servo rail power cycle"))

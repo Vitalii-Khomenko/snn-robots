@@ -48,6 +48,8 @@ public:
     // something new in view, a glance) - then it is not remembered now.
     bool remember(const MemoryV4::Episode& e, uint32_t nowMs);
     static constexpr uint32_t kMemoryHoldMs = 2500, kMemoryFaceMs = 3500;
+    // a move starts once the servo rail is up (MotionEngine::update; the simulator's servos the same): ~1 s
+    static constexpr uint32_t kRailUpMs = 1000;
     static constexpr float kMemorySpeedDegS = 40.0f, kMemoryPitchUpDeg = 6.0f;
 
     static constexpr float kYawLimitDeg = 100.0f, kPitchMinDeg = -20.0f, kPitchMaxDeg = 35.0f;

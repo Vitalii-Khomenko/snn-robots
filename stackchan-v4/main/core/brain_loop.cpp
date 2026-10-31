@@ -204,9 +204,54 @@ void BrainLoop::updateChannels(uint32_t now, float sharpEv, const Env& env)
     r.budget = body_.budget();
     r.hour = env.hour;
     r.clockOk = env.timeSynced;
+    r.morning = morning_;  // the last tick's (nightRules runs after the channels)
     encoder_.update(r, channels_);
     zones_.apply(channels_);  // the zones as experience shifted them (zone_shift.h)
     frame_this_tick_ = false;
+}
+
+// The owner's night by the clock, 21:45-06:00, and a morning that waits for the owner (2026-10-31). Until then the night
+// ended at 06:00 whatever happened: on Saturday 10-31 the owner slept on next to the robot in the dark, and it called 9
+// times a minute from 06:26 until they woke at 07:13 and turned it down (Sunday 10-25: 06:34 against the owner's first
+// touch at 06:52). Now after 06:00 it sleeps on - night rules, and tired as at night (ChannelEncoder::Raw::morning) - until
+// someone comes: a touch, the room lit for kMorningLitMs, someone near, a voice for a while, someone seen moving; at
+// kMorningLatestH at the latest. On the 7 mornings 10-25..31 these came at 06:00-06:21 on the weekdays (when it called
+// first anyway) and never in the night hours (the light only when it was really on). Woken from its sleep it wakes over
+// kWakeRampMs; a reboot by day starts awake.
+bool BrainLoop::nightRules(uint32_t now, float hour)
+{
+    using namespace v4;
+    const bool clock_night = hour >= kNightStartH || hour < kNightEndH;
+    if (clock_night) {
+        awake_ = morning_logged_ = false;
+    } else if (!awake_) {
+        const char* why = raw_.headEv > 0.0f || raw_.screenEv > 0.0f                     ? "a touch"
+                          : lit_since_ms_ != 0 && now - lit_since_ms_ >= kMorningLitMs ? "the light"
+                          : channels_[CH_NEAR] > kMorningNear                            ? "someone near"
+                          : channels_[CH_VOICE] > kMorningVoice                          ? "a voice"
+                          : channels_[CH_MOTION] > kMorningMotion                        ? "someone moving"
+                          : hour >= kMorningLatestH                                      ? "the hour"
+                                                                                         : nullptr;
+        const int m = static_cast<int>(hour * 60.0f);
+        if (why) {
+            awake_ = true;
+            wake_ms_ = synced_night_ ? (now ? now : 1) : 0;
+            if (synced_night_) ESP_LOGI(kTag, "morning: up at %02d:%02d (%s)", m / 60, m % 60, why);
+        } else if (!morning_logged_) {
+            ESP_LOGI(kTag, "morning: %02d:%02d, dark and quiet - sleeps on until someone comes", m / 60, m % 60);
+            morning_logged_ = true;
+        }
+    }
+    const bool waiting = !clock_night && !awake_;
+    if (waiting) {
+        morning_ = 1.0f;
+    } else if (wake_ms_ != 0) {
+        morning_ = std::max(0.0f, 1.0f - static_cast<float>(now - wake_ms_) / static_cast<float>(kWakeRampMs));
+        if (morning_ <= 0.0f) wake_ms_ = 0;
+    } else {
+        morning_ = 0.0f;
+    }
+    return clock_night || waiting;
 }
 
 void BrainLoop::tick(uint32_t now, const Env& env)
@@ -226,13 +271,22 @@ void BrainLoop::tick(uint32_t now, const Env& env)
     brain_.setContingency(contingency_out_.data());  // the last tick's (it is computed after the executor)
     const bool decided = brain_.tick(channels_);
     decided_tick_ = decided;
-    // the owner's sleep (21:45-06:00): the executor keeps silent and dim. Before the clock is synced it might be night
-    // too (a reboot at 3 am without Wi-Fi): quiet for the first 2 minutes, and after them while the room is dark - the
-    // owner's night is dark (the light channel < 0.02 in every night hour, 2026-10-27), a lit room is day. (Until
-    // 2026-10-28, an audit: daytime rules after 2 minutes whatever the hour.)
-    if (channels_[CH_LIGHT] >= kLitRoom) lit_ms_ = now ? now : 1;
+    // the owner's sleep (21:45-06:00, and a morning nobody has come to yet: nightRules): the executor keeps silent and
+    // dim. Before the clock is synced it might be night too (a reboot at 3 am without Wi-Fi): quiet for the first 2
+    // minutes, and after them while the room is dark - the owner's night is dark (the light channel < 0.02 in every
+    // night hour, 2026-10-27), a lit room is day. (Until 2026-10-28, an audit: daytime rules after 2 minutes whatever
+    // the hour.)
+    const bool lit = channels_[CH_LIGHT] >= kLitRoom;
+    if (lit) lit_ms_ = now ? now : 1;
+    lit_since_ms_ = !lit ? 0 : lit_since_ms_ != 0 ? lit_since_ms_ : (now ? now : 1);
     const bool dark = lit_ms_ == 0 || now - lit_ms_ > 60000;
-    night_ = env.timeSynced ? (env.hour >= 21.75f || env.hour < 6.0f) : (now < 120000 || dark);
+    if (env.timeSynced) {
+        night_ = nightRules(now, env.hour);
+    } else {
+        night_ = now < 120000 || dark;
+        morning_ = 0.0f;
+    }
+    synced_night_ = env.timeSynced && night_;
     const uint32_t calls = exec_.calls(), gestures = exec_.gestures();
     if (brain_.trained()) {
         exec_.apply(brain_, decided, night_, now, done_);

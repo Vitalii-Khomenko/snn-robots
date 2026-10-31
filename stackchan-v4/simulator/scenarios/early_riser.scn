@@ -1,0 +1,8 @@
+# A weekday (10-26..30): the owner gets up at 06:08 and switches the light on; the morning starts as before.
+duration 15:00
+clock 06:05
+seed 4
+room_light off
+at 3:00 room_light on
+at 3:30 person owner enter 0 1.0
+every 1:00 from 4:00 until 14:00 talk 0 1.5 0.6

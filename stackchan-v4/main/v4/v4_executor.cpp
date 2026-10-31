@@ -135,11 +135,16 @@ bool V4Executor::remember(const MemoryV4::Episode& e, uint32_t now)
         return false;
     const float yaw = std::clamp(e.yawDeg, -kOrientLimitDeg, kOrientLimitDeg);
     const float pitch = BrainV4::kGazePitchCenterDeg + kMemoryPitchUpDeg;
-    const float travel_s = 1.5708f * std::hypot(yaw - sent_yaw_, pitch - sent_pitch_) / (0.5f * kMemorySpeedDegS);
+    // the turn from where the head is, not from the last target sent: this very tick's gaze may have sent one the head
+    // never went to (2026-10-30: the head at +53, the gaze's -9 just sent, the moment at -50 - the glance was timed
+    // for 41 deg, ended halfway through the 103 deg turn, and the head came back without looking there)
+    float hy = 0, hp = 0;
+    motion_.getCurrentDeg(hy, hp);
+    const float travel_s = 1.5708f * std::hypot(yaw - hy, pitch - hp) / (0.5f * kMemorySpeedDegS);
     // the eyes and the bubble to the side the head turns, the way the eyes follow attention (setGaze: + right)
-    const int side = yaw >= sent_yaw_ ? 1 : -1;
+    const int side = yaw >= hy ? 1 : -1;
     command(yaw, pitch, kMemorySpeedDegS, now, true);
-    memory_until_ms_ = (now + static_cast<uint32_t>(travel_s * 1000.0f) + kMemoryHoldMs) | 1u;
+    memory_until_ms_ = (now + kRailUpMs + static_cast<uint32_t>(travel_s * 1000.0f) + kMemoryHoldMs) | 1u;
     const bool good = e.valence > 0.0f;
     face_.showMemory(good, side, kMemoryFaceMs);
     const int date = static_cast<int>(e.date);

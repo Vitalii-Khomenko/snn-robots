@@ -103,6 +103,10 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
 - Main network: emotion agreement with its teacher 0.84 when acting alone (0.90 before the Muse added its idea acts); ~210-260 calls an hour alone by day;
   every touch answered; petting never angers; pokes do; silent at night; frightened by shakes and bangs
   (`tools/v4/behavior_test_v4.py`, all pass).
+- The morning waits for the owner (2026-10-31): after 06:00 the robot sleeps on in the dark and quiet until someone
+  comes - a touch, the light on, someone near, a voice, someone moving; 09:00 at the latest - and then wakes over 3
+  minutes. On Saturday 10-31 it called 9 times a minute from 06:26 next to the sleeping owner; on the weekdays the
+  owner's first sign came when it called first anyway ([BODY](docs/BODY.md)).
 - Stage 6, learning from its own life, runs since 2026-10-24: every night at 03:30 the PC replays the robot's decisions,
   rewards them by how people answered (petting, talk, coming close vs shaking, rough pokes, leaving), fine-tunes the
   main network's action heads (towards choices that did better than expected, away from worse ones), shifts the
