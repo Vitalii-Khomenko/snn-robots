@@ -9,6 +9,12 @@ bad moments are remembered too.
   0.6).
   - Strength: the kind's weight x (0.6 + 0.4 x the analyzer's arousal then: McGaugh) x 0.8 per day of age.
   - Each moment keeps its time of day, where the head pointed, someone around or not, the room lit or dark.
+  - One moment is kept once (2026-11-01). Good moments closer than 10 minutes are one (the strongest stays), and the
+    same for bad ones. A fright within 45 s of a touch is not a bad moment. The analyzer startles at the hand coming
+    and going: on 10-29 .. 11-01, 62-82 % of the frights had a touch within 45 s, most of them 4-26 s before it, and
+    none came between 45 s and 5 minutes of one. Until then a pet was kept as a pet, a tap and a fright. The robot
+    would have looked three times to the same place, once with the worried face, and most of the 8 bad moments were
+    pets. The night of 11-01 with the rule: 16 different good moments and 4 real frights (loud sharp sounds).
   - They go to the robot in the learned blob (`mem.episodes`, 24 x 8 floats) and the night's report lists the
     strongest.
 - **The robot remembers** (`main/v4/memory_v4.*`, `V4Executor::remember`). By day, when the present is like a

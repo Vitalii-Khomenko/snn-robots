@@ -60,14 +60,23 @@ GOOD_W = {"pet": 1.0, "tap": 0.6, "talk": 0.6, "near": 0.4}
 BAD_W = {"shake": 1.0, "poke": 0.7, "tilt": 0.6, "fright": 0.6}
 N_GOOD, N_BAD = 16, 8   # learned.MEM_ROWS = 24
 OLDER = 0.8             # a day older weighs this much less
-SAME_MIN = 10.0         # moments of one kind closer than this are one moment
+SAME_MIN = 10.0         # good (or bad) moments closer than this are one moment: the strongest stays
+TOUCH_S = 45.0          # a fright this close to a touch is the touch's (the hand coming, 2026-11-01), not a bad moment
 
 
 def vivid(day, days_ago=0):
     """A day's vivid moments as memory rows: [minute, valence, strength, yaw, around, lit, kind, date]. Strength: the
     kind's weight x (0.6 + 0.4 x the analyzer's arousal then: emotion picks what is kept, McGaugh) x OLDER^days_ago;
     around and lit as the firmware sees them (BrainLoop: somebody heard, moving or near in the last 2 minutes; the
-    light channel >= 0.04)."""
+    light channel >= 0.04).
+
+    One moment is kept once (2026-11-01). A pet comes with taps: the strongest good moment within SAME_MIN stays, the
+    same for bad ones; until then one pet was a pet and a tap, and the robot looked twice to the same place. A fright
+    within TOUCH_S of a touch is not a bad moment: the analyzer startles at the hand coming and going (10-29 .. 11-01:
+    62-82 % of the frights had a touch within 45 s, most of them 4-26 s before it, and none between 45 s and 5
+    minutes), and the pet is the moment.
+    Until then the night's 8 bad moments were mostly pets, and the robot would have recalled a pet with a worried
+    face."""
     t, _ = D.load(day)
     if t is None:
         return []
@@ -75,7 +84,9 @@ def vivid(day, days_ago=0):
     c = lambda n: np.nan_to_num(v[:, D.col(n)])
     ev, valid = events(t)
     thr = c("snn_threat") > 0.6
-    ev["fright"] = thr & ~np.r_[False, thr[:-1]]
+    touch = (c("raw_head_ev") > 0) | (c("raw_screen_ev") > 0) | ev["pet"] | ev["tap"]
+    near_touch = np.convolve(touch.astype(np.int32), np.ones(2 * int(TOUCH_S / DT) + 1, np.int32), "same") > 0
+    ev["fright"] = thr & ~np.r_[False, thr[:-1]] & ~near_touch
     speech = np.where(np.isfinite(v[:, D.col("ear_speech")]), c("ear_speech"), c("raw_speech"))
     somebody = (speech > 0.4) | (c("ch_motion") > 0.1) | (c("ch_near") > 0.3)
     around = np.convolve(somebody.astype(np.int32), np.ones(int(120 / DT), np.int32))[:len(v)] > 0
@@ -83,13 +94,13 @@ def vivid(day, days_ago=0):
     lit, arousal = c("ch_light") >= 0.04, np.clip(c("snn_arousal"), 0, 1)
     date = int(day[2:4] + day[5:7] + day[8:10])
     rows = []
-    for kind, w in list(GOOD_W.items()) + list(BAD_W.items()):
-        good = kind in GOOD_W
+    for weights in (GOOD_W, BAD_W):
         cand = []
-        for i in np.flatnonzero(ev[kind] & valid & (minute > 0)):
-            strength = w * (0.6 + 0.4 * arousal[i]) * OLDER ** days_ago
-            cand.append([minute[i], 1.0 if good else -1.0, strength, yaw[i], float(around[i]), float(lit[i]),
-                         float(KINDS.index(kind)), float(date)])
+        for kind, w in weights.items():
+            for i in np.flatnonzero(ev[kind] & valid & (minute > 0)):
+                strength = w * (0.6 + 0.4 * arousal[i]) * OLDER ** days_ago
+                cand.append([minute[i], 1.0 if weights is GOOD_W else -1.0, strength, yaw[i], float(around[i]),
+                             float(lit[i]), float(KINDS.index(kind)), float(date)])
         cand.sort(key=lambda r: -r[2])
         kept = []
         for r in cand:

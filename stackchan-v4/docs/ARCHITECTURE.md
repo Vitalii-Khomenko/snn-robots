@@ -205,7 +205,8 @@ never sounded. The night learns only from what was carried out (section 7). `NO_
 strength, is not used by the face (the faces have one strength each): an output with no visible effect.
 
 **Remembering** (2026-10-28, [EPISODES](EPISODES.md)): the night sends the most vivid moments of the last days, good
-and bad (`mem.episodes`). By day, when the present is like one - the time of day within 20 minutes, lit or dark,
+and bad (`mem.episodes`; one moment once, and a fright within 45 s of a touch is the touch's, not a bad moment:
+`episodes.vivid`, 2026-11-01). By day, when the present is like one - the time of day within 20 minutes, lit or dark,
 someone around or not - `MemoryV4` offers it and `V4Executor::remember` turns the head for a moment to where it happened
 (the turn from where the head is, the servos' 1 s start, then 2.5 s; until 2026-10-31 the turn was timed from the last
 target sent, and a long one ended halfway) and shows the remembering face (a heart or a little storm in a thought bubble, 3.5 s). Once a day per moment, one
