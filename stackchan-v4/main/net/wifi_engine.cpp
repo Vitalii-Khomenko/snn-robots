@@ -4,6 +4,7 @@
 #include <ctime>
 #include <new>
 
+#include <bsp/esp-bsp.h>
 #include <esp_event.h>
 #include <esp_log.h>
 #include <esp_netif.h>
@@ -14,6 +15,7 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <lwip/ip_addr.h>
+#include <sys/time.h>
 #include <ping/ping_sock.h>
 
 // ../secrets is on the include path (see main/CMakeLists.txt) specifically
@@ -43,11 +45,21 @@ void wifiEventHandler(void* arg, esp_event_base_t base, int32_t id, void* data)
         // error, and a plain immediate retry is what every consumer IoT
         // device does for "router rebooted"/"briefly out of range". esp_wifi
         // already rate-limits the underlying radio retries internally.
-        ESP_LOGW(kTag, "disconnected, reconnecting");
+        // ... but away from the known network (another office, 2026-11-07) a failed connect came back at once, for as
+        // long as the robot was there: after kFastRetries the retries go to taskLoop(), one every kSlowRetryMs.
         self->has_ip_.store(false);
-        esp_wifi_connect();
+        const int failures = self->connect_failures_.fetch_add(1) + 1;
+        const auto* d = static_cast<const wifi_event_sta_disconnected_t*>(data);
+        if (failures <= WifiEngine::kFastRetries) {
+            ESP_LOGW(kTag, "disconnected (reason %d), reconnecting", d ? d->reason : 0);
+            esp_wifi_connect();
+        } else if (failures == WifiEngine::kFastRetries + 1) {
+            ESP_LOGW(kTag, "no network after %d tries (reason %d): trying every 30 s, the robot lives on by itself",
+                     WifiEngine::kFastRetries, d ? d->reason : 0);
+        }
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         ESP_LOGI(kTag, "got IP");
+        self->connect_failures_.store(0);
         // Found on first real hardware test: esp_wifi_sta_get_ap_info()
         // (taskLoop()'s own connected_ check) succeeds as soon as the radio
         // associates, which is BEFORE DHCP has actually handed out an IP -
@@ -84,6 +96,20 @@ void onPingEnd(esp_ping_handle_t /*hdl*/, void* args)
     // let a late timeout callback give a freed semaphore: Guru Meditation
     // LoadProhibited in onPingTimeout seen on hardware ~9 s after boot.
     xSemaphoreGive(static_cast<PingContext*>(args)->ended);
+}
+
+int bcd(uint8_t v) { return (v >> 4) * 10 + (v & 0x0F); }
+uint8_t toBcd(int v) { return static_cast<uint8_t>((v / 10) << 4 | (v % 10)); }
+
+// days since 1970-01-01 of a civil date (H. Hinnant's days_from_civil): newlib has no timegm
+int64_t daysFromCivil(int y, int m, int d)
+{
+    y -= m <= 2;
+    const int64_t era = (y >= 0 ? y : y - 399) / 400;
+    const int64_t yoe = y - era * 400;
+    const int64_t doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+    const int64_t doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    return era * 146097 + doe - 719468;
 }
 
 // One-shot ICMP echo, true if a reply came back within timeout_ms. Runs
@@ -145,10 +171,59 @@ bool pingOnce(const char* ip_str, uint32_t timeout_ms)
 
 }  // namespace
 
+// The BM8563 keeps UTC: registers 0x02..0x08 are seconds (bit 7: the clock lost its power, the time is not to be
+// trusted), minutes, hours, day, weekday, month (bit 7: century), year, in BCD.
+bool WifiEngine::readRtc(time_t& utc)
+{
+    uint8_t reg = 0x02, r[7] = {};
+    if (!rtc_ || i2c_master_transmit_receive(rtc_, &reg, 1, r, sizeof(r), 50) != ESP_OK) return false;
+    const int sec = bcd(r[0] & 0x7F), min = bcd(r[1] & 0x7F), hour = bcd(r[2] & 0x3F), day = bcd(r[3] & 0x3F);
+    const int month = bcd(r[5] & 0x1F), year = 2000 + bcd(r[6]);
+    if ((r[0] & 0x80) || year < 2026 || month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || min > 59 ||
+        sec > 59)
+        return false;
+    utc = static_cast<time_t>(daysFromCivil(year, month, day) * 86400 + hour * 3600 + min * 60 + sec);
+    return true;
+}
+
+void WifiEngine::writeRtc(time_t utc)
+{
+    if (!rtc_) return;
+    struct tm t{};
+    gmtime_r(&utc, &t);
+    const uint8_t start[2] = {0x00, 0x00};  // control 1: the clock runs (STOP cleared)
+    const uint8_t w[8] = {0x02, toBcd(t.tm_sec), toBcd(t.tm_min), toBcd(t.tm_hour), toBcd(t.tm_mday),
+                          static_cast<uint8_t>(t.tm_wday), toBcd(t.tm_mon + 1), toBcd(t.tm_year % 100)};
+    if (i2c_master_transmit(rtc_, start, sizeof(start), 50) != ESP_OK || i2c_master_transmit(rtc_, w, sizeof(w), 50) != ESP_OK)
+        ESP_LOGW(kTag, "clock: could not set the RTC");
+}
+
 bool WifiEngine::begin()
 {
     setenv("TZ", kTimezone, 1);
     tzset();
+
+    // the clock before any network: the board's RTC (the I2C bus is up: power_rails / power_status came first)
+    i2c_master_bus_handle_t bus = nullptr;
+    if (i2c_master_get_bus_handle(BSP_I2C_NUM, &bus) == ESP_OK) {
+        i2c_device_config_t cfg = {};
+        cfg.dev_addr_length = I2C_ADDR_BIT_LEN_7;
+        cfg.device_address = kRtcAddr;
+        cfg.scl_speed_hz = 400000;
+        if (i2c_master_bus_add_device(bus, &cfg, &rtc_) != ESP_OK) rtc_ = nullptr;
+    }
+    time_t utc = 0;
+    if (readRtc(utc)) {
+        const timeval tv{utc, 0};
+        settimeofday(&tv, nullptr);
+        time_synced_.store(true);
+        struct tm local{};
+        localtime_r(&utc, &local);
+        ESP_LOGI(kTag, "clock: from the RTC, %04d-%02d-%02d %02d:%02d:%02d (before any network)", local.tm_year + 1900,
+                 local.tm_mon + 1, local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec);
+    } else {
+        ESP_LOGW(kTag, "clock: the RTC %s - no clock until NTP", rtc_ ? "is not set or lost its power" : "does not answer");
+    }
 
     esp_err_t err = esp_netif_init();
     if (err != ESP_OK) {
@@ -234,8 +309,25 @@ void WifiEngine::taskLoop()
         wifi_ap_record_t ap_info{};
         connected_.store(esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK);
 
+        // COMPLETED once per sync (the status goes back to RESET when read): every hour while online
         if (sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
+            const time_t now = time(nullptr);
+            time_t rtc = 0;
+            const bool had = readRtc(rtc);
+            if (!ntp_synced_.load())
+                ESP_LOGI(kTag, "clock: NTP synced; the RTC %s%lld s", had ? "was off by " : "was not set, ",
+                         had ? static_cast<long long>(rtc - now) : 0LL);
+            writeRtc(now);
+            ntp_synced_.store(true);
             time_synced_.store(true);
+        }
+
+        if (connect_failures_.load() > kFastRetries && !connected_.load()) {
+            ms_since_retry_ += kStatusPollMs;
+            if (ms_since_retry_ >= kSlowRetryMs) {
+                ms_since_retry_ = 0;
+                esp_wifi_connect();
+            }
         }
 
         if (ms_since_presence_check >= kPresenceCheckIntervalMs) {

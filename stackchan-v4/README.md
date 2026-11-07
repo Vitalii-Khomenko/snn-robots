@@ -82,7 +82,7 @@ main/                firmware (ESP-IDF component)
   perception/        the ear (audio front end + Auditory NN: loudness, speech) and the vision front end (motion)
   sensors/ motion/ ui/ led/ voice/ audio/ power/    hardware engines: camera, microphones, IMU, touch, proximity /
                      light; servos; the face; LEDs; the droid voice; the speaker; power rails and the PMU
-  net/               Wi-Fi + NTP, the diary over UDP (life_log), the update server (ota_server)
+  net/               Wi-Fi + NTP + the board's RTC, the diary over UDP (life_log), the update server (ota_server)
   robot_runtime.*    bring-up, the main loop, servo watchdog, stats lines
 simulator/           the digital twin: the real firmware in a simulated room (scenarios/*.scn)
 tools/v4/            spec, channels, synthetic lives, teachers, training, export, parity, behaviour tests, diary readers,
@@ -107,6 +107,10 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   comes - a touch, the light on, someone near, a voice, someone moving; 09:00 at the latest - and then wakes over 3
   minutes. On Saturday 10-31 it called 9 times a minute from 06:26 next to the sleeping owner; on the weekdays the
   owner's first sign came when it called first anyway ([BODY](docs/BODY.md)).
+- Away from home (2026-11-07): the robot lives without Wi-Fi or the PC - the brain, the voice, the night and morning,
+  the memories all run on it. Its clock is the board's RTC, set from every NTP sync and read at boot before any network
+  (1 s off after a reboot); without a known network it tries to connect once every 30 s. Away from home there is no
+  diary and no night's learning, and it cannot be updated ([HARDWARE](docs/HARDWARE.md)).
 - Stage 6, learning from its own life, runs since 2026-10-24: every night at 03:30 the PC replays the robot's decisions,
   rewards them by how people answered (petting, talk, coming close vs shaking, rough pokes, leaving), fine-tunes the
   main network's action heads (towards choices that did better than expected, away from worse ones), shifts the

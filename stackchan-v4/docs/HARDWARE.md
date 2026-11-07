@@ -270,7 +270,7 @@ and skips the frame otherwise, so it never blocks on the display.
 - Internal RAM: ~35 KB free at runtime (minimum ~21 KB, brain v4 firmware 2026-10-24). Brain v4's int8 weight tables
   (236 KB) are copied from flash to PSRAM at boot (flash here is DIO, about half the speed of PSRAM).
 - Wi-Fi buffers are trimmed (static RX 4, dynamic RX/TX 12, no A-MPDU):
-  traffic: the diary (~5 datagrams/s + log lines), a ping every 20 min, NTP. Modem power save is off
+  traffic: the diary (~5 datagrams/s + log lines), a ping every 20 min, NTP (hourly; it sets the RTC). Modem power save is off
   (`WIFI_PS_NONE`), the robot runs on USB.
 - Tasks: main loop (core 0, 8 KB stack, registered with the task watchdog, 20 ms loop, the brain ticks every 50 ms),
   **voice** (core 1, priority 5, 6 KB: renders 20 ms chunks and blocks on the codec), microphone (core 1, priority
@@ -388,7 +388,14 @@ wrapper), `py32_io_expander`, `si12t`. A review fixed:
 - The proximity sensor reads 0-16 of 2047 even with a hand at the face (2026-10-24, LED at 40 kHz x 8 pulses); the
   near channel stays almost empty.
 - No sound direction (two microphones 5 cm apart).
-- The robot has no clock without Wi-Fi / NTP: quiet for the first 2 minutes after a boot, then daytime rules.
+- The clock away from the home network (2026-11-07): the CoreS3's BM8563 RTC (I2C 0x51, runs on the battery while
+  the robot is off) is set from every NTP sync and read at boot, before any network (`WifiEngine::readRtc`, log
+  `wifi: clock: from the RTC, ...`, then `clock: NTP synced; the RTC was off by N s`; the stats line `time=rtc` until
+  NTP). Measured: a reboot after a sync is 1 s off; before the first sync the RTC was 254 s behind. Only if the RTC has
+  lost its power (or never been set) is there no clock: quiet for the first 2 minutes after a boot, then daytime rules
+  while the room is lit.
+- Without a known network Wi-Fi retries 10 times at once, then one connect every 30 s (`no network after 10 tries`):
+  the robot lives on by itself; the diary of that time is lost (it waits in a small ring only for short drop-outs).
 - Nearly deaf to quiet sounds while turning (servo noise, see above).
 - Millisecond timestamps wrap after 49.7 days of uptime; all comparisons go
   through `main/core/ms_clock.h` (`msReached` for periodic deadlines,

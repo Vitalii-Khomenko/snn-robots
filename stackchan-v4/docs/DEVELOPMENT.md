@@ -24,7 +24,7 @@ Never flash at night (the owner sleeps next to the robot, 21:45-06:00): a reboot
 ./build.sh build                       # ESP-IDF v5.5.4 in the stackchan-firmware-builder:local image, cache ../.tooling
 ./build.sh reconfigure                 # after adding a source file under main/ (the source list is globbed)
 python3 tools/robot/ota.py firmware    # over Wi-Fi (normal way); build/stackchan_v4.bin
-python3 tools/robot/ota.py status      # {"firmware": "ota_0", "brain": "v4", "uptime_s": ..., "diary_sent": ...}
+python3 tools/robot/ota.py status      # {"firmware": "ota_0", "brain": "v4", "uptime_s": ..., "diary_sent": ..., "clock": "synced"/"rtc"/"unsynced"}
 python3 tools/robot/ota.py touch 5     # head pad sensitivity 0..7, kept in NVS
 python3 tools/robot/ota.py learned F   # a learned blob (stage 6): switched in without a reboot, on trial for a minute
 ./flash.sh                             # over the cable (first flash, recovery); nothing else may hold /dev/ttyACM0

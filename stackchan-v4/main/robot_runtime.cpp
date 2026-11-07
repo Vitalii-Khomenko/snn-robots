@@ -236,7 +236,8 @@ bool RobotRuntime::begin()
         ESP_LOGE(kTag, "power status begin failed");
     }
 
-    // Wi-Fi (net/wifi_engine.h): station connect + NTP (the clock of the night rules and the tired channel) + the LAN
+    // Wi-Fi (net/wifi_engine.h): station connect + NTP and the board's RTC (the clock of the night rules and the tired
+    // channel, known from the first tick even away from the home network: 2026-11-07) + the LAN
     // device ping (owner=near/away in the stats line). Non-blocking: association and sync happen in the background.
     ESP_LOGI(kTag, "wifi");
     if (!kWifiEnabled) {
@@ -323,7 +324,7 @@ void RobotRuntime::logStats(uint32_t now)
              // ESP-IDF counts stacks in bytes (until 2026-10-27 this was multiplied by 4: 17360 of an 8192 B stack)
              static_cast<unsigned>(uxTaskGetStackHighWaterMark(NULL)), static_cast<unsigned>(mic_.stackHeadroom()),
              wifi_.isConnected() ? "up" : "down",
-             wifi_.isTimeSynced() ? "synced" : "unsynced", wifi_.knownDeviceNearby() ? "near" : "away",
+             wifi_.timeSource(), wifi_.knownDeviceNearby() ? "near" : "away",
              static_cast<unsigned>(loop_.tickLastUs()), static_cast<unsigned>(loop_.takeTickMaxUs()),
              static_cast<unsigned>(loop_.missedTicks()), static_cast<unsigned>(loop_.tickPeriodMs()),
              static_cast<unsigned>(loop_.audioUs()), static_cast<unsigned>(mic_.audioFront().blockUs()),
@@ -649,11 +650,11 @@ int RobotRuntime::formatStatus(char* buf, int size)
     return std::snprintf(buf, static_cast<size_t>(size),
                          "{\"firmware\":\"%s\",\"firmware_trial\":%s,\"brain\":\"v4\",\"learned_version\":%u,"
                          "\"learned_slot\":\"%c\",\"learned_trial\":%s,\"uptime_s\":%u,\"diary_sent\":%u,"
-                         "\"diary_dropped\":%u,\"touch_level\":%d,\"volume\":%d}\n",
+                         "\"diary_dropped\":%u,\"touch_level\":%d,\"volume\":%d,\"clock\":\"%s\"}\n",
                          run ? run->label : "?", state == ESP_OTA_IMG_PENDING_VERIFY ? "true" : "false",
                          static_cast<unsigned>(learned_.version()), learned_.slot(), learned_.onTrial() ? "true" : "false",
                          static_cast<unsigned>(nowMs() / 1000), static_cast<unsigned>(life_.sent()),
-                         static_cast<unsigned>(life_.dropped()), touch_.sensitivity(), audio_.level());
+                         static_cast<unsigned>(life_.dropped()), touch_.sensitivity(), audio_.level(), wifi_.timeSource());
 }
 
 void RobotRuntime::loop()

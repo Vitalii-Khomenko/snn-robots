@@ -1,9 +1,17 @@
 #pragma once
 #include <atomic>
 #include <cstdint>
+#include <ctime>
+#include <driver/i2c_master.h>
 
 // Wi-Fi station connection + NTP time sync (the clock of brain v4's night rules and tired channel) + a periodic
 // "is a known device on this LAN" presence check (owner=near/away in the stats line).
+//
+// The clock without a network (2026-11-07, the owner: shown in another office, away from the home Wi-Fi, the robot
+// had no time). The CoreS3's BM8563 RTC (I2C 0x51, kept running by the battery while the robot is off) is set from
+// every NTP sync and read in begin(), before any network: the clock is known from the first tick wherever the robot
+// is switched on. Without a known network the reconnects slow down after kFastRetries to one every kSlowRetryMs
+// (until then a failed connect was retried at once, a radio scan after another for as long as it was away).
 //
 // Runs its own FreeRTOS task for reconnect handling and the periodic
 // presence scan: the Wi-Fi/lwIP stack already does its own event-driven
@@ -32,7 +40,10 @@ public:
 
     bool isConnected() const { return connected_.load(); }
     bool hasIp() const { return has_ip_.load(); }
+    // The clock is known: from NTP, or from the RTC until the first NTP sync.
     bool isTimeSynced() const { return time_synced_.load(); }
+    // "synced" (NTP), "rtc" (the board's clock, no NTP yet) or "unsynced"
+    const char* timeSource() const { return !time_synced_.load() ? "unsynced" : ntp_synced_.load() ? "synced" : "rtc"; }
     // Local hour of day as 0.0..24.0 (e.g. 13.5 = 13:30) - only meaningful
     // once isTimeSynced() is true; returns 12.0 (neutral midday) before
     // then so a caller that forgets to check isTimeSynced() degrades to
@@ -54,14 +65,25 @@ public:
     // it directly from the IP_EVENT/WIFI_EVENT_STA_DISCONNECTED handlers in
     // wifi_engine.cpp; nothing outside that file has a reason to touch it.
     std::atomic<bool> has_ip_{false};
+    // Failed connects in a row (reset on an IP): the handler retries at once only for the first kFastRetries, then
+    // taskLoop() every kSlowRetryMs. Public for the same reason as has_ip_.
+    std::atomic<int> connect_failures_{0};
+    static constexpr int kFastRetries = 10;
 
 private:
+    static constexpr uint32_t kSlowRetryMs = 30000;
+    static constexpr uint8_t kRtcAddr = 0x51;
+    bool readRtc(time_t& utc);
+    void writeRtc(time_t utc);
     static void taskEntry(void* arg);
     void taskLoop();
     void checkKnownDevices();
 
     std::atomic<bool> connected_{false};
     std::atomic<bool> time_synced_{false};
+    std::atomic<bool> ntp_synced_{false};
+    i2c_master_dev_handle_t rtc_ = nullptr;
+    uint32_t ms_since_retry_ = 0;
     std::atomic<bool> known_device_nearby_{false};
     // Consecutive checks in which no known device answered. A phone in
     // power save often misses a ping: "away" only after kAwayAfterMisses
