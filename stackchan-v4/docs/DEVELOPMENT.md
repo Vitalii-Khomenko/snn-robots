@@ -24,7 +24,8 @@ Never flash at night (the owner sleeps next to the robot, 21:45-06:00): a reboot
 ./build.sh build                       # ESP-IDF v5.5.4 in the stackchan-firmware-builder:local image, cache ../.tooling
 ./build.sh reconfigure                 # after adding a source file under main/ (the source list is globbed)
 python3 tools/robot/ota.py firmware    # over Wi-Fi (normal way); build/stackchan_v4.bin
-python3 tools/robot/ota.py status      # {"firmware": "ota_0", "brain": "v4", "uptime_s": ..., "diary_sent": ..., "clock": "synced"/"rtc"/"unsynced"}
+python3 tools/robot/ota.py status      # {"firmware": "ota_0", "brain": "v4", "uptime_s": ..., "diary_sent": ..., "clock": "synced"/"rtc"/"unsynced",
+                                       #  "boot_reason": "power on"/"software restart"/"panic"/..., "last_crash": "" or the crash summary}
 python3 tools/robot/ota.py touch 5     # head pad sensitivity 0..7, kept in NVS
 python3 tools/robot/ota.py learned F   # a learned blob (stage 6): switched in without a reboot, on trial for a minute
 ./flash.sh                             # over the cable (first flash, recovery); nothing else may hold /dev/ttyACM0
@@ -231,7 +232,7 @@ send the innate blob, the next nights start from the new network.
 | `runtime: loop_us (servos face leds+pad imu+mic sensors brain diary supervise, mean/max): ...` | every 5 s: where the main loop's time goes, per stage, us |
 | `runtime: servo rail power cycle (...)` | the servo watchdog acted (HARDWARE.md) |
 | `runtime: speaker volume 5/10 (codec 76)` | the owner set the volume on the screen (the status JSON: `volume`) |
-| `runtime: boot reason: ...`, `crash of the last run: ...` | why it (re)started |
+| `runtime: boot reason: ...`, `crash of the last run: ...` | why it (re)started; also in the status (`boot_reason`, `last_crash`), since with the PC off or away from home these lines are lost (2026-11-06 23:12) |
 
 ## 7. Pictures
 

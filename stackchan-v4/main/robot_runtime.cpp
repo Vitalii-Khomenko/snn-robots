@@ -434,6 +434,8 @@ void RobotRuntime::logTick()
 
 // Why the robot (re)started, into the diary: a freeze without a trace (2026-10-11) is what this is for. A panic or
 // a watchdog leaves a core dump in flash: its summary goes in once, then the dump is erased.
+// Both stay in the status too ("boot_reason", "last_crash"; 2026-11-08): with the PC off, or away from home, the
+// diary's lines go nowhere - a reboot on 11-06 at 23:12 left no reason.
 void RobotRuntime::logBootReason()
 {
     static const char* const names[] = {"unknown", "power on", "external pin", "software restart", "panic",
@@ -442,7 +444,8 @@ void RobotRuntime::logBootReason()
                                         "CPU lockup"};
     const esp_reset_reason_t r = esp_reset_reason();
     const int i = static_cast<int>(r);
-    ESP_LOGI(kTag, "boot reason: %s (%d)", i >= 0 && i < static_cast<int>(std::size(names)) ? names[i] : "?", i);
+    boot_reason_ = i >= 0 && i < static_cast<int>(std::size(names)) ? names[i] : "?";
+    ESP_LOGI(kTag, "boot reason: %s (%d)", boot_reason_, i);
     if (esp_core_dump_image_check() != ESP_OK) return;
     esp_core_dump_summary_t* sum = static_cast<esp_core_dump_summary_t*>(
         heap_caps_malloc(sizeof(esp_core_dump_summary_t), MALLOC_CAP_SPIRAM));
@@ -453,9 +456,13 @@ void RobotRuntime::logBootReason()
             n += std::snprintf(bt + n, sizeof(bt) - static_cast<size_t>(n), " 0x%08lx",
                                static_cast<unsigned long>(sum->exc_bt_info.bt[k]));
         bt[n] = 0;
-        ESP_LOGW(kTag, "crash of the last run: task %s, pc 0x%08lx, cause %lu, backtrace%s", sum->exc_task,
-                 static_cast<unsigned long>(sum->exc_pc), static_cast<unsigned long>(sum->ex_info.exc_cause), bt);
+        std::snprintf(last_crash_, sizeof(last_crash_), "task %s, pc 0x%08lx, cause %lu, backtrace%s", sum->exc_task,
+                      static_cast<unsigned long>(sum->exc_pc), static_cast<unsigned long>(sum->ex_info.exc_cause), bt);
+        for (char* c = last_crash_; *c; ++c)
+            if (*c == '"' || *c == '\\' || static_cast<unsigned char>(*c) < 0x20) *c = '?';  // it goes into JSON
+        ESP_LOGW(kTag, "crash of the last run: %s", last_crash_);
     } else {
+        std::snprintf(last_crash_, sizeof(last_crash_), "a core dump (summary unreadable)");
         ESP_LOGW(kTag, "a core dump from the last run is in flash (summary unreadable)");
     }
     heap_caps_free(sum);
@@ -650,11 +657,13 @@ int RobotRuntime::formatStatus(char* buf, int size)
     return std::snprintf(buf, static_cast<size_t>(size),
                          "{\"firmware\":\"%s\",\"firmware_trial\":%s,\"brain\":\"v4\",\"learned_version\":%u,"
                          "\"learned_slot\":\"%c\",\"learned_trial\":%s,\"uptime_s\":%u,\"diary_sent\":%u,"
-                         "\"diary_dropped\":%u,\"touch_level\":%d,\"volume\":%d,\"clock\":\"%s\"}\n",
+                         "\"diary_dropped\":%u,\"touch_level\":%d,\"volume\":%d,\"clock\":\"%s\",\"boot_reason\":\"%s\","
+                         "\"last_crash\":\"%s\"}\n",
                          run ? run->label : "?", state == ESP_OTA_IMG_PENDING_VERIFY ? "true" : "false",
                          static_cast<unsigned>(learned_.version()), learned_.slot(), learned_.onTrial() ? "true" : "false",
                          static_cast<unsigned>(nowMs() / 1000), static_cast<unsigned>(life_.sent()),
-                         static_cast<unsigned>(life_.dropped()), touch_.sensitivity(), audio_.level(), wifi_.timeSource());
+                         static_cast<unsigned>(life_.dropped()), touch_.sensitivity(), audio_.level(), wifi_.timeSource(),
+                         boot_reason_, last_crash_);
 }
 
 void RobotRuntime::loop()

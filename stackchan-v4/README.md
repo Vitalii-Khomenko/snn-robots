@@ -109,8 +109,9 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
   owner's first sign came when it called first anyway ([BODY](docs/BODY.md)).
 - Away from home (2026-11-07): the robot lives without Wi-Fi or the PC - the brain, the voice, the night and morning,
   the memories all run on it. Its clock is the board's RTC, set from every NTP sync and read at boot before any network
-  (1 s off after a reboot); without a known network it tries to connect once every 30 s. Away from home there is no
-  diary and no night's learning, and it cannot be updated ([HARDWARE](docs/HARDWARE.md)).
+  (1 s off after a reboot, and 1 s after a day); without a known network it tries to connect once every 30 s. Away
+  from home there is no diary and no night's learning, and it cannot be updated ([HARDWARE](docs/HARDWARE.md)). Why
+  it last (re)started stays in its status (`boot_reason`, `last_crash`, 2026-11-08), not only in the diary.
 - Stage 6, learning from its own life, runs since 2026-10-24: every night at 03:30 the PC replays the robot's decisions,
   rewards them by how people answered (petting, talk, coming close vs shaking, rough pokes, leaving), fine-tunes the
   main network's action heads (towards choices that did better than expected, away from worse ones), shifts the

@@ -61,6 +61,8 @@ private:
 
     uint32_t logged_tick_ = 0;
     bool firmware_confirmed_ = false;
+    const char* boot_reason_ = "?";  // the status: why this run started, and the last run's crash ("" if none)
+    char last_crash_[224] = "";
     uint32_t confirm_log_ms_ = 0;
     static constexpr uint32_t kConfirmGiveUpMs = 180000;
     float last_travel_deg_ = 0.0f;

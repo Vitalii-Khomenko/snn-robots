@@ -74,8 +74,10 @@ esp_err_t statusHandler(httpd_req_t* req)
 {
     if (!authorized(req)) return ESP_OK;
     auto* self = static_cast<OtaServer::StatusFn*>(req->user_ctx);
-    char line[512];
-    const int n = (*self)(line, sizeof(line));
+    char line[768];
+    int n = (*self)(line, sizeof(line));
+    if (n < 0) n = 0;
+    if (n >= static_cast<int>(sizeof(line))) n = static_cast<int>(sizeof(line)) - 1;  // snprintf says what it wanted
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, line, n);
     return ESP_OK;
