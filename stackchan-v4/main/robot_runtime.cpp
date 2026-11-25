@@ -370,9 +370,12 @@ void RobotRuntime::logStats(uint32_t now)
         const uint32_t n = std::max<uint32_t>(1, stage_passes_);
         char buf[200];
         int len = 0;
-        for (int i = 0; i < kStages; ++i)
-            len += std::snprintf(buf + len, sizeof(buf) - len, "%s%u/%u", i ? " " : "",
-                                 static_cast<unsigned>(stage_sum_us_[i] / n), static_cast<unsigned>(stage_max_us_[i]));
+        for (int i = 0; i < kStages && len < static_cast<int>(sizeof(buf)) - 1; ++i) {
+            const int w = std::snprintf(buf + len, sizeof(buf) - static_cast<size_t>(len), "%s%u/%u", i ? " " : "",
+                                        static_cast<unsigned>(stage_sum_us_[i] / n), static_cast<unsigned>(stage_max_us_[i]));
+            if (w <= 0) break;
+            len = std::min(len + w, static_cast<int>(sizeof(buf)) - 1);
+        }
         ESP_LOGI(kTag, "loop_us (servos face leds+pad imu+mic sensors brain diary supervise, mean/max): %s", buf);
         for (int i = 0; i < kStages; ++i) stage_sum_us_[i] = stage_max_us_[i] = 0;
         stage_passes_ = 0;
@@ -611,8 +614,8 @@ void RobotRuntime::loadLearned()
 {
     if (!learned_.open()) return;
     const int n = loop_.useLearned(learned_.view());
-    ESP_LOGI(kTag, "learned: version %u (%d arrays: %s%s)", static_cast<unsigned>(learned_.version()), n,
-             n >= 4 ? "action heads" : "innate heads", n % 4 == 1 ? ", zone shifts" : "");
+    ESP_LOGI(kTag, "learned: version %u (%d arrays: %s)", static_cast<unsigned>(learned_.version()), n,
+             n >= 4 ? "action heads + extras" : "innate heads + extras");
 }
 
 // A new blob over Wi-Fi is switched in here, between two ticks, without a reboot, and watched for a minute: if the
@@ -626,13 +629,18 @@ void RobotRuntime::superviseLearned(uint32_t now)
         release_old_ms_ = 0;
     }
     if (learned_.takeSwitchRequest()) {
-        learned_.open();
+        const bool ok = learned_.open();
         loop_.useLearned(learned_.view());
         release_old_ms_ = now | 1;
         learned_trial_ms_ = now;
         learned_faults_ = faults;
-        ESP_LOGI(kTag, "learned: switched to version %u (slot %c) without a reboot, on trial for a minute",
-                 static_cast<unsigned>(learned_.version()), learned_.slot());
+        if (ok && learned_.onTrial()) {
+            ESP_LOGI(kTag, "learned: switched to version %u (slot %c) without a reboot, on trial for a minute",
+                     static_cast<unsigned>(learned_.version()), learned_.slot());
+        } else {
+            ESP_LOGW(kTag, "learned: switch fell back to version %u (slot %c)",
+                     static_cast<unsigned>(learned_.version()), learned_.slot());
+        }
     }
     if (!learned_.onTrial()) return;
     if (faults > learned_faults_ + 3) {
@@ -656,12 +664,13 @@ int RobotRuntime::formatStatus(char* buf, int size)
     esp_ota_get_state_partition(run, &state);
     return std::snprintf(buf, static_cast<size_t>(size),
                          "{\"firmware\":\"%s\",\"firmware_trial\":%s,\"brain\":\"v4\",\"learned_version\":%u,"
-                         "\"learned_slot\":\"%c\",\"learned_trial\":%s,\"uptime_s\":%u,\"diary_sent\":%u,"
+                         "\"learned_slot\":\"%c\",\"learned_trial\":%s,\"uptime_s\":%llu,\"diary_sent\":%u,"
                          "\"diary_dropped\":%u,\"touch_level\":%d,\"volume\":%d,\"clock\":\"%s\",\"boot_reason\":\"%s\","
                          "\"last_crash\":\"%s\"}\n",
                          run ? run->label : "?", state == ESP_OTA_IMG_PENDING_VERIFY ? "true" : "false",
                          static_cast<unsigned>(learned_.version()), learned_.slot(), learned_.onTrial() ? "true" : "false",
-                         static_cast<unsigned>(nowMs() / 1000), static_cast<unsigned>(life_.sent()),
+                         static_cast<unsigned long long>(esp_timer_get_time() / 1000000ULL),
+                         static_cast<unsigned>(life_.sent()),
                          static_cast<unsigned>(life_.dropped()), touch_.sensitivity(), audio_.level(), wifi_.timeSource(),
                          boot_reason_, last_crash_);
 }
@@ -674,6 +683,7 @@ void RobotRuntime::loop()
         ESP_LOGE(kTag, "esp_task_wdt_add failed: %s", esp_err_to_name(wdt_err));
     }
 
+    TickType_t last_wake = xTaskGetTickCount();
     while (true) {
         esp_task_wdt_reset();
         const uint64_t loop_start_us = static_cast<uint64_t>(esp_timer_get_time());
@@ -702,7 +712,7 @@ void RobotRuntime::loop()
         if (face_.takeVolumeChange(volume)) {  // the speaker button: at once, with a beep at the new volume
             audio_.setLevel(volume);
             vocal_.beep();
-            volume_save_ms_ = now + 3000;  // into NVS once the owner has stopped tapping
+            volume_save_ms_ = (now + 3000) | 1u;  // into NVS once the owner has stopped tapping
             ESP_LOGI(kTag, "speaker volume %d/%d (codec %d)", audio_.level(), AudioOutput::kLevels, audio_.volume());
         }
         if (volume_save_ms_ && msReached(now, volume_save_ms_)) {
@@ -759,6 +769,14 @@ void RobotRuntime::loop()
         const uint64_t loop_elapsed_us = static_cast<uint64_t>(esp_timer_get_time()) - loop_start_us;
         diagnostics_busy_us_ += loop_elapsed_us;
         if (msReached(now, next_diagnostics_ms_)) logStats(now);
-        vTaskDelay(pdMS_TO_TICKS(kMainLoopIntervalMs));
+        // Pace to a steady 50 Hz (20 ms period) instead of sleeping 20 ms after every pass: eliminates the 2.3 % tick
+        // drift and missed_ticks caused by work + 20 ms > 35 ms. Resync last_wake after long stalls (panel recovery).
+        const TickType_t period = pdMS_TO_TICKS(kMainLoopIntervalMs);
+        if (xTaskGetTickCount() - last_wake >= period * 2) {
+            last_wake = xTaskGetTickCount();
+            vTaskDelay(1);
+        } else {
+            vTaskDelayUntil(&last_wake, period);
+        }
     }
 }

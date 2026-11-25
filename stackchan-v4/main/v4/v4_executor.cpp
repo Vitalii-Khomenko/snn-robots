@@ -129,7 +129,7 @@ void V4Executor::applyLeds(const BrainV4& brain, bool night)
 
 bool V4Executor::remember(const MemoryV4::Episode& e, uint32_t now)
 {
-    const bool watching = watch_until_ms_ != 0 && !msReached(now, watch_until_ms_);
+    const bool watching = watch_until_ms_ != 0 && msWithin(now, watch_until_ms_, kWatchMs + 5000);
     if (night_ || gesture_ != Gesture::None || reaction_ticks_ > 0 || watching || glance_until_ms_ != 0 ||
         memory_until_ms_ != 0)
         return false;
@@ -227,7 +227,7 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
         if (wanted && g == Gesture::None) held_ |= night ? kGestureNight : kGestureSoon;
         if (g != Gesture::None) {
             gesture_ = g;
-            gesture_start_ms_ = now;
+            gesture_start_ms_ = gesture_wait_ms_ = now;
             gesture_step_ = -1;
             base_yaw_ = sent_yaw_;
             base_pitch_ = sent_pitch_;
@@ -247,14 +247,21 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
     }
 
     // ---- a running gesture: keyframes, each reached at a speed that fits its half swing (soft: the servo eases)
+    // Wait for the power-gated servo rail (kRailBootMs = 1 s) before advancing past keyframe 0, otherwise flinches
+    // (0.6 s) and short nods / shakes finish and return to base before the servos even wake up.
     if (gesture_ != Gesture::None) {
-        const float t = static_cast<float>(now - gesture_start_ms_) * 0.001f;
         if (gesture_ == Gesture::Flinch) {
             if (gesture_step_ < 0) {
                 // the head starts back (12 deg at 160 deg/s until 2026-10-25: a jerk the owner heard as a whizz; 8 at 90 until 10-26)
                 command(base_yaw_, base_pitch_ + gesture_amp_, 60.0f, now, true);
                 gesture_step_ = 0;
-            } else if (gesture_step_ == 0 && t > 0.6f) {
+            }
+            if (!motion_.railReadyNow(now) && now - gesture_wait_ms_ < kRailUpMs + 500) {
+                gesture_start_ms_ = now;
+                return;
+            }
+            const float t = static_cast<float>(now - gesture_start_ms_) * 0.001f;
+            if (gesture_step_ == 0 && t > 0.6f) {
                 command(base_yaw_, base_pitch_, 50.0f, now, true);
                 gesture_step_ = 1;
             } else if (t > 1.2f) {
@@ -263,20 +270,32 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
             return;
         }
         const int frames = 2 * gesture_reps_;  // nod: down / up per repeat; shake: one side / the other per repeat
-        const int step = static_cast<int>(t / gesture_half_s_);
-        if (step != gesture_step_) {
-            gesture_step_ = step;
-            const float speed_deg_s = 2.0f * gesture_amp_ / gesture_half_s_;
-            if (step >= frames) {
+        const float speed_deg_s = 2.0f * gesture_amp_ / gesture_half_s_;
+        auto sendStep = [&](int s) {
+            if (s >= frames) {
                 command(base_yaw_, base_pitch_, speed_deg_s * 0.6f, now, true);
                 gesture_ = Gesture::None;
             } else if (gesture_ == Gesture::Nod) {
-                const float target = step % 2 == 0 ? base_pitch_ - gesture_amp_ : base_pitch_ + gesture_amp_ * 0.25f;
+                const float target = s % 2 == 0 ? base_pitch_ - gesture_amp_ : base_pitch_ + gesture_amp_ * 0.25f;
                 command(base_yaw_, target, speed_deg_s, now, true);
             } else {
-                const float target = step % 2 == 0 ? base_yaw_ + gesture_amp_ : base_yaw_ - gesture_amp_;
+                const float target = s % 2 == 0 ? base_yaw_ + gesture_amp_ : base_yaw_ - gesture_amp_;
                 command(target, base_pitch_ - (shown_ == Emotion::Sad ? 5.0f : 0.0f), speed_deg_s, now, true);
             }
+        };
+        if (gesture_step_ < 0) {
+            gesture_step_ = 0;
+            sendStep(0);
+        }
+        if (!motion_.railReadyNow(now) && now - gesture_wait_ms_ < kRailUpMs + 500) {
+            gesture_start_ms_ = now;
+            return;
+        }
+        const float t = static_cast<float>(now - gesture_start_ms_) * 0.001f;
+        const int step = static_cast<int>(t / gesture_half_s_);
+        if (step != gesture_step_) {
+            gesture_step_ = step;
+            sendStep(step);
         }
         return;
     }
@@ -314,15 +333,16 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
     // ---- the orienting reflex: something new in view (the analyzer's attention) - the head turns to it and keeps
     // watching that place kWatchMs (teacher_nn.py: ATT_LOOK, WATCH_S), whatever the network's gaze says meanwhile
     const bool free_head = mode == kHeadLook || mode == kHeadScan || mode == kHeadHold;
+    const bool watching = watch_until_ms_ != 0 && msWithin(now, watch_until_ms_, kWatchMs + 5000);
+    if (!watching) watch_until_ms_ = 0;
     if (!night && free_head && brain.snn()[SO_ATT_STRENGTH] > kAttLook) {
-        const bool watching = watch_until_ms_ != 0 && !msReached(now, watch_until_ms_);
         if (!watching || now - still_since_ms_ >= kAimStillMs) {  // the picture is fresh: aim (again)
             float hy = 0, hp = 0;
             motion_.getCurrentDeg(hy, hp);
             watch_yaw_ = std::clamp(hy + brain.snn()[SO_ATT_X] * kCamHalfDeg, -kOrientLimitDeg, kOrientLimitDeg);
             watch_pitch_ = BrainV4::kGazePitchCenterDeg - 0.4f * brain.snn()[SO_ATT_Y] * BrainV4::kGazePitchDeg;
         }
-        watch_until_ms_ = now + kWatchMs;
+        watch_until_ms_ = (now + kWatchMs) | 1u;
         if (glance_until_ms_ != 0) {
             glance_until_ms_ = 0;
             next_glance_ms_ = now + rndMs(kGlanceGapMinMs, kGlanceGapMaxMs, now);
@@ -331,7 +351,7 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
         held_ |= kGazeOwn;
         return;
     }
-    if (!night && free_head && watch_until_ms_ != 0 && !msReached(now, watch_until_ms_)) {  // still watching
+    if (!night && free_head && watching) {  // still watching
         held_ |= kGazeOwn;
         return;
     }
@@ -352,11 +372,13 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
         const float yaw = side * (kGlanceYawMinDeg + (kGlanceYawMaxDeg - kGlanceYawMinDeg) * rnd01(now));
         const float pitch = -5.0f + 23.0f * rnd01(now);
         // the turn there takes T = pi/2 * distance / peak speed (MotionEngine: eased, at half the asked speed)
-        const float travel_s = 1.5708f * std::hypot(yaw - sent_yaw_, pitch - sent_pitch_) / (0.5f * kGlanceSpeedDegS);
+        float hy = 0, hp = 0;
+        motion_.getCurrentDeg(hy, hp);
+        const float travel_s = 1.5708f * std::hypot(yaw - hy, pitch - hp) / (0.5f * kGlanceSpeedDegS);
+        const uint32_t rail_ms = motion_.railReadyNow(now) ? 0u : kRailUpMs;
         if (command(yaw, pitch, kGlanceSpeedDegS, now, true)) {
             const uint32_t hold = rndMs(kGlanceHoldMinMs, kGlanceHoldMaxMs, now);
-            glance_until_ms_ = now + static_cast<uint32_t>(travel_s * 1000.0f) + hold;
-            if (glance_until_ms_ == 0) glance_until_ms_ = 1;
+            glance_until_ms_ = (now + rail_ms + static_cast<uint32_t>(travel_s * 1000.0f) + hold) | 1u;
             ESP_LOGI(kTag, "glance: yaw %.0f pitch %.0f, looks %.1f s", static_cast<double>(yaw),
                      static_cast<double>(pitch), static_cast<double>(hold) * 0.001);
             held_ |= kGazeOwn;

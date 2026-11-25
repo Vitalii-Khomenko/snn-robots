@@ -28,9 +28,16 @@ bool authorized(httpd_req_t* req)
 {
 #ifdef LIFE_OTA_TOKEN
     char token[80] = {};
-    if (httpd_req_get_hdr_value_str(req, "X-Token", token, sizeof(token)) == ESP_OK &&
-        std::strcmp(token, LIFE_OTA_TOKEN) == 0)
-        return true;
+    if (httpd_req_get_hdr_value_str(req, "X-Token", token, sizeof(token)) == ESP_OK) {
+        const size_t want_len = std::strlen(LIFE_OTA_TOKEN);
+        const size_t got_len = std::strlen(token);
+        volatile unsigned char diff = want_len != got_len ? 1u : 0u;
+        const size_t n = std::min(want_len, got_len);
+        for (size_t i = 0; i < n; ++i)
+            diff = static_cast<unsigned char>(diff | (static_cast<unsigned char>(token[i]) ^
+                                                      static_cast<unsigned char>(LIFE_OTA_TOKEN[i])));
+        if (diff == 0u) return true;
+    }
 #endif
     httpd_resp_send_err(req, HTTPD_403_FORBIDDEN, "token");
     return false;
@@ -39,12 +46,15 @@ bool authorized(httpd_req_t* req)
 void rebootSoon()
 {
     // after the answer has left: the uploader learns that it worked
-    xTaskCreate(
-        [](void*) {
-            vTaskDelay(pdMS_TO_TICKS(1500));
-            esp_restart();
-        },
-        "reboot", 2048, nullptr, 1, nullptr);
+    if (xTaskCreate(
+            [](void*) {
+                vTaskDelay(pdMS_TO_TICKS(1500));
+                esp_restart();
+            },
+            "reboot", 2048, nullptr, 1, nullptr) != pdPASS) {
+        vTaskDelay(pdMS_TO_TICKS(500));
+        esp_restart();
+    }
 }
 
 // Streams the request body to sink(data, size) in chunks; false on a broken upload or a sink error.

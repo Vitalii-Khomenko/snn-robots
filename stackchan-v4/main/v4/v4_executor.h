@@ -145,7 +145,8 @@ private:
     uint32_t turn_until_ms_ = 0;  // an answer's turn is open until (kTurnMs)
     // head
     Gesture gesture_ = Gesture::None;
-    uint32_t gesture_start_ms_ = 0, last_gesture_ms_ = 0, last_command_ms_ = 0, gestures_ = 0, nods_ = 0, shakes_ = 0;
+    uint32_t gesture_start_ms_ = 0, gesture_wait_ms_ = 0, last_gesture_ms_ = 0, last_command_ms_ = 0, gestures_ = 0,
+             nods_ = 0, shakes_ = 0;
     int gesture_step_ = -1, gesture_reps_ = 2;
     float gesture_amp_ = 8.0f, gesture_half_s_ = 0.4f, base_yaw_ = 0.0f, base_pitch_ = 5.0f;
     float sent_yaw_ = 0.0f, sent_pitch_ = 5.0f;

@@ -122,7 +122,8 @@ void BrainLoop::hear(uint32_t now, float& sharpEv)
     // 1.0 and the analyzer's threat at 0.8).
     sharpEv = loud_event_ >= 0.6f ? 0.5f + (loud_event_ - 0.6f) / 0.4f : onset_event_ > 0.5f ? onset_event_ : 0.0f;
     // the boot's own click (amplifier / servo power on: peak 32768 at 4.4 s, 2026-10-24) is not a bang at the robot
-    if (now < 10000) sharpEv = 0.0f;
+    // (counted in ticks so a 49.7-day ms wrap never re-mutes sharp sounds)
+    if (ticks_ <= 200) sharpEv = 0.0f;
     // the network was trained on events that fade over ~3 ticks: hold them the same way
     onset_hold_ = std::max(onset_event_, onset_hold_ * 0.6f);
     loud_hold_ = std::max(loud_event_, loud_hold_ * 0.6f);
@@ -283,7 +284,7 @@ void BrainLoop::tick(uint32_t now, const Env& env)
     if (env.timeSynced) {
         night_ = nightRules(now, env.hour);
     } else {
-        night_ = now < 120000 || dark;
+        night_ = ticks_ <= 2400 || dark;
         morning_ = 0.0f;
     }
     synced_night_ = env.timeSynced && night_;

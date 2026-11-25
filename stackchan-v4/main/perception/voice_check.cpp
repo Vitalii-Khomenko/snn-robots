@@ -61,14 +61,19 @@ float VoiceCheck::frame()
     float e0 = 0.0f;
     for (int j = 0; j < kWin; ++j) e0 += cur[j] * cur[j];
     float best = 0.0f;
+    double el = 0.0;
+    const float* prev0 = w + kLagHi - kLagLo;
+    for (int j = 0; j < kWin; ++j) el += static_cast<double>(prev0[j]) * static_cast<double>(prev0[j]);
     for (int lag = kLagLo; lag <= kLagHi; ++lag) {
         const float* prev = w + kLagHi - lag;
-        float el = 0.0f, r = 0.0f;
-        for (int j = 0; j < kWin; ++j) {
-            el += prev[j] * prev[j];
-            r += cur[j] * prev[j];
+        if (lag > kLagLo) {
+            el += static_cast<double>(prev[0]) * static_cast<double>(prev[0]) -
+                  static_cast<double>(prev[kWin]) * static_cast<double>(prev[kWin]);
+            if (el < 0.0) el = 0.0;
         }
-        const float c = r / (static_cast<float>(std::sqrt(static_cast<double>(e0) * static_cast<double>(el))) + 1e-12f);
+        float r = 0.0f;
+        for (int j = 0; j < kWin; ++j) r += cur[j] * prev[j];
+        const float c = r / (static_cast<float>(std::sqrt(static_cast<double>(e0) * el)) + 1e-12f);
         if (c > best) best = c;
     }
     const float level = 10.0f * std::log10(e0 / kWin + 1e-12f);

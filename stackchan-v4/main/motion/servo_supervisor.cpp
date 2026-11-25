@@ -83,7 +83,10 @@ const char* ServoSupervisor::step(uint32_t now, int sagS)
         // 1, 2, 5, 10, 30, 60 min (it began with 5 min, and the owner saw a frozen head for 5 minutes after one
         // series, 2026-10-13; under a cover at night the head may be blocked for hours)
         static constexpr uint32_t kSeriesWaitMs[] = {60000, 120000, 300000, 600000, 1800000, 3600000};
-        if (real >= 10.0f) series_level_ = 0;
+        if (real >= 10.0f) {
+            series_level_ = 0;
+            repower_times_[0] = repower_times_[1] = repower_times_[2] = 0;
+        }
         const uint32_t gap = series ? kSeriesWaitMs[std::min(series_level_, 5)] : 10000;
         if (stalled_windows_ >= 2 && now - last_repower_ms_ > gap) {
             repower = true;
@@ -106,7 +109,7 @@ const char* ServoSupervisor::step(uint32_t now, int sagS)
         sag_pause_until_ms_ = now + 600000;
         ESP_LOGW(kTag, "power: VBUS still sags after the servo rail cycle - not the servos; no sag cycles for 10 min");
     }
-    if (!repower && sag >= 3 && msReached(now, sag_pause_until_ms_) && now - last_repower_ms_ > 15000) {
+    if (!repower && sag >= 3 && !msWithin(now, sag_pause_until_ms_, 700000) && now - last_repower_ms_ > 15000) {
         repower = true;
         why = "the servo rail drains the supply: VBUS sagging";
         sag_repower_ms_ = now;

@@ -60,8 +60,8 @@ bool VisionFrontEnd::process(const uint8_t* buffer, size_t width, size_t height,
             int cost = 0;
             for (int y = kMargin; y < kHeight - kMargin; ++y) {
                 const uint8_t* c = &current_[y * kWidth];
-                const uint8_t* p = &previous_[(y - dy) * kWidth - dx];
-                for (int x = kMargin; x < kWidth - kMargin; ++x) cost += std::abs(static_cast<int>(c[x]) - p[x]);
+                const uint8_t* p = &previous_[(y - dy) * kWidth];
+                for (int x = kMargin; x < kWidth - kMargin; ++x) cost += std::abs(static_cast<int>(c[x]) - p[x - dx]);
             }
             if (dx == 0 && dy == 0) zero_cost = cost;
             if (cost < best_cost) {

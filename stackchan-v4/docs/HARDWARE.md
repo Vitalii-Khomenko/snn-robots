@@ -399,7 +399,13 @@ wrapper), `py32_io_expander`, `si12t`. A review fixed:
 - Nearly deaf to quiet sounds while turning (servo noise, see above).
 - Millisecond timestamps wrap after 49.7 days of uptime; all comparisons go
   through `main/core/ms_clock.h` (`msReached` for periodic deadlines,
-  `msWithin` for short windows) so nothing freezes at the wrap.
+  `msWithin` for short windows) so nothing freezes at the wrap. An audit on
+  2026-11-25 fixed the remaining 24.8-day / 49.7-day wrap bugs (`sag_pause_until_ms_`
+  in `ServoSupervisor`, `slow_until_ms_` in `MotionEngine`, `watch_until_ms_` in
+  `V4Executor`, boot-startup checks in `BrainLoop`, window age in `ContingencyV4`),
+  switched `/status` `uptime_s` to 64-bit `esp_timer_get_time()`, lowered LTR-553
+  and AXP2101 I²C timeouts from 1000 ms to 50 ms, and changed the 20 ms main loop
+  from `vTaskDelay` to `vTaskDelayUntil`.
 - Owner presence: up to 3 pings per 20 min check; "away" only after 3
   failed checks in a row (phones in power save miss single pings; a Wi-Fi
   drop leaves the state unchanged).

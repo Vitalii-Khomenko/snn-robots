@@ -21,7 +21,7 @@ public:
     bool open();
     void releaseOld();
     learned::View view() const { return learned::View{base_}; }
-    uint32_t version() const { return base_ ? version_ : 0; }
+    uint32_t version() const { return version_.load(); }
     char slot() const { return slot_; }
     bool onTrial() const { return trial_.load(); }
     // A new blob is on trial: switch to it now (set by the update server's task, taken by the main loop).
@@ -46,7 +46,7 @@ private:
     uint32_t handle_ = 0, old_handle_ = 0;  // esp_partition_mmap_handle_t
     bool mapped_ = false, old_mapped_ = false;
     std::atomic<bool> switch_{false}, pending_{false}, trial_{false};
-    uint32_t version_ = 0;
+    std::atomic<uint32_t> version_{0};
     std::atomic<char> slot_{'a'};
     // write state
     const void* wpart_ = nullptr;  // esp_partition_t*

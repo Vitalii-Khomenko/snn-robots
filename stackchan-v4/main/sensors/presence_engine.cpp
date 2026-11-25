@@ -23,12 +23,12 @@ constexpr uint8_t kRegPsData1    = 0x8E;  // high byte (top bits reserved/status
 esp_err_t PresenceEngine::writeReg(uint8_t reg, uint8_t value)
 {
     uint8_t buf[2] = {reg, value};
-    return i2c_master_transmit(dev_, buf, sizeof(buf), 1000);
+    return i2c_master_transmit(dev_, buf, sizeof(buf), 50);
 }
 
 esp_err_t PresenceEngine::readReg(uint8_t reg, uint8_t* value)
 {
-    return i2c_master_transmit_receive(dev_, &reg, 1, value, 1, 1000);
+    return i2c_master_transmit_receive(dev_, &reg, 1, value, 1, 50);
 }
 
 bool PresenceEngine::begin()
@@ -76,7 +76,7 @@ bool PresenceEngine::readPsData(uint16_t* out)
 {
     // one burst like the ALS bytes (read separately, PS stayed 0 even with a hand on the robot, 2026-10-24)
     uint8_t reg = kRegPsData0, d[2] = {0, 0};
-    if (i2c_master_transmit_receive(dev_, &reg, 1, d, sizeof(d), 1000) != ESP_OK) {
+    if (i2c_master_transmit_receive(dev_, &reg, 1, d, sizeof(d), 50) != ESP_OK) {
         return false;
     }
     ps_status_ = d[1];
@@ -89,7 +89,7 @@ bool PresenceEngine::readAlsData(uint16_t* out)
     // The four ALS data bytes are latched together when CH1's low byte (0x88) is read first: read them as one
     // burst. Reading channel 0 alone (0x8A, 0x8B) gave exactly 0 all the time (2026-10-24, brain v4 light channel).
     uint8_t reg = kRegAlsDataCh1_0, d[4] = {0, 0, 0, 0};
-    if (i2c_master_transmit_receive(dev_, &reg, 1, d, sizeof(d), 1000) != ESP_OK) {
+    if (i2c_master_transmit_receive(dev_, &reg, 1, d, sizeof(d), 50) != ESP_OK) {
         return false;
     }
     als_ch1_ = static_cast<uint16_t>((d[1] << 8) | d[0]);

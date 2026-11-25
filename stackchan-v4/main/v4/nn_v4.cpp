@@ -22,9 +22,30 @@ static_assert(sizeof(nnv4::kWih) / sizeof(float) == 3 * NnV4::kHidden * NnV4::kI
               "GRU input weights' shape: retrain and export_nn_v4.py after a change of spec_v4.PREV");
 float sigmoidf(float x) { return 1.0f / (1.0f + std::exp(-x)); }
 
-void denseF(const float* w, const float* b, const float* x, int rows, int cols, float* y)
+void denseF(const float* __restrict w, const float* __restrict b, const float* __restrict x, int rows, int cols,
+            float* __restrict y)
 {
-    for (int r = 0; r < rows; ++r) {
+    // 4-row tiled FMA: loads x[c] once per 4 rows and breaks FMA pipeline dependency chains (bit-identical to scalar).
+    int r = 0;
+    for (; r + 3 < rows; r += 4) {
+        const float* r0 = w + static_cast<size_t>(r) * cols;
+        const float* r1 = r0 + cols;
+        const float* r2 = r1 + cols;
+        const float* r3 = r2 + cols;
+        float a0 = b[r], a1 = b[r + 1], a2 = b[r + 2], a3 = b[r + 3];
+        for (int c = 0; c < cols; ++c) {
+            const float xc = x[c];
+            a0 += r0[c] * xc;
+            a1 += r1[c] * xc;
+            a2 += r2[c] * xc;
+            a3 += r3[c] * xc;
+        }
+        y[r] = a0;
+        y[r + 1] = a1;
+        y[r + 2] = a2;
+        y[r + 3] = a3;
+    }
+    for (; r < rows; ++r) {
         const float* row = w + static_cast<size_t>(r) * cols;
         float acc = b[r];
         for (int c = 0; c < cols; ++c) acc += row[c] * x[c];
@@ -130,22 +151,25 @@ bool NnV4::step(const In& in, Out& out)
     denseF(act1_w_, act1_b_, cat, H, H + kEmo, hid);
     for (float& v : hid) v = std::tanh(v);
     denseF(act2_w_, act2_b_, hid, kAct, H, act);
-    for (int k = 0; k < kEmo; ++k) raw[kEmoIdx[k]] = e[k];
+    for (int k = 0; k < kEmo; ++k) out[kEmoIdx[k]] = cat[H + k];  // already softmaxed above (group 2)
     raw[kStrengthIdx] = e[kEmo];
     for (int k = 0; k < kAct; ++k) raw[kActIdx[k]] = act[k];
-    // activations: per output kind (0 sigmoid, 1 tanh, 2.. a softmax group)
-    for (int i = 0; i < kOut; ++i)
-        if (kKind[i] == 0) out[i] = sigmoidf(raw[i]);
-        else if (kKind[i] == 1) out[i] = std::tanh(raw[i]);
-    for (uint8_t g = 2; g < 8; ++g) {
-        float mx = -1e30f, sum = 0.0f;
-        for (int i = 0; i < kOut; ++i)
-            if (kKind[i] == g) mx = std::max(mx, raw[i]);
-        if (mx < -1e29f) continue;
-        for (int i = 0; i < kOut; ++i)
-            if (kKind[i] == g) sum += out[i] = std::exp(raw[i] - mx);
-        for (int i = 0; i < kOut; ++i)
-            if (kKind[i] == g) out[i] /= sum;
+    // activations: per output kind (0 sigmoid, 1 tanh, 2 emotion softmax done above, 3.. action softmax groups)
+    float grp_mx[8], grp_sum[8];
+    for (int g = 0; g < 8; ++g) grp_mx[g] = -1e30f, grp_sum[g] = 0.0f;
+    for (int i = 0; i < kOut; ++i) {
+        const uint8_t k = kKind[i];
+        if (k == 0) out[i] = sigmoidf(raw[i]);
+        else if (k == 1) out[i] = std::tanh(raw[i]);
+        else if (k >= 3 && k < 8) grp_mx[k] = std::max(grp_mx[k], raw[i]);
+    }
+    for (int i = 0; i < kOut; ++i) {
+        const uint8_t k = kKind[i];
+        if (k >= 3 && k < 8) grp_sum[k] += out[i] = std::exp(raw[i] - grp_mx[k]);
+    }
+    for (int i = 0; i < kOut; ++i) {
+        const uint8_t k = kKind[i];
+        if (k >= 3 && k < 8) out[i] /= grp_sum[k];
     }
     if (clock_us_) last_us_ = static_cast<uint32_t>(clock_us_() - t0);
     for (float v : out)

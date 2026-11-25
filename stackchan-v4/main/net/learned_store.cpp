@@ -28,6 +28,7 @@ bool LearnedStore::open()
         mapped_ = false;
     }
     base_ = nullptr;
+    version_.store(0);
     uint8_t slot = 0, next = 0xff, tries = 0;
     trial_ = false;
     nvs_handle_t h;
@@ -79,10 +80,10 @@ bool LearnedStore::open()
     handle_ = handle;
     mapped_ = true;
     base_ = p;
-    version_ = learned::View{p}.version();
+    version_.store(learned::View{p}.version());
     slot_ = new_slot;
     pending_ = false;
-    ESP_LOGI(kTag, "weights_%c: learned blob version %u%s", new_slot, static_cast<unsigned>(version_),
+    ESP_LOGI(kTag, "weights_%c: learned blob version %u%s", new_slot, static_cast<unsigned>(version_.load()),
              trial_ ? " (new, on trial)" : "");
     return true;
 }
@@ -116,8 +117,8 @@ void LearnedStore::confirm()
         return;
     }
     trial_ = false;
-    ESP_LOGI(kTag, "learned blob version %u (slot %c) confirmed after a healthy minute", static_cast<unsigned>(version_),
-             slot_.load());
+    ESP_LOGI(kTag, "learned blob version %u (slot %c) confirmed after a healthy minute",
+             static_cast<unsigned>(version_.load()), slot_.load());
 }
 
 void LearnedStore::revert()

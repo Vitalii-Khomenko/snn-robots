@@ -122,7 +122,8 @@ void ContingencyV4::step(const In& in, Out& out, Credit& credit)
             for (auto& p : pending_) {
                 if (!p.live || now - p.ms < kWinLoMs || now - p.ms > kWinHiMs) continue;
                 const bool bid = p.act != kFace, best_bid = best && best->act != kFace;
-                if (!best || bid > best_bid || (bid == best_bid && (p.ms > best->ms || (p.ms == best->ms && p.act > best->act))))
+                const int32_t dms = best ? static_cast<int32_t>(p.ms - best->ms) : 0;
+                if (!best || bid > best_bid || (bid == best_bid && (dms > 0 || (dms == 0 && p.act > best->act))))
                     best = &p;
             }
             if (a == kPet || a == kTap || a == kSpeech) ignored_ = 0.0f;  // petted, tapped, talked to: not ignored
@@ -145,7 +146,7 @@ void ContingencyV4::step(const In& in, Out& out, Credit& credit)
             if (!slot) {  // eight acts within 4 s: the oldest is closed early
                 slot = &pending_[0];
                 for (auto& p : pending_)
-                    if (p.ms < slot->ms) slot = &p;
+                    if (static_cast<int32_t>(p.ms - slot->ms) < 0) slot = &p;
                 finish(*slot);
             }
             *slot = Pending{};

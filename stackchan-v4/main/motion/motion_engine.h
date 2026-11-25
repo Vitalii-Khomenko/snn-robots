@@ -64,6 +64,7 @@ public:
     // Power-gated moves (kGatedPower): the servo rail was switched on or off within the last 400 ms (the servos
     // take hold or let go: a click in the microphone, a small jolt in the IMU and the head pad).
     bool railSwitching(uint32_t nowMs) const { return kGatedPower && nowMs - rail_change_ms_ < 400; }
+    bool railReadyNow(uint32_t nowMs) const { return !kGatedPower || (rail_on_ && nowMs - rail_change_ms_ >= kRailBootMs); }
     bool railOn() const { return rail_on_; }
     uint32_t railChangeMs() const { return rail_change_ms_; }
     // The packets of the last few moves, as text (ms after `since_ms`): what the servos were told before a jerk.

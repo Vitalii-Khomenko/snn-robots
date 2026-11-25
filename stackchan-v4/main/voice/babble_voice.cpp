@@ -55,6 +55,7 @@ bool BabbleVoice::step(const Intent& a, bool allow, int emotion, bool preempt)
 
 void BabbleVoice::startPhrase()
 {
+    active_base_hz_ = pending_base_hz_;
     net_.begin(pending_intent_, pending_emotion_);
     text_[0] = '\0';
     phrase_active_ = true;
@@ -67,10 +68,11 @@ void BabbleVoice::topUp()
         droid::Note s;
         if (!net_.next(s)) {
             phrase_active_ = false;
+            std::memcpy(ended_text_, text_, sizeof(ended_text_));
             ended_.store(true, std::memory_order_release);
             break;
         }
-        if (!synth_.enqueue(s, pending_base_hz_)) break;
+        if (!synth_.enqueue(s, active_base_hz_)) break;
         // phrase text: W whistle, C chirp, P pip, B burble, T trill, V warble, G giggle, S squeal, R growl, O coo; + rising, - falling; ? ends upward, . ends downward
         static const char kKind[] = {'W', 'C', 'P', 'B', 'T', 'V', 'G', 'S', 'R', 'O'};
         char one[5];

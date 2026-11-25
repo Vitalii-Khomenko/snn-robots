@@ -45,19 +45,47 @@ def reward(ticks):
     return r, counts
 
 
+def _segment_slices(ticks):
+    """Contiguous stretches (same boot, no >5 s gap) so convolutions never bleed across reboots or PC-off gaps."""
+    T = len(ticks["boot"])
+    if T == 0:
+        return []
+    dt_ms = (ticks["ms"][1:].astype(np.int64) - ticks["ms"][:-1].astype(np.int64)) & 0xFFFFFFFF
+    breaks = np.flatnonzero((ticks["boot"][1:] != ticks["boot"][:-1]) | (dt_ms > 5000)) + 1
+    edges = np.concatenate([[0], breaks, [T]])
+    return [(int(edges[k]), int(edges[k + 1])) for k in range(len(edges) - 1)]
+
+
+def _seg_conv_back(arr, width, segs):
+    out = np.zeros(len(arr), np.int32)
+    kernel = np.ones(width, np.int32)
+    for a, b in segs:
+        out[a:b] = np.convolve(arr[a:b].astype(np.int32), kernel)[:b - a]
+    return out
+
+
+def _seg_conv_ahead(arr, width, segs):
+    out = np.zeros(len(arr), np.int32)
+    kernel = np.ones(width, np.int32)
+    for a, b in segs:
+        out[a:b] = np.convolve(arr[a:b][::-1].astype(np.int32), kernel)[:b - a][::-1]
+    return out
+
+
 def events(ticks):
     """-> {event: bool [T]} (the ticks where each rewarded event happens) and valid [T] (by day, networks driving)."""
     v = ticks["v"]
     c = lambda n: np.nan_to_num(v[:, D.col(n)])
     T = len(v)
+    segs = _segment_slices(ticks)
     ev = {}
     ev["pet"] = (c("raw_head_ev") > 0) & (c("ch_touch_head") < 0.7)
     ev["tap"] = (c("raw_screen_ev") > 0) & (c("ch_touch_screen") < 0.4)
     # talk: speech that lasts (>= 1 s of the next 2 s), not in the 5 s after the robot's own call (its voice's tail
     # reads as speech: a third of the raw speech onsets on 2026-10-24)
     sp = c("raw_speech") > 0.5
-    sustained = np.convolve(sp[::-1].astype(np.int32), np.ones(int(2 / DT), np.int32))[:T][::-1] >= int(1 / DT)
-    own_voice = np.convolve((c("said") > 0).astype(np.int32), np.ones(int(5 / DT), np.int32))[:T] > 0
+    sustained = _seg_conv_ahead(sp, int(2 / DT), segs) >= int(1 / DT)
+    own_voice = _seg_conv_back(c("said") > 0, int(5 / DT), segs) > 0
     # since 2026-10-27 morning the firmware holds its own voice's tail and voiceless sounds out of raw_speech (voice
     # check, kOwnVoiceTailMs; the ear_voice column exists from then): a reply 1 s after a call is a reply (2026-10-28,
     # an audit: the 5 s mask threw away exactly the quick answers the contingency is about)
@@ -69,17 +97,20 @@ def events(ticks):
     ev["poke"] = onsets((c("ch_touch_head") >= 0.85) | (c("ch_touch_screen") >= 0.65), int(5 / DT))
     # contact: anything that shows somebody is with the robot
     contact = ev["pet"] | ev["tap"] | (sp & ~own_voice) | (c("raw_near_raw") > 50) | (c("ch_motion") > 0.05)
-    recent = np.convolve(contact.astype(np.int32), np.ones(int(15 / DT), np.int32))[:T] > 0   # within the last 15 s
-    ahead = np.convolve(contact[::-1].astype(np.int32), np.ones(int(60 / DT), np.int32))[:T][::-1] > 0
+    recent = _seg_conv_back(contact, int(15 / DT), segs) > 0   # within the last 15 s
+    ahead = _seg_conv_ahead(contact, int(60 / DT), segs) > 0
     # (ahead[i]: contact in [i, i + 60 s]; the act itself must be answered after it, so look from the next tick)
     ahead_next = np.concatenate([ahead[1:], [False]])
+    for _, b in segs:
+        ahead_next[b - 1] = False
     acted = (c("said") > 0) | (c("gesture") > 0)
     # ... and only when that minute was seen: the same boot, no gap (2026-10-28, an audit: a call in the last minute of
     # a recording, before a reboot or a gap in the diary counted as unanswered)
     n_ahead = int(60 / DT)
     later = np.minimum(np.arange(T) + n_ahead, T - 1)
+    dt_ahead = (ticks["ms"][later].astype(np.int64) - ticks["ms"].astype(np.int64)) & 0xFFFFFFFF
     seen = (later - np.arange(T) == n_ahead) & (ticks["boot"][later] == ticks["boot"]) & \
-        (np.abs((ticks["ms"][later].astype(np.int64) - ticks["ms"].astype(np.int64)) - 60000) < 5000)
+        (np.abs(dt_ahead - 60000) < 5000)
     ev["left_alone"] = acted & recent & ~ahead_next & seen
     valid = ((ticks["flags"] & D.FLAG_DRIVES) > 0) & ((ticks["flags"] & D.FLAG_NIGHT) == 0)
     return ev, valid

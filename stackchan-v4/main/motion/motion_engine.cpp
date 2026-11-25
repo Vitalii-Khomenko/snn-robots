@@ -113,7 +113,7 @@ void MotionEngine::writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_
         first_after_rail_ = after_cut_ = false;
         // the rail stays on until the servo should have arrived (railReady)
         if (static_cast<int32_t>(now_ms + time_ms - arrive_ms_) > 0) arrive_ms_ = now_ms + time_ms;
-    } else if (static_cast<int32_t>(slow_until_ms_ - now_ms) > 0) {
+    } else if (msWithin(now_ms, slow_until_ms_, 10000)) {
         // nor any packet after it while the slow move after a hang runs (2026-10-28: the settled model's latch, 300 ms
         // behind the 1.5 s first packet after a hang, went out with 120 ms - the servo dashed from wherever the hang left it at
         // ~300 deg/s, 170 ms later, twice in 25 minutes)
@@ -221,11 +221,12 @@ void MotionEngine::formatPackets(uint32_t since_ms, char* buf, int n) const
     for (int k = packet_log_n_ - count; k < packet_log_n_ && len < n - 1; ++k) {
         const Packet& p = packet_log_[k % kPacketLog];
         const int dt = static_cast<int>(p.ms - since_ms);
-        if (p.kind == 't')
-            len += std::snprintf(buf + len, n - len, "%s%+d t", len ? ", " : "", dt);
-        else
-            len += std::snprintf(buf + len, n - len, "%s%+d %c y%d p%d T%u", len ? ", " : "", dt, p.kind, p.raw[0],
-                                 p.raw[1], static_cast<unsigned>(p.time));
+        const int w = p.kind == 't'
+                          ? std::snprintf(buf + len, n - len, "%s%+d t", len ? ", " : "", dt)
+                          : std::snprintf(buf + len, n - len, "%s%+d %c y%d p%d T%u", len ? ", " : "", dt, p.kind, p.raw[0],
+                                          p.raw[1], static_cast<unsigned>(p.time));
+        if (w <= 0) break;
+        len = std::min(len + w, n - 1);
     }
 }
 

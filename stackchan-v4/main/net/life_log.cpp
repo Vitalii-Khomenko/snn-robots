@@ -184,14 +184,14 @@ void LifeLog::taskLoop()
             ok = sendto(sock_, item, size, 0, reinterpret_cast<const sockaddr*>(&to), sizeof(to)) == static_cast<int>(size);
             if (!ok) vTaskDelay(pdMS_TO_TICKS(20 << attempt));  // the Wi-Fi tx queue is full for a moment
         }
+        vRingbufferReturnItem(ring, item);
+        if (ok) sent_.fetch_add(1);
+        else if (wifi_->hasIp()) dropped_.fetch_add(1);
         // A backlog (the boot lines, after a drop-out) goes out paced, ~100 datagrams/s: sent all at once it overran
         // the Wi-Fi tx buffers (4 datagrams lost at boot, 2026-10-11). The live diary is ~5 datagrams/s + lines.
         UBaseType_t waiting = 0;
         vRingbufferGetInfo(ring, nullptr, nullptr, nullptr, nullptr, &waiting);
         if (waiting > 0) vTaskDelay(pdMS_TO_TICKS(10));
-        vRingbufferReturnItem(ring, item);
-        if (ok) sent_.fetch_add(1);
-        else if (wifi_->hasIp()) dropped_.fetch_add(1);
     }
 #endif
 }

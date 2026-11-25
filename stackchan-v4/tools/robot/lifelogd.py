@@ -21,6 +21,7 @@ import signal
 import socket
 import struct
 import sys
+import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -140,9 +141,23 @@ def main():
     robot = None  # (address, boot id) last written to robot.json
     robot_path = os.path.join(a.dir, "robot.json")
     try:
-        pinned_mac = json.load(open(robot_path)).get("mac")
+        saved = json.load(open(robot_path))
+        pinned_mac = saved.get("mac")
+        saved_addr = saved.get("address")
     except (OSError, ValueError):
-        pinned_mac = None
+        pinned_mac, saved_addr = None, None
+    # Sample pc_state() (nvidia-smi can stall up to 5 s) on a background thread so UDP reception never stalls.
+    pc_state_latest = [None]
+
+    def _poll_pc_state():
+        while not stop:
+            pc_state_latest[0] = pc_state()
+            for _ in range(60):
+                if stop:
+                    return
+                time.sleep(1.0)
+
+    threading.Thread(target=_poll_pc_state, daemon=True).start()
     stats = dict(dgrams=0, ticks=0, lines=0, lost=0, bad=0)
     # the silence watch: nothing from the robot for 2 minutes is written into the day's log.txt (it froze on
     # 2026-10-11 18:10 and nobody knew when), and so is its return
@@ -161,9 +176,10 @@ def main():
             if data:
                 head = checked(data)
                 mac = None
-                if head is not None and robot is not None and robot[0] != sender[0]:
+                if head is not None and pinned_mac and (robot is None or robot[0] != sender[0]):
                     mac = mac_of(sender[0])
-                    if pinned_mac and mac != pinned_mac:  # another device, or one the ARP table does not know yet
+                    # On startup (robot is None) still verify pinned_mac unless sender matches the saved address and ARP hasn't populated yet
+                    if mac != pinned_mac and not (robot is None and sender[0] == saved_addr and mac is None):
                         head = None
                         stats["foreign"] = stats.get("foreign", 0) + 1
                 if head is None:
@@ -210,7 +226,8 @@ def main():
                 next_flush = now + 5
             if now >= next_report:
                 _, txtf = day.files(now)
-                txtf.write(f"{time.strftime('%H:%M:%S', time.localtime(now))} -------- PC: power {pc_state()}\n")
+                st = pc_state_latest[0] or "pending"
+                txtf.write(f"{time.strftime('%H:%M:%S', time.localtime(now))} -------- PC: power {st}\n")
                 print("lifelogd: last minute " + " ".join(f"{k}={v}" for k, v in stats.items()), flush=True)
                 stats = dict.fromkeys(stats, 0)
                 next_report = now + 60

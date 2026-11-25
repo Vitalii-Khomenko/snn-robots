@@ -59,12 +59,13 @@ bool SnnV4::tick(const In& in, Out& out)
     using namespace snnv4;
 
     // ---- input currents of this tick: level neurons (receptive fields), ON / OFF, the attention bump
+    constexpr float kInvTwoGrfSigma2 = 1.0f / (2.0f * kGrfSigma * kGrfSigma);
     float i_enc[kEnc];
     for (int c = 0; c < kChannels; ++c) {
         const float x = in[c];
         for (int k = 0; k < kGrf; ++k) {
             const float d = x - (static_cast<float>(k) + 0.5f) / kGrf;
-            i_enc[c * kGrf + k] = kGrfGain * std::exp(-d * d / (2.0f * kGrfSigma * kGrfSigma));
+            i_enc[c * kGrf + k] = kGrfGain * std::exp(-d * d * kInvTwoGrfSigma2);
         }
         const float dx = has_prev_ ? x - prev_[c] : 0.0f;
         i_enc[kChannels * kGrf + 2 * c] = std::max(dx, 0.0f) * kOnOffGain;
@@ -72,24 +73,34 @@ bool SnnV4::tick(const In& in, Out& out)
         prev_[c] = x;
     }
     has_prev_ = true;
-    float bump[kAtt];
+    float bump[kAtt] = {};
     {
-        // a bump where the movement is, and one where a new bright spot is (2026-10-25)
+        // a bump where the movement is, and one where a new bright spot is (2026-10-25):
+        // separable 2D Gaussian (20 exp() instead of 96) and skipped completely when amplitude is 0
         constexpr int w = v4::CH_COUNT;
+        constexpr float kInv2Sx2 = 1.0f / (2.0f * kBumpSx * kBumpSx);
+        constexpr float kInv2Sy2 = 1.0f / (2.0f * kBumpSy * kBumpSy);
         const float amp = std::clamp(in[v4::CH_MOTION] * 4.0f, 0.0f, 1.0f) * kBumpGain;
-        const float mx = in[w + v4::WH_MOTION_X], my = in[w + v4::WH_MOTION_Y];
         const float lamp = std::clamp(in[w + v4::WH_LIGHT_SPOT], 0.0f, 1.0f) * kBumpGain;
-        const float lx = in[w + v4::WH_LIGHT_X], ly = in[w + v4::WH_LIGHT_Y];
-        auto g = [](float gx, float gy, float cx, float cy) {
-            return std::exp(-((gx - cx) * (gx - cx) / (2.0f * kBumpSx * kBumpSx) +
-                              (gy - cy) * (gy - cy) / (2.0f * kBumpSy * kBumpSy)));
-        };
-        for (int y = 0; y < kMapH; ++y)
+        auto addBump = [&](float gain, float cx, float cy) {
+            if (gain <= 0.0f) return;
+            float ex[kMapW], ey[kMapH];
             for (int x = 0; x < kMapW; ++x) {
                 const float gx = (static_cast<float>(x) + 0.5f) / kMapW * 2.0f - 1.0f;
-                const float gy = (static_cast<float>(y) + 0.5f) / kMapH * 2.0f - 1.0f;
-                bump[y * kMapW + x] = amp * g(gx, gy, mx, my) + lamp * g(gx, gy, lx, ly);
+                ex[x] = std::exp(-(gx - cx) * (gx - cx) * kInv2Sx2);
             }
+            for (int y = 0; y < kMapH; ++y) {
+                const float gy = (static_cast<float>(y) + 0.5f) / kMapH * 2.0f - 1.0f;
+                ey[y] = gain * std::exp(-(gy - cy) * (gy - cy) * kInv2Sy2);
+            }
+            for (int y = 0; y < kMapH; ++y) {
+                const float vy = ey[y];
+                float* row = bump + y * kMapW;
+                for (int x = 0; x < kMapW; ++x) row[x] += vy * ex[x];
+            }
+        };
+        addBump(amp, in[w + v4::WH_MOTION_X], in[w + v4::WH_MOTION_Y]);
+        addBump(lamp, in[w + v4::WH_LIGHT_X], in[w + v4::WH_LIGHT_Y]);
     }
 
     int32_t ro_acc[kOut] = {};
@@ -125,15 +136,20 @@ bool SnnV4::tick(const In& in, Out& out)
         int32_t* acc_rec = acc_rec_.data();
         std::fill(acc_in_.begin(), acc_in_.end(), 0);
         std::fill(acc_rec_.begin(), acc_rec_.end(), 0);
-        for (int n = 0; n < ns; ++n) {
-            const int8_t* col = w_in_t_ + static_cast<size_t>(spiked[n]) * kMix;
-            for (int j = 0; j < kMix; ++j) acc_in[j] += col[j];
-        }
-        for (int i = 0; i < kMix; ++i)
-            if (s_mix_[i]) {
-                const int8_t* col = w_rec_t_ + static_cast<size_t>(i) * kMix;
-                for (int j = 0; j < kMix; ++j) acc_rec[j] += col[j];
+        auto addCol = [](int32_t* __restrict acc, const int8_t* __restrict col, int len) {
+            int j = 0;
+            for (; j + 3 < len; j += 4) {
+                acc[j] += col[j];
+                acc[j + 1] += col[j + 1];
+                acc[j + 2] += col[j + 2];
+                acc[j + 3] += col[j + 3];
             }
+            for (; j < len; ++j) acc[j] += col[j];
+        };
+        for (int n = 0; n < ns; ++n)
+            addCol(acc_in, w_in_t_ + static_cast<size_t>(spiked[n]) * kMix, kMix);
+        for (int i = 0; i < kMix; ++i)
+            if (s_mix_[i]) addCol(acc_rec, w_rec_t_ + static_cast<size_t>(i) * kMix, kMix);
         for (int j = 0; j < kMix; ++j) {
             const float v = kBetaMix * v_mix_[j] + static_cast<float>(acc_in[j]) * kInScale[j] +
                             static_cast<float>(acc_rec[j]) * kRecScale[j] + kBMix[j];
@@ -147,10 +163,7 @@ bool SnnV4::tick(const In& in, Out& out)
         // ATT
         int32_t acc_att[kAtt] = {};
         for (int i = 0; i < kMix; ++i)
-            if (s_mix_[i]) {
-                const int8_t* col = w_att_t_ + static_cast<size_t>(i) * kAtt;
-                for (int j = 0; j < kAtt; ++j) acc_att[j] += col[j];
-            }
+            if (s_mix_[i]) addCol(acc_att, w_att_t_ + static_cast<size_t>(i) * kAtt, kAtt);
         for (int j = 0; j < kAtt; ++j) {
             const float v = kBetaAtt * v_att_[j] + bump[j] + static_cast<float>(acc_att[j]) * kAttScale[j] + kBAtt[j];
             const bool s = v > 1.0f;
@@ -158,10 +171,8 @@ bool SnnV4::tick(const In& in, Out& out)
             if (s) spiked[ns++] = static_cast<uint16_t>(kEnc + kZone + kMix + j);
         }
         // readout sums over every spike of this substep
-        for (int n = 0; n < ns; ++n) {
-            const int8_t* col = w_ro_t_ + static_cast<size_t>(spiked[n]) * kOut;
-            for (int k = 0; k < kOut; ++k) ro_acc[k] += col[k];
-        }
+        for (int n = 0; n < ns; ++n)
+            addCol(ro_acc, w_ro_t_ + static_cast<size_t>(spiked[n]) * kOut, kOut);
     }
     for (int k = 0; k < kOut; ++k) {
         const float drive = static_cast<float>(ro_acc[k]) * kRoScale[k] / kSubsteps + kBRo[k];

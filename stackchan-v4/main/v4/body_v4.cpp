@@ -5,10 +5,10 @@
 
 float BodyV4::usual(float hour)
 {
-    const double a = std::exp(-(24.0 - kDayEndH + kDayStartH) / kTauSleepH);
-    const double b = std::exp(-(kDayEndH - kDayStartH) / kTauWakeH);
-    const double evening = (1.0 - b) / (1.0 - a * b);
-    const double morning = evening * a;
+    static const double a = std::exp(-(24.0 - kDayEndH + kDayStartH) / kTauSleepH);
+    static const double b = std::exp(-(kDayEndH - kDayStartH) / kTauWakeH);
+    static const double evening = (1.0 - b) / (1.0 - a * b);
+    static const double morning = evening * a;
     if (hour >= kDayStartH && hour < kDayEndH)
         return static_cast<float>(1.0 - (1.0 - morning) * std::exp(-(hour - kDayStartH) / kTauWakeH));
     return static_cast<float>(evening * std::exp(-std::fmod(hour - kDayEndH + 24.0, 24.0) / kTauSleepH));

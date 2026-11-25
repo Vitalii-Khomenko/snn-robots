@@ -141,6 +141,7 @@ def load_life(days):
             idx = np.flatnonzero(dec)
             rd = np.add.reduceat(rb, idx) if len(idx) else np.zeros(0)
             boots.append(dict(day=day, boot=int(b), seq=(int(seq[idx[0]]), int(seq[idx[-1]])), dec_idx=idx,
+                              all_seq=seq.astype(np.int64), dec_seq=seq[idx].astype(np.int64),
                               nn_id=ids.get(b, (None, None))[0], fw=ids.get(b, (None, None))[1],
                               said=v[:, D.col("said")] > 0.5, gest=v[:, D.col("gesture")] > 0.5,
                               held=v[:, D.col("held")], att=v[:, D.col("snn_att_strength")],
@@ -153,10 +154,13 @@ def load_life(days):
     return boots
 
 
-def returns(r):
+def returns(r, dec_seq=None):
+    """Discounted return per decision; resets across >2 s diary gaps so rewards never bleed across PC-off hours."""
     g = np.zeros_like(r)
     acc = 0.0
     for i in range(len(r) - 1, -1, -1):
+        if dec_seq is not None and i + 1 < len(r) and dec_seq[i + 1] - dec_seq[i] > 40:
+            acc = 0.0
         acc = r[i] + GAMMA * acc
         g[i] = acc
     return g
@@ -344,7 +348,7 @@ def prepare(m, boots, idx, feats, wv=None):
     which were carried out. wv: a value baseline fitted elsewhere (held_out); None fits it here. -> F, A, act, ok, wv,
     spread (of the raw advantage) and each decision's minute (for a bootstrap by minutes)."""
     F_all = torch.cat([feats[i][torch.from_numpy(boots[i]["day_mask"])] for i in idx])
-    G = np.concatenate([returns(boots[i]["r"])[boots[i]["day_mask"]] for i in idx])
+    G = np.concatenate([returns(boots[i]["r"], boots[i].get("dec_seq"))[boots[i]["day_mask"]] for i in idx])
     X = np.concatenate([F_all.numpy(), np.ones((len(F_all), 1), np.float32)], 1)
     if wv is None:  # value baseline: ridge regression of the return on the features
         wv = np.linalg.solve(X.T @ X + 1.0 * np.eye(X.shape[1]), X.T @ G)
@@ -366,11 +370,11 @@ def improvement(m, new, feat, act, ok, A):
     s = np.zeros(len(feat))
     for g, idx in GROUPS_ACT.items():
         ch = torch.tensor(act[g])[:, None]
-        pa = torch.softmax(a[:, idx], -1).gather(1, ch)[:, 0].numpy()
+        pa = np.maximum(torch.softmax(a[:, idx], -1).gather(1, ch)[:, 0].numpy(), 1e-4)
         pb = torch.softmax(b[:, idx], -1).gather(1, ch)[:, 0].numpy()
         s += ok[g] * (pb / pa - 1.0)
     on = act["say"] > 0.5
-    pa = torch.sigmoid(a[:, SAY_ACT]).numpy()
+    pa = np.clip(torch.sigmoid(a[:, SAY_ACT]).numpy(), 1e-4, 1.0 - 1e-4)
     pb = torch.sigmoid(b[:, SAY_ACT]).numpy()
     s += ok["say"] * np.where(on, pb / pa, (1 - pb) / (1 - pa)) - ok["say"]
     return s * A
@@ -451,9 +455,14 @@ def zones(boots, shift, lines):
             alarm_t += int(on.sum())
             starts = np.flatnonzero(on[1:] & ~on[:-1]) + 1
             bad = b["raw_r"] <= -0.5   # shaken, tilted, poked hard
+            seq = b.get("all_seq")
             for s in starts:
                 onsets += 1
-                bad_after += bool(bad[s:s + 600].any())  # within 30 s
+                if seq is not None:
+                    win = bad[s:s + 600] & ((seq[s:s + 600] - seq[s]) <= 600)
+                    bad_after += bool(win.any())
+                else:
+                    bad_after += bool(bad[s:s + 600].any())  # within 30 s
         if total < MIN_HOURS * 72000:  # ticks at 20 Hz
             continue
         share = alarm_t / total
@@ -473,12 +482,13 @@ def zones(boots, shift, lines):
     return new
 
 
-def surprise_of(ch, day):
+def surprise_of(ch, day, seq=None):
     """The channels' unexpectedness per tick: |error| of a ridge forward model ch(t) -> ch(t + 1 s), fitted on the day."""
     lag = 20
     e = np.full(len(ch), np.nan, np.float32)
     ok = np.isfinite(ch).all(1)
-    i = np.flatnonzero(day[:-lag] & ok[:-lag] & ok[lag:])
+    contig = True if seq is None else ((seq[lag:] - seq[:-lag]) <= lag + 4)
+    i = np.flatnonzero(day[:-lag] & ok[:-lag] & ok[lag:] & contig)
     if len(i) < 2000:
         return e
     fit = i[::5]
@@ -498,7 +508,8 @@ def learn_muse(boots, bias, lines):
         if day.sum() < 6000:  # 10 min of daytime decisions
             continue
         win_r = np.convolve(r, np.ones(200), "full")[199:][:len(r)]  # reward over the next 20 s of each decision
-        e = surprise_of(b["ch"], ((b["flags"] & D.FLAG_DRIVES) > 0) & ((b["flags"] & D.FLAG_NIGHT) == 0))
+        dec_seq = b.get("dec_seq")
+        e = surprise_of(b["ch"], ((b["flags"] & D.FLAG_DRIVES) > 0) & ((b["flags"] & D.FLAG_NIGHT) == 0), b.get("all_seq"))
         e_dec = np.array([np.nanmean(e[t:t + 100]) if np.isfinite(e[t:t + 100]).any() else np.nan for t in b["dec_idx"]])
         rb, rs = win_r[day].mean(), win_r[day].std() + 1e-6
         cb, cs = np.nanmean(e_dec[day]), np.nanstd(e_dec[day]) + 1e-6
@@ -508,6 +519,8 @@ def learn_muse(boots, bias, lines):
             for i in np.flatnonzero(on[1:] & ~on[:-1]) + 1:
                 if i - last < 100 or i + 200 > len(r):
                     continue
+                if dec_seq is not None and dec_seq[i + 199] - dec_seq[i] > 440:
+                    continue  # skip episodes spanning a diary gap
                 last = i
                 stats[name][0].append((win_r[i] - rb) / rs)
                 if np.isfinite(e_dec[i]) and np.isfinite(cb):
@@ -637,6 +650,8 @@ def main():
     if heads_new is None:
         heads_new = LR.heads_of(m)
     version = int(dt.datetime.now().strftime("%y%m%d%H"))
+    if version <= live_version:
+        version = live_version + 1  # avoid same-hour collision with ota.py's version wait
     # a dry run's candidate goes with the reports, not into the store of the robot's versions
     store = REPORTS if a.dry_run else STORE
     os.makedirs(store, exist_ok=True)

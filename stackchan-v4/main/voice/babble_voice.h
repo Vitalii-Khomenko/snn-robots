@@ -48,8 +48,8 @@ public:
     // A short beep at the speaker's volume (the owner set a new one on the screen), unless a phrase is sounding.
     void beep() { beep_.store(true); }
     bool trained() const { return net_.trained(); }
-    bool phraseEnded() { return ended_.exchange(false); }
-    const char* phraseText() const { return text_; }
+    bool phraseEnded() { return ended_.exchange(false, std::memory_order_acquire); }
+    const char* phraseText() const { return ended_text_; }
     float baseHz() const { return base_hz_; }
     uint32_t calls() const { return calls_; }
     uint32_t takeRenderUs() { return render_us_.exchange(0); }
@@ -83,6 +83,7 @@ private:
     std::array<float, BabbleNet::kIntent> pending_intent_{};
     int pending_emotion_ = 0;
     float pending_base_hz_ = 250.0f;
+    float active_base_hz_ = 250.0f;
     // audio task -> main thread
     std::atomic<bool> active_{false}, ended_{false};
     std::atomic<uint32_t> render_us_{0}, gaps_{0};
@@ -91,5 +92,6 @@ private:
     float base_hz_ = 250.0f;
     uint32_t calls_ = 0;
     char text_[96] = "";
+    char ended_text_[96] = "";
     static constexpr int kRefractoryTicks = 14;  // 0.7 s between calls
 };

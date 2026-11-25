@@ -95,8 +95,15 @@ secrets/             your Wi-Fi, device IPs, diary host and OTA token (templates
 data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) shared with platform B's history
 ```
 
-## Status (2026-10-25)
+## Status (2026-11-25)
 
+- Firmware & host audit and optimization (2026-11-25): fixed 24.8-day / 49.7-day timer-wrap bugs (`ServoSupervisor`,
+  `MotionEngine`, `V4Executor`, `BrainLoop`, `ContingencyV4`, 64-bit `uptime_s`), synchronized short gestures from rest
+  with the gated servo rail boot (`kRailBootMs`), fixed multicore races in `BabbleVoice` and `LearnedStore`, lowered
+  LTR-553 / AXP2101 I²C timeouts to 50 ms, switched the 20 ms loop to `vTaskDelayUntil`, hardened `lifelogd` startup MAC
+  pinning and non-blocking `nvidia-smi`, and made `reward_v4` / `sleep_v4` / `episodes` gap-aware across reboots and
+  diary gaps. Optimized SNN and NN hot paths (-19 % brain tick in simulator; on live ESP32-S3 SNN 3.9 -> 3.4 ms,
+  `loop_us` brain stage 5.9 -> 4.6 ms). Flashed and confirmed on `ota_0`.
 - Brain v4 drives the robot since 2026-10-24; the firmware holds nothing else (v3 and platform B were removed from it
   the same day: CPU busy 45 % -> 37 %, internal RAM minimum 14 -> 21 KB).
 - Spiking analyzer: correlation with its teacher 0.96-0.99 on synthetic and real days; 3-5 ms per tick on the robot.

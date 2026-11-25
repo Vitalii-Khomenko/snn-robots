@@ -69,7 +69,7 @@ void PowerStatusEngine::update()
 
     uint8_t reg   = 0x01;
     uint8_t value = 0;
-    if (i2c_master_transmit_receive(dev_, &reg, 1, &value, 1, 1000) != ESP_OK) {
+    if (i2c_master_transmit_receive(dev_, &reg, 1, &value, 1, 50) != ESP_OK) {
         return;
     }
 
@@ -81,10 +81,18 @@ void PowerStatusEngine::update()
 
     uint8_t battery_reg = 0xA4;
     uint8_t battery = 0;
-    if (i2c_master_transmit_receive(dev_, &battery_reg, 1, &battery, 1, 1000) == ESP_OK) {
-        battery_level01_ = static_cast<float>(battery) / 100.0f;
+    if (i2c_master_transmit_receive(dev_, &battery_reg, 1, &battery, 1, 50) == ESP_OK) {
+        battery_level01_ = std::clamp(static_cast<float>(battery) / 100.0f, 0.0f, 1.0f);
     }
 
+    uint8_t st = 0;
+    if (readReg(0x00, &st, 1)) {
+        if (status_read_ && ((st ^ status_) & 0x28))  // VBUS good or battery present changed
+            ESP_LOGW(kTag, "pmu status 0x%02x -> 0x%02x (VBUS good %d, battery present %d), vbat %u mV", status_, st,
+                     (st >> 5) & 1, (st >> 3) & 1, vbat_);
+        status_ = st;
+        status_read_ = true;
+    }
     // the rails (14-bit ADC values in mV; die temperature as in XPowersLib: 22 + (7274 - raw) / 20)
     uint8_t adc[10] = {};
     if (readReg(0x34, adc, 10)) {
@@ -95,13 +103,5 @@ void PowerStatusEngine::update()
         vbus_min_ = std::min(vbus_min_, mv(4));
         vsys_min_ = std::min(vsys_min_, mv(6));
         die_c_ = 22.0f + (7274.0f - static_cast<float>(mv(8))) / 20.0f;
-    }
-    uint8_t st = 0;
-    if (readReg(0x00, &st, 1)) {
-        if (status_read_ && ((st ^ status_) & 0x28))  // VBUS good or battery present changed
-            ESP_LOGW(kTag, "pmu status 0x%02x -> 0x%02x (VBUS good %d, battery present %d), vbat %u mV", status_, st,
-                     (st >> 5) & 1, (st >> 3) & 1, vbat_);
-        status_ = st;
-        status_read_ = true;
     }
 }

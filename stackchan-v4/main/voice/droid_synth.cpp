@@ -253,9 +253,10 @@ float Synth::sampleOne()
     index = std::min(index, maxIndex);
 
     const float ph = kTwoPi * phase_;
-    float s = std::sin(ph + index * std::sin(kTwoPi * mphase_));
+    const float msin = std::sin(kTwoPi * mphase_);
+    float s = std::sin(ph + index * msin);
     // band-limited harmonics, anchored to the carrier phase
-    if (2.0f * hz < kBandLimitHz) s += 0.55f * harm * std::sin(2.0f * ph + 0.8f * index * std::sin(kTwoPi * mphase_));
+    if (2.0f * hz < kBandLimitHz) s += 0.55f * harm * std::sin(2.0f * ph + 0.8f * index * msin);
     if (3.0f * hz < kBandLimitHz) s += 0.33f * harm * std::sin(3.0f * ph);
     s *= amp * n.loud / (1.0f + 0.55f * harm);
 
