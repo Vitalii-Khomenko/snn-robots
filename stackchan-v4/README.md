@@ -97,6 +97,15 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
 
 ## Status (2026-11-25)
 
+- Retrained main network (`id 9b7e5851`) & second optimization pass (2026-11-25): calibrated `say` (`pos_weight` 4.0
+  -> 2.4), added tick-level importance weighting for gentle touch transitions (including from `Sad`/`ignored`) and
+  answered/contingency ticks (validation emotion acc 0.929 -> 0.943; in simulator **joy of control 0.900 vs 0.807
+  yoked** and **circular reaction +0.010 vs -0.048 yoked**, all 24 scenarios PASS); fixed false `Sad` at the desk so
+  only explicit bids (`ask` calls, gestures, or calls while engaged) grow `ignored`; gated sharp onsets at `peak >= 5500`;
+  made servo rail boot init non-blocking (ESP32-S3 `servos` worst pass 35.3 -> 1.95 ms), switched LCD panel recovery to
+  VSYS-dip triggered + 10 min safety net, tuned `CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096` and disabled LVGL
+  examples/demos (`internal_free` 34.9 -> 39.6 KB); upgraded Muse curiosity (`sleep_v4.surprise_of`) to action-conditioned
+  out-of-sample block CV. Confirmed live on `ota_1`.
 - Firmware & host audit and optimization (2026-11-25): fixed 24.8-day / 49.7-day timer-wrap bugs (`ServoSupervisor`,
   `MotionEngine`, `V4Executor`, `BrainLoop`, `ContingencyV4`, 64-bit `uptime_s`), synchronized short gestures from rest
   with the gated servo rail boot (`kRailBootMs`), fixed multicore races in `BabbleVoice` and `LearnedStore`, lowered

@@ -19,6 +19,7 @@ public:
         uint32_t ms = 0;
         bool active = false;  // brain v4 drives the body and it is not night
         bool said = false, gesture = false;
+        bool asking = false;  // the call's voice style is "ask" (a social bid, not calm idle babble)
         int face = 0;
         float headEv = 0, screenEv = 0, touchHead = 0, touchScreen = 0, nearRaw = 0, speech = 0, motion = 0, headYaw = 0;
     };
@@ -39,7 +40,7 @@ private:
     struct Pending {
         uint32_t ms = 0;
         Act act = kCall;
-        bool around = false, live = false;
+        bool around = false, live = false, bid = false;
         std::array<bool, kAnswers> answered{};
     };
     void finish(Pending& p);
@@ -51,7 +52,7 @@ private:
     float bg_s_ = 0;                                        // seconds of such moments
     std::array<uint32_t, kAnswers> last_true_{};            // last tick each answer's condition held
     std::array<bool, kAnswers> seen_{};
-    float pulse_ = 0, ignored_ = 0;
+    float pulse_ = 0, ignored_ = 0, agency_ = 0;
     uint32_t last_ms_ = 0, last_said_ms_ = 0, last_gesture_ms_ = 0, last_act_ms_ = 0;
     uint32_t last_answer_ms_ = 0, last_around_ms_ = 0;
     bool started_ = false, said_seen_ = false, gesture_seen_ = false, act_seen_ = false, answer_seen_ = false;

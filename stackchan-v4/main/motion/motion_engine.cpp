@@ -199,7 +199,77 @@ void MotionEngine::writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_
     }
     for (int i = 0; i < n; ++i) {
         bus_.WritePos(ids[i], pos[i], time[i], 0);
-        esp_rom_delay_us(1000);
+        if (i + 1 < n) esp_rom_delay_us(1000);
+    }
+}
+
+// Non-blocking post-power-on servo initialization (runs at the 50 Hz main-loop cadence, one broadcast packet per pass,
+// >= 10 ms apart, zero esp_rom_delay_us busy-waits): writes position-mode limits to EEPROM on the first kEepromWrites
+// switch-ons, sends two RAM limit pairs, latches the current head pose, then enables torque.
+bool MotionEngine::stepRailInit(uint32_t now)
+{
+    if (limits_written_[0] && limits_written_[1]) return true;
+    if (init_step_ == 0) {
+        init_step_ = eeprom_writes_ < kEepromWrites ? 1 : 5;
+        init_next_ms_ = now;
+    }
+    if (!msReached(now, init_next_ms_)) return false;
+    constexpr uint8_t kBroadcast = 0xFE;
+    switch (init_step_) {
+        case 1:
+            bus_.unLockEprom(kBroadcast);
+            init_step_ = 2;
+            init_next_ms_ = now + 10;
+            return false;
+        case 2:
+            bus_.writeWord(kBroadcast, SCSCL_MIN_ANGLE_LIMIT_L, 0);
+            init_step_ = 3;
+            init_next_ms_ = now + 10;
+            return false;
+        case 3:
+            bus_.writeWord(kBroadcast, SCSCL_MAX_ANGLE_LIMIT_L, 1000);
+            init_step_ = 4;
+            init_next_ms_ = now + 10;
+            return false;
+        case 4:
+            bus_.LockEprom(kBroadcast);
+            ++eeprom_writes_;
+            init_step_ = 5;
+            init_next_ms_ = now + 10;
+            return false;
+        case 5:
+        case 7:
+            bus_.writeWord(kBroadcast, SCSCL_MIN_ANGLE_LIMIT_L, 0);
+            ++init_step_;
+            init_next_ms_ = now + 5;
+            return false;
+        case 6:
+        case 8:
+            bus_.writeWord(kBroadcast, SCSCL_MAX_ANGLE_LIMIT_L, 1000);
+            ++init_step_;
+            init_next_ms_ = now + 5;
+            return false;
+        case 9: {
+            uint8_t ids[2] = {kYawId, kPitchId};
+            uint16_t pos[2] = {
+                static_cast<uint16_t>(std::clamp(kYawZeroPos + static_cast<int>(yaw_spring_.value * kRawPerDeg), 0, 1000)),
+                static_cast<uint16_t>(std::clamp(kPitchZeroPos + static_cast<int>(pitch_spring_.value * kRawPerDeg), 0, 1000))};
+            const uint16_t hold_ms = after_cut_ ? kFirstAfterCutMs : kFirstMoveMs;
+            uint16_t time[2] = {hold_ms, hold_ms}, speed[2] = {0, 0};
+            bus_.SyncWritePos(ids, 2, pos, time, speed);
+            logPacket('h', pos[0], pos[1], hold_ms);
+            init_step_ = 10;
+            init_next_ms_ = now + 5;
+            return false;
+        }
+        case 10:
+        default:
+            bus_.EnableTorque(kBroadcast, 1);
+            logPacket('t', -1, -1, 0);
+            limits_written_[0] = limits_written_[1] = true;
+            yaw_torque_enabled_ = pitch_torque_enabled_ = true;
+            init_step_ = 0;
+            return true;
     }
 }
 
@@ -233,6 +303,10 @@ void MotionEngine::formatPackets(uint32_t since_ms, char* buf, int n) const
 void MotionEngine::update()
 {
     uint32_t now = esp_timer_get_time() / 1000;
+    // Step non-blocking post-boot servo initialization at the 50 Hz loop cadence (~20 ms per packet, zero busy-waits)
+    if (kGatedPower && rail_on_ && now - rail_change_ms_ >= kRailBootMs && (!limits_written_[0] || !limits_written_[1])) {
+        if (!stepRailInit(now)) return;
+    }
     if (now - last_update_ms_ < kUpdateMs) {
         return;  // 10 Hz: the servo packet rate (50 Hz made them stall)
     }
@@ -384,7 +458,9 @@ bool MotionEngine::railReady(uint32_t now)
     if (rail_on_) {
         if (busy) rail_idle_ms_ = now;
         else if (now - rail_idle_ms_ >= kRailHoldMs && msReached(now, arrive_ms_ + kRailHoldMs)) setRail(false, now);
-        return !rail_on_ || now - rail_change_ms_ >= kRailBootMs;
+        if (!rail_on_) return true;
+        if (now - rail_change_ms_ < kRailBootMs) return false;
+        return stepRailInit(now);
     }
     if (!busy) return true;  // settled and nothing new: writeSparse() sends nothing
     if (now - rail_change_ms_ < kRailMinOffMs) return false;
@@ -404,6 +480,8 @@ void MotionEngine::setRail(bool on, uint32_t now)
         rail_idle_ms_ = now;
         first_after_rail_ = true;
         resyncAfterPowerCycle();  // position mode, torque and both positions again
+    } else {
+        init_step_ = 0;
     }
 }
 

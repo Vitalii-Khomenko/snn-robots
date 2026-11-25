@@ -24,7 +24,7 @@ if __name__ == "__main__":
     for day in days:
         t, _ = D.load(day)
         ms, rows, boot = C.inputs(t)
-        rec = np.dtype([("ms", "<u4"), ("r", "<f4", (12,))])
+        rec = np.dtype([("ms", "<u4"), ("r", "<f4", (13,))])
         starts = np.flatnonzero(np.concatenate([[True], boot[1:] != boot[:-1]]))
         stream = np.zeros(len(ms) + len(starts), rec)
         pos = np.arange(len(ms)) + np.searchsorted(starts, np.arange(len(ms)), side="right")

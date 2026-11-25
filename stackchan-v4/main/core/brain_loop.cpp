@@ -99,7 +99,7 @@ void BrainLoop::coupleMotion(uint32_t now)
     if (e_.motion.railSwitching(now)) e_.mic.raiseThresholdFor(400);
     e_.imu.update(moving);
     MicrophoneEngine::Onset onset;
-    while (e_.mic.takeOnset(onset)) soundOnset(std::clamp(onset.strength, 0.0f, 1.0f));
+    while (e_.mic.takeOnset(onset)) soundOnset(std::clamp(onset.strength, 0.0f, 1.0f), onset.peak);
 }
 
 // The ear, once per tick: loudness, speech and the sharp-sound event of this tick. Our own voice and servos are
@@ -114,13 +114,15 @@ void BrainLoop::hear(uint32_t now, float& sharpEv)
     ctx.selfLevel01 = self[0];
     // Our own servos click and whine loud enough to look like claps (peaks of 20-32k on hardware): while the head
     // moves, and just after, such events are mostly ourselves and are not passed on at all.
-    if (ctx.ownMotion) loud_event_ = onset_event_ = 0.0f;
-    // A sharp sound that started this tick: the microphone's loud or onset event (the Auditory NN's clap / sharp
+    if (ctx.ownMotion) loud_event_ = onset_event_ = sharp_onset_event_ = 0.0f;
+    // A sharp sound that started this tick: the microphone's loud or sharp-onset event (the Auditory NN's clap / sharp
     // classes fire 20-40 times an hour on nothing - tools/v4/calibrate.py, 2026-10-24). Loud events come with
     // intensity 0.4 (peak ~2000: a tap on the table, a word) .. 1.0 (peak >= 20000, a clap at the robot); only peaks
-    // from ~6000 are sharp sounds (2026-10-24: 9 weak ones in 2 minutes of the owner moving about kept the channel at
-    // 1.0 and the analyzer's threat at 0.8).
-    sharpEv = loud_event_ >= 0.6f ? 0.5f + (loud_event_ - 0.6f) / 0.4f : onset_event_ > 0.5f ? onset_event_ : 0.0f;
+    // from ~5500-6000 are sharp sounds (2026-10-24, and 2026-11-25: quiet onsets peak ~3200 bypassed the 6000 gate via
+    // raw onset_event_ > 0.5).
+    sharpEv = loud_event_ >= 0.6f          ? 0.5f + (loud_event_ - 0.6f) / 0.4f
+              : sharp_onset_event_ > 0.5f  ? sharp_onset_event_
+                                           : 0.0f;
     // the boot's own click (amplifier / servo power on: peak 32768 at 4.4 s, 2026-10-24) is not a bang at the robot
     // (counted in ticks so a 49.7-day ms wrap never re-mutes sharp sounds)
     if (ticks_ <= 200) sharpEv = 0.0f;
@@ -129,7 +131,7 @@ void BrainLoop::hear(uint32_t now, float& sharpEv)
     loud_hold_ = std::max(loud_event_, loud_hold_ * 0.6f);
     ctx.onset01 = onset_hold_ > 0.05f ? onset_hold_ : 0.0f;
     ctx.loud01 = loud_hold_ > 0.05f ? loud_hold_ : 0.0f;
-    onset_event_ = loud_event_ = 0.0f;
+    onset_event_ = sharp_onset_event_ = loud_event_ = 0.0f;
     const int64_t t0 = esp_timer_get_time();
     auditory_.run(e_.mic.audioFront(), ctx, ear_);
     // Speech must be a voice, and not our own (docs/CONTINGENCY.md step 2): the ear's speech class fired ~250 times an
@@ -308,6 +310,9 @@ void BrainLoop::tick(uint32_t now, const Env& env)
         in.active = brain_.trained() && !night_;
         in.said = said_tick_;
         in.gesture = gesture_tick_;
+        const auto& nn = brain_.nn();
+        in.asking = said_tick_ && nn[NO_STYLE_ASK] >= nn[NO_STYLE_CALM] && nn[NO_STYLE_ASK] >= nn[NO_STYLE_PLAY] &&
+                    nn[NO_STYLE_ASK] >= nn[NO_STYLE_GRUMBLE];
         in.face = exec_.shownEmotion();
         in.headEv = raw_.headEv;
         in.screenEv = raw_.screenEv;

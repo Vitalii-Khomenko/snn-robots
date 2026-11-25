@@ -35,6 +35,7 @@ WIN_LO_MS, WIN_HI_MS = 500, 4000
 REACT_MS, NO_ACT_MS, AROUND_MS, ACT_QUIET_MS = 3000, 5000, 120000, 1000
 TAU_NOW, TAU_BG, TAU_PULSE, TAU_IGNORED = 300.0, 1800.0, 3.0, 300.0
 PRIOR, IGNORE_STEP = 3.0, 0.1
+AGENCY_ENGAGED, IGNORED_BIDDING = 0.08, 0.35
 # the background rate's prior: BG_PRIOR_S seconds with no answer (60 until 2026-10-28: with acts every few seconds the
 # moments without one are few, the prior outweighed them and chance looked rare - in the simulator pets at random
 # moments read as answers, agency 0.36-0.58 against 0.58-0.65 when really answered; with 10 s: 0.25-0.38 against
@@ -43,20 +44,20 @@ BG_PRIOR_S = 10.0
 WINDOW_S = (WIN_HI_MS - WIN_LO_MS) / 1000.0
 F = np.float32
 INPUTS = ["active", "said", "gesture", "face", "raw_head_ev", "raw_screen_ev", "ch_touch_head", "ch_touch_screen",
-          "raw_near_raw", "raw_speech", "ch_motion", "raw_head_yaw"]
+          "raw_near_raw", "raw_speech", "ch_motion", "raw_head_yaw", "asking"]
 
 
 class Detector:
     """The twin of ContingencyV4, tick by tick: step(ms, row) with row in the order of INPUTS -> (out [6], credit)."""
 
     def __init__(self):
-        self.pending = []                # [ms, act, around, answered set]
+        self.pending = []                # [ms, act, around, answered set, bid]
         self.n = [0.0] * 3
         self.h = [[0.0] * 5 for _ in range(3)]
         self.bg_n = [0.0] * 5
         self.bg_s = 0.0
         self.last_true = [None] * 5
-        self.pulse = self.ignored = 0.0
+        self.pulse = self.ignored = self.agency = 0.0
         self.last_ms = None
         self.last_said = self.last_gesture = self.last_act = self.last_answer = self.last_around = None
         self.face = -1
@@ -67,17 +68,22 @@ class Detector:
         return then is not None and now - then <= ms
 
     def _finish(self, p):
-        ms, k, around, answered = p
+        ms, k, around, answered, bid = p
         if not around:
             return
         self.n[k] += 1.0
         for a in range(5):
             self.h[k][a] += 1.0 if a in answered else 0.0
-        if not answered and k != 2:  # a face is not a bid
+        if not answered and bid:  # only explicit bids (asking call, gesture, or call while engaged)
             self.ignored += (1.0 - self.ignored) * IGNORE_STEP
 
     def step(self, now, row):
-        active, said, gesture, face, head_ev, screen_ev, touch_head, touch_screen, near, speech, motion, yaw = row
+        if len(row) == 12:
+            active, said, gesture, face, head_ev, screen_ev, touch_head, touch_screen, near, speech, motion, yaw = row
+            asking = False
+        else:
+            (active, said, gesture, face, head_ev, screen_ev, touch_head, touch_screen, near, speech, motion, yaw,
+             asking) = row
         dt = 0.0 if self.last_ms is None else min(max((now - self.last_ms) / 1000.0, 0.0), 1.0)
         self.last_ms = now
         kn, kb = math.exp(-dt / TAU_NOW), math.exp(-dt / TAU_BG)
@@ -155,7 +161,9 @@ class Detector:
                     oldest = min(self.pending, key=lambda p: p[0])
                     self.pending.remove(oldest)
                     self._finish(oldest)
-                self.pending.append([now, k, around, set()])
+                bid = (k == 1) or (k == 0 and (bool(asking) or self.agency > AGENCY_ENGAGED or
+                                               self.ignored > IGNORED_BIDDING))
+                self.pending.append([now, k, around, set(), bid])
         if any(onset) or rough:
             self.last_answer = now
         if any(act):
@@ -166,7 +174,8 @@ class Detector:
         for k in range(3):
             s = sum(WEIGHT[a] * ((self.h[k][a] + p0[a] * PRIOR) / (self.n[k] + PRIOR) - p0[a]) for a in range(5))
             c.append(min(max(s, -1.0), 1.0))
-        out = [min(max(max(c), 0.0), 1.0), self.pulse, self.ignored] + c
+        self.agency = min(max(max(c), 0.0), 1.0)
+        out = [self.agency, self.pulse, self.ignored] + c
         return out, credit
 
 
@@ -207,8 +216,8 @@ class AnswerWorld:
         self.rate = 1.0 / float(np.exp(r.uniform(np.log(4.0), np.log(60.0))))
         self.answer_p = r.dirichlet([2.0, 2.0, 1.0])  # pet, speech, tap
 
-    def step(self, said, gesture, emo):
-        """What the robot did this 10 Hz step (a call starts, a gesture starts, the shown emotion) -> the 6 numbers."""
+    def step(self, said, gesture, emo, asking=False):
+        """What the robot did this 10 Hz step (a call starts, a gesture starts, the shown emotion, asking style) -> 6."""
         r = self.rng
         self.left -= 0.1
         if self.left <= 0:
@@ -232,7 +241,7 @@ class AnswerWorld:
         self.answers = (pet, speech, tap)
         near = 80.0 if self.kind != "away" else 0.0
         row = (True, call, gest, int(emo), 1.0 if pet else 0.0, 1.0 if tap else 0.0, 0.3 if pet else 0.0,
-               0.2 if tap else 0.0, near, 0.9 if speech else 0.0, 0.0, 0.0)
+               0.2 if tap else 0.0, near, 0.9 if speech else 0.0, 0.0, 0.0, bool(asking))
         self.out, _ = self.det.step(self.ms, row)
         self.ms += 100
         return self.out
@@ -268,8 +277,11 @@ def inputs(ticks):
     v = ticks["v"]
     c = lambda n: np.nan_to_num(v[:, D.col(n)]).astype(np.float32)
     active = (((ticks["flags"] & D.FLAG_DRIVES) > 0) & ((ticks["flags"] & D.FLAG_NIGHT) == 0)).astype(np.float32)
+    s_ask = c("nn_style_ask")
+    asking = ((c("said") > 0) & (s_ask >= c("nn_style_calm")) & (s_ask >= c("nn_style_play")) &
+              (s_ask >= c("nn_style_grumble"))).astype(np.float32)
     rows = np.stack([active, (c("said") > 0).astype(np.float32), (c("gesture") > 0).astype(np.float32),
-                     np.round(c("face"))] + [c(n) for n in INPUTS[4:]], 1)
+                     np.round(c("face"))] + [c(n) for n in INPUTS[4:12]] + [asking], 1)
     return ticks["ms"].astype(np.uint32), rows.astype(np.float32), ticks["boot"]
 
 
@@ -282,7 +294,7 @@ def run(ms, rows, boot):
         if boot[i] != b:
             det, b = Detector(), boot[i]
         r = rows[i]
-        o, cr = det.step(int(ms[i]), (r[0] > 0, r[1] > 0, r[2] > 0, int(r[3])) + tuple(r[4:]))
+        o, cr = det.step(int(ms[i]), (r[0] > 0, r[1] > 0, r[2] > 0, int(r[3])) + tuple(r[4:12]) + (r[12] > 0,))
         out[i] = o
         if cr:
             credits.append((i,) + cr)

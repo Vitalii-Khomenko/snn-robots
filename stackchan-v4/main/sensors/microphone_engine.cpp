@@ -112,6 +112,7 @@ void MicrophoneEngine::taskLoop()
             Onset o;
             o.ms = now;
             o.strength = std::clamp(mean_abs / (onset_slow_ + 1.0f) / 10.0f, 0.3f, 1.0f);
+            o.peak = static_cast<int16_t>(std::min<int32_t>(peak, 32767));
             onsets_[head % onsets_.size()] = o;
             onset_head_.store(head + 1, std::memory_order_release);
         }

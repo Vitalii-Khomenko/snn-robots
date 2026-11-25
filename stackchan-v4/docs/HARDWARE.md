@@ -267,8 +267,12 @@ and skips the frame otherwise, so it never blocks on the display.
   internal DRAM competed with the Wi-Fi and camera DMA buffers
   (`internal_free` fell to ~23–33 KB and the display froze). Every driver
   allocates its own DMA buffers in internal RAM in `begin()`.
-- Internal RAM: ~35 KB free at runtime (minimum ~21 KB, brain v4 firmware 2026-10-24). Brain v4's int8 weight tables
-  (236 KB) are copied from flash to PSRAM at boot (flash here is DIO, about half the speed of PSRAM).
+- Internal RAM: ~39.6 KB free at runtime (minimum ~16.7 KB; since 2026-11-25 `CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096`,
+  and `CONFIG_LV_BUILD_EXAMPLES` / `DEMOS` are disabled; previously ~35 KB free, dipping to ~8.4 KB over 17.5 days).
+  Brain v4's int8 weight tables (236 KB) are copied from flash to PSRAM at boot (flash here is DIO, about half the speed
+  of PSRAM). Post-power-on servo initialization (`MotionEngine::stepRailInit`) runs non-blocking at the 50 Hz loop
+  cadence (worst `servos` pass 35.3 ms -> 1.95 ms), and LCD panel recovery runs immediately on a `VSYS < 4.1 V` dip with
+  a 10-minute safety-net refresh (was every 60 s).
 - Wi-Fi buffers are trimmed (static RX 4, dynamic RX/TX 12, no A-MPDU):
   traffic: the diary (~5 datagrams/s + log lines), a ping every 20 min, NTP (hourly; it sets the RTC). Modem power save is off
   (`WIFI_PS_NONE`), the robot runs on USB.

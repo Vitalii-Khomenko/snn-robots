@@ -47,6 +47,13 @@ public:
     // A hung servo does this until its power goes (2026-10-23: both power-offs of the day came after minutes of
     // VBUS at 4.41 V and VSYS down to 3.4 V; a servo rail power cycle ended every such stretch at once).
     int sagSeconds() const { return sag_s_; }
+    // One-shot flag set when VSYS dipped below 4.1 V (used to trigger an immediate LCD panel recovery).
+    bool takeVsysDip()
+    {
+        const bool d = vsys_dip_;
+        vsys_dip_ = false;
+        return d;
+    }
 
 private:
     static constexpr uint16_t kAxp2101Addr = 0x34;
@@ -64,6 +71,7 @@ private:
     float die_c_ = 0.0f;
     uint8_t status_ = 0;
     bool status_read_ = false;
+    bool vsys_dip_ = false;
     int sag_s_ = 0;
     bool readReg(uint8_t reg, uint8_t* out, size_t n);
     uint32_t next_poll_ms_       = 0;

@@ -43,6 +43,7 @@ public:
     {
         yaw_torque_enabled_ = pitch_torque_enabled_ = false;
         limits_written_[0] = limits_written_[1] = false;  // RAM copies reset with the power
+        init_step_ = 0;
         force_write_ = true;
     }
     // Position packets written to the bus since the last call (diagnostics;
@@ -64,7 +65,11 @@ public:
     // Power-gated moves (kGatedPower): the servo rail was switched on or off within the last 400 ms (the servos
     // take hold or let go: a click in the microphone, a small jolt in the IMU and the head pad).
     bool railSwitching(uint32_t nowMs) const { return kGatedPower && nowMs - rail_change_ms_ < 400; }
-    bool railReadyNow(uint32_t nowMs) const { return !kGatedPower || (rail_on_ && nowMs - rail_change_ms_ >= kRailBootMs); }
+    bool railReadyNow(uint32_t nowMs) const
+    {
+        return !kGatedPower || (rail_on_ && nowMs - rail_change_ms_ >= kRailBootMs &&
+                                init_step_ == 0 && limits_written_[0] && limits_written_[1]);
+    }
     bool railOn() const { return rail_on_; }
     uint32_t railChangeMs() const { return rail_change_ms_; }
     // The packets of the last few moves, as text (ms after `since_ms`): what the servos were told before a jerk.
@@ -111,6 +116,7 @@ public:
 
 private:
     bool railReady(uint32_t now);
+    bool stepRailInit(uint32_t now);
     void setRail(bool on, uint32_t now);
     void writeServos(bool yaw, bool pitch, float yaw_deg, float pitch_deg, uint16_t time_ms);
     void writeSparse(uint32_t now);
@@ -125,6 +131,8 @@ private:
     uint32_t packets_sent_ = 0;
     bool force_write_ = false;
     bool limits_written_[2] = {false, false};  // position-mode limits sent since power-on
+    uint8_t init_step_ = 0;                    // non-blocking post-boot init state machine (0 = idle)
+    uint32_t init_next_ms_ = 0;
     int eeprom_writes_ = 0;                    // position mode saved in the servos' EEPROM since boot (kEepromWrites)
     static constexpr int kEepromWrites = 3;
     static constexpr uint32_t kTorqueRefreshMs = 3000;

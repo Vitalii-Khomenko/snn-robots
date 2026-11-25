@@ -13,10 +13,10 @@ int main(int argc, char** argv)
     if (!f || !g) return 1;
     ContingencyV4 det;
     uint32_t ms;
-    float r[12];
+    float r[13];
     ContingencyV4::Out out;
     ContingencyV4::Credit credit;
-    while (std::fread(&ms, sizeof(ms), 1, f) == 1 && std::fread(r, sizeof(float), 12, f) == 12) {
+    while (std::fread(&ms, sizeof(ms), 1, f) == 1 && std::fread(r, sizeof(float), 13, f) == 13) {
         if (r[0] < 0) {  // a new boot: a fresh detector
             det = ContingencyV4{};
             continue;
@@ -35,6 +35,7 @@ int main(int argc, char** argv)
         in.speech = r[9];
         in.motion = r[10];
         in.headYaw = r[11];
+        in.asking = r[12] > 0;
         det.step(in, out, credit);
         std::fwrite(out.data(), sizeof(float), out.size(), g);
         std::fwrite(&credit.any, 1, 1, g);

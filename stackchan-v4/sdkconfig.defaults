@@ -53,8 +53,12 @@ CONFIG_SPIRAM_CLK_IO=30
 CONFIG_SPIRAM_CS_IO=26
 CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_USE_MALLOC=y
-CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+# 4 KB threshold (was 16 KB): keeps small/DMA allocations in fast internal DRAM while steering 4-16 KB allocations
+# into the 8 MB PSRAM so internal_min stays well above the ~8 KB low-water mark seen over long uptimes.
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096
 CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=32768
+CONFIG_LV_BUILD_EXAMPLES=n
+CONFIG_LV_BUILD_DEMOS=n
 # Lets EXT_RAM_BSS_ATTR (app_main.cpp) place the whole static RobotRuntime -
 # including SnnCore's neuron/synapse arrays, now grown well past their
 # original size (see snn_core.h) - in PSRAM instead of internal DRAM. See

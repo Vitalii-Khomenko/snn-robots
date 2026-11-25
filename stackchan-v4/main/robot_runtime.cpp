@@ -749,16 +749,20 @@ void RobotRuntime::loop()
         loop_.afterVoice(now);
         lap();  // 6 diary
         superviseServos(now);
+        if (power_status_.takeVsysDip() && !panel_recover_ms_) {
+            panel_recover_ms_ = (now + 500) | 1u;
+            ESP_LOGW(kTag, "vsys dip detected: scheduling screen recovery");
+        }
         if (panel_recover_ms_ && msReached(now, panel_recover_ms_)) {
             panel_recover_ms_ = 0;
             face_.recoverPanel();
-            ESP_LOGI(kTag, "screen re-initialised after the servo rail power cycle");
-            next_panel_refresh_ms_ = now + 60000;
+            ESP_LOGI(kTag, "screen re-initialised after power dip / servo rail cycle");
+            next_panel_refresh_ms_ = now + 600000;
         }
-        // Once a minute the panel is set up again, without a reset: a black screen from any power dip comes back by
-        // itself (2026-10-13: black until the owner pressed the power button, once after a recovery).
+        // Periodic safety-net panel refresh without reset every 10 min (was 60 s, which caused ~100 ms loop stalls
+        // every minute; power dips now trigger immediate recovery above).
         if (msReached(now, next_panel_refresh_ms_)) {
-            next_panel_refresh_ms_ = now + 60000;
+            next_panel_refresh_ms_ = now + 600000;
             face_.recoverPanel(false);
         }
         confirmFirmware(now);

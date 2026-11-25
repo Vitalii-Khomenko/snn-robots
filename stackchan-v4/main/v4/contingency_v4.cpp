@@ -16,7 +16,9 @@ constexpr float kPrior = 3.0f;           // acts' worth of "chance" before a kin
 // the background rate's prior, seconds with no answer (contingency.py BG_PRIOR_S; 60 until 2026-10-28: with acts every
 // few seconds it outweighed the few moments without one, and pets at random moments read as answers)
 constexpr float kBgPriorS = 10.0f;
-constexpr float kIgnoreStep = 0.1f;  // per unanswered call or gesture (a face is not a bid: nobody answers every face)
+constexpr float kIgnoreStep = 0.1f;  // per unanswered social bid (asking call, gesture, or call while engaged)
+constexpr float kAgencyEngaged = 0.08f;  // owner was interacting -> still-face applies to calls too (Tronick 1978)
+constexpr float kIgnoredBidding = 0.35f;  // already entering still-face bids -> keep tracking unanswered calls
 constexpr float kWindowS = (kWinHiMs - kWinLoMs) / 1000.0f;
 
 bool within(bool seen, uint32_t now, uint32_t then, uint32_t ms) { return seen && now - then <= ms; }
@@ -44,7 +46,7 @@ void ContingencyV4::finish(Pending& p)
         h_[p.act][a] += p.answered[a] ? 1.0f : 0.0f;
         any = any || p.answered[a];
     }
-    if (!any && p.act != kFace) ignored_ += (1.0f - ignored_) * kIgnoreStep;
+    if (!any && p.bid) ignored_ += (1.0f - ignored_) * kIgnoreStep;
 }
 
 void ContingencyV4::step(const In& in, Out& out, Credit& credit)
@@ -153,6 +155,10 @@ void ContingencyV4::step(const In& in, Out& out, Credit& credit)
             slot->ms = now;
             slot->act = static_cast<Act>(k);
             slot->around = around;
+            // Calm/play idle babble while the owner quietly works nearby is not a bid for attention;
+            // explicit asking calls, gestures, or calls while actively engaged (still-face) are.
+            slot->bid = (k == kGesture) ||
+                        (k == kCall && (in.asking || agency_ > kAgencyEngaged || ignored_ > kIgnoredBidding));
             slot->live = true;
         }
     }
@@ -177,7 +183,8 @@ void ContingencyV4::step(const In& in, Out& out, Credit& credit)
         out[v4::CT_CALL + k] = c;
         best = std::max(best, c);
     }
-    out[v4::CT_AGENCY] = std::min(best, 1.0f);
+    agency_ = std::min(best, 1.0f);
+    out[v4::CT_AGENCY] = agency_;
     out[v4::CT_ANSWERED] = pulse_;
     out[v4::CT_IGNORED] = ignored_;
 }

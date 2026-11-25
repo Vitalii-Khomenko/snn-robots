@@ -584,8 +584,8 @@ def acts_of(y):
 
 def deed_acts(deed):
     """What the body did (Teacher.deed, executor_twin), as the contingency detector sees acts: (a call started, a
-    gesture started, the face shown). People answer these, not the wishes (2026-10-28)."""
-    return deed["said"], deed["gesture"], deed["emotion"]
+    gesture started, the face shown, whether the call was asking). People answer these, not the wishes (2026-10-28)."""
+    return deed["said"], deed["gesture"], deed["emotion"], deed.get("asking", False)
 
 
 def rollout(snn_seq, rng, world_rng=None):

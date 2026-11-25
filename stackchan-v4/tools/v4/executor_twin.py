@@ -19,13 +19,15 @@ The gates mirror main/v4/v4_executor.cpp and main/voice/babble_voice.cpp, at the
 """
 import numpy as np
 
-from spec_v4 import EMOTIONS, HEAD_MODES, NN_OUT, SNN_OUT
+from spec_v4 import EMOTIONS, HEAD_MODES, NN_OUT, SNN_OUT, SOUND_STYLES
 
 DT = 0.1
 O = {n: i for i, n in enumerate(NN_OUT)}
 S = {n: i for i, n in enumerate(SNN_OUT)}
 EMO_IDX = [O["emo_" + e] for e in EMOTIONS]
 HEAD_IDX = [O["head_" + m] for m in HEAD_MODES]
+STYLE_IDX = [O["style_" + s] for s in SOUND_STYLES]
+STYLE_ASK = SOUND_STYLES.index("ask")
 NOD, SHAKE, FLINCH = (HEAD_MODES.index(m) for m in ("nod", "shake", "flinch"))
 
 SAY_ON, SAY_REARM = 0.55, 0.3
@@ -116,4 +118,5 @@ class ExecTwin:
         self.face_age += DT
         if want != self.shown and self.face_age >= FACE_HOLD_S:
             self.shown, self.face_age = want, 0.0
-        return {"said": said, "gesture": gesture, "emotion": self.shown}
+        asking = bool(said and int(np.argmax(y[STYLE_IDX])) == STYLE_ASK)
+        return {"said": said, "gesture": gesture, "emotion": self.shown, "asking": asking}

@@ -150,6 +150,8 @@ def load_life(days):
                               day_mask=((f[dec] & D.FLAG_DRIVES) > 0) & ((f[dec] & D.FLAG_NIGHT) == 0),
                               gaps=int(np.sum(np.diff(seq[dec].astype(np.int64)) != 2)),
                               ch=v[:, D.col("ch_" + CHANNELS[0]):D.col("ch_" + CHANNELS[0]) + len(CHANNELS)],
+                              head=np.stack([np.nan_to_num(v[:, D.col("head_yaw_deg")]),
+                                             np.nan_to_num(v[:, D.col("head_pitch_deg")])], 1).astype(np.float32),
                               raw_r=rb, flags=f, hour=v[:, D.col("raw_hour")]))
     return boots
 
@@ -482,21 +484,59 @@ def zones(boots, shift, lines):
     return new
 
 
-def surprise_of(ch, day, seq=None):
-    """The channels' unexpectedness per tick: |error| of a ridge forward model ch(t) -> ch(t + 1 s), fitted on the day."""
+def surprise_of(ch, day, seq=None, act=None):
+    """Out-of-sample unexpectedness per tick: |error| of an action-conditioned ridge forward model
+    [ch(t), act(t)] -> ch(t + 1 s), evaluated with 2-fold temporal block cross-validation (10 blocks) so the robot is
+    not 'curious' about predictable consequences of its own voice/head motion or in-sample noise."""
     lag = 20
     e = np.full(len(ch), np.nan, np.float32)
     ok = np.isfinite(ch).all(1)
+    if act is not None:
+        ok = ok & np.isfinite(act).all(1)
     contig = True if seq is None else ((seq[lag:] - seq[:-lag]) <= lag + 4)
     i = np.flatnonzero(day[:-lag] & ok[:-lag] & ok[lag:] & contig)
     if len(i) < 2000:
         return e
-    fit = i[::5]
-    X = np.concatenate([ch[fit], np.ones((len(fit), 1), np.float32)], 1)
-    W = np.linalg.solve(X.T @ X + 1.0 * np.eye(X.shape[1]), X.T @ ch[fit + lag])
-    pred = np.concatenate([ch[i], np.ones((len(i), 1), np.float32)], 1) @ W
-    e[i] = np.abs(ch[i + lag] - pred).mean(1)
+    feats = ch if act is None else np.concatenate([ch, act], 1)
+    X_all = np.concatenate([feats[i], np.ones((len(i), 1), np.float32)], 1)
+    Y_all = ch[i + lag]
+    # 10 alternating temporal blocks -> 2-fold out-of-sample CV (even blocks predict odd blocks and vice versa)
+    n_blocks = 10
+    blk = (np.arange(len(i)) * n_blocks) // len(i)
+    err = np.full(len(i), np.nan, np.float32)
+    eye = 1.0 * np.eye(X_all.shape[1], dtype=np.float32)
+    for parity in (0, 1):
+        tr = (blk % 2 == parity)
+        te = ~tr
+        tr_sub = np.flatnonzero(tr)[::5]
+        if len(tr_sub) < 100 or not te.any():
+            continue
+        Xt, Yt = X_all[tr_sub], Y_all[tr_sub]
+        W = np.linalg.solve(Xt.T @ Xt + eye, Xt.T @ Yt)
+        err[te] = np.abs(Y_all[te] - X_all[te] @ W).mean(1)
+    # Clip extreme single-tick sensor glitches at p99 so noisy bursts do not drown out genuine novelty
+    valid = np.isfinite(err)
+    if valid.any():
+        cap = float(np.quantile(err[valid], 0.99))
+        err[valid] = np.minimum(err[valid], max(cap, 1e-4))
+    e[i] = err
     return e
+
+
+def _action_features(b):
+    """Per-tick action context for the curiosity forward model: recent call/gesture + head motion deltas."""
+    T = len(b["said"])
+    said = b["said"].astype(np.float32)
+    gest = b["gest"].astype(np.float32)
+    # 1 s moving average of own calls & gestures so the forward model knows the robot just acted
+    k = np.ones(20, np.float32) / 20.0
+    said_w = np.convolve(said, k, "full")[:T]
+    gest_w = np.convolve(gest, k, "full")[:T]
+    head = b.get("head")
+    if head is not None and len(head) == T:
+        dh = np.abs(np.diff(head, axis=0, prepend=head[:1])) / 10.0
+        return np.column_stack([said_w, gest_w, np.clip(dh, 0.0, 2.0)]).astype(np.float32)
+    return np.column_stack([said_w, gest_w]).astype(np.float32)
 
 
 def learn_muse(boots, bias, lines):
@@ -509,7 +549,8 @@ def learn_muse(boots, bias, lines):
             continue
         win_r = np.convolve(r, np.ones(200), "full")[199:][:len(r)]  # reward over the next 20 s of each decision
         dec_seq = b.get("dec_seq")
-        e = surprise_of(b["ch"], ((b["flags"] & D.FLAG_DRIVES) > 0) & ((b["flags"] & D.FLAG_NIGHT) == 0), b.get("all_seq"))
+        e = surprise_of(b["ch"], ((b["flags"] & D.FLAG_DRIVES) > 0) & ((b["flags"] & D.FLAG_NIGHT) == 0),
+                        b.get("all_seq"), _action_features(b))
         e_dec = np.array([np.nanmean(e[t:t + 100]) if np.isfinite(e[t:t + 100]).any() else np.nan for t in b["dec_idx"]])
         rb, rs = win_r[day].mean(), win_r[day].std() + 1e-6
         cb, cs = np.nanmean(e_dec[day]), np.nanstd(e_dec[day]) + 1e-6

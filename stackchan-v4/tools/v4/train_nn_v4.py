@@ -6,6 +6,7 @@ states the network really visits).
   ./py train_nn_v4.py train [dagger]    # -> data/nn_v4.pt, report out/nn_report.txt
 """
 import collections
+from concurrent.futures import ProcessPoolExecutor
 import os
 import sys
 import time
@@ -25,9 +26,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "out")
 DATA = os.path.join(HERE, "data")
 O = {n: i for i, n in enumerate(NN_OUT)}
+S_IDX = {n: i for i, n in enumerate(SNN_OUT)}
+P_IDX = {n: len(SNN_OUT) + i for i, n in enumerate(PREV)}
 SAY = O["say"]
 GAZE = [O["gaze_yaw"], O["gaze_pitch"]]
 LOOKS = [O["head_look"], O["head_scan"]]
+SAY_POS_WEIGHT = 2.4  # calibrated from 4.0 (2026-11-25): reduces over-calling held back by the call budget
 
 
 def build():
@@ -51,36 +55,60 @@ def build():
     print("SNN outputs", S.shape)
 
 
+def _label_imitation_chunk(args):
+    """Worker for parallel imitation labelling (policy=None): each life is independent."""
+    S_chunk, pace_chunk, seeds = args
+    N, T, _ = S_chunk.shape
+    S_c = np.array(S_chunk, np.float32)
+    X = np.zeros((N, T, len(SNN_OUT) + len(PREV)), np.float32)
+    Y = np.zeros((N, T, len(NN_OUT)), np.float32)
+    for n in range(N):
+        tch = Teacher()
+        world = C.AnswerWorld(np.random.default_rng(int(seeds[n])))
+        sn, pn = S_c[n], pace_chunk[n]
+        for t in range(T):
+            X[n, t, :32] = sn[t]
+            X[n, t, 32:] = tch.prev_inputs(pn[t], world.out)
+            Y[n, t] = tch.step(sn[t], pn[t], world.out)
+            world.step(*deed_acts(tch.deed))
+            C.inject(sn, t + 1, world.answers)
+    return X, Y
+
+
 def label(S, rng, policy=None, dev="cpu"):
     """Teacher rollouts over SNN output sequences S [N, T, 32]. policy=None: the teacher acts itself (imitation);
     else the network acts (DAgger) and the teacher labels. People answer what is really done or not
     (contingency.AnswerWorld, one per life). -> inputs [N, T, 55], targets [N, T, 61]."""
     N, T, _ = S.shape
+    pace = M.run(S.astype(np.float32), rng)  # the Muse: pacemakers + ideas, driven by each life's mood
+    seeds = rng.integers(1 << 31, size=N)
+    if policy is None:
+        workers = min(12, os.cpu_count() or 1, max(1, N // 32))
+        if workers > 1:
+            chunks = np.array_split(np.arange(N), workers)
+            jobs = [(S[c], pace[c], seeds[c]) for c in chunks]
+            with ProcessPoolExecutor(max_workers=workers) as ex:
+                parts = list(ex.map(_label_imitation_chunk, jobs))
+            return np.concatenate([p[0] for p in parts]), np.concatenate([p[1] for p in parts])
+        return _label_imitation_chunk((S, pace, seeds))
     S = np.array(S, np.float32)  # a copy: the people's answers are written into it (contingency.inject)
     X = np.zeros((N, T, len(SNN_OUT) + len(PREV)), np.float32)
     Y = np.zeros((N, T, len(NN_OUT)), np.float32)
     teachers = [Teacher() for _ in range(N)]
-    worlds = [C.AnswerWorld(np.random.default_rng(int(rng.integers(1 << 31)))) for _ in range(N)]
-    pace = M.run(S.astype(np.float32), rng)  # the Muse: pacemakers + ideas, driven by each life's mood
+    worlds = [C.AnswerWorld(np.random.default_rng(int(s))) for s in seeds]
     h = None
     for t in range(T):
         for n in range(N):
             X[n, t, :32] = S[n, t]
             X[n, t, 32:] = teachers[n].prev_inputs(pace[n, t], worlds[n].out)
-        if policy is None:
-            for n in range(N):
-                Y[n, t] = teachers[n].step(S[n, t], pace[n, t], worlds[n].out)
-                worlds[n].step(*deed_acts(teachers[n].deed))
-                C.inject(S[n], t + 1, worlds[n].answers)
-        else:
-            with torch.no_grad():
-                raw, h = policy(torch.tensor(X[:, t:t + 1], device=dev), h)
-                act = activate(raw)[:, 0].cpu().numpy()
-            for n in range(N):
-                executed = decisive(act[n])
-                Y[n, t] = teachers[n].step(S[n, t], pace[n, t], worlds[n].out, executed=executed)
-                worlds[n].step(*deed_acts(teachers[n].deed))
-                C.inject(S[n], t + 1, worlds[n].answers)
+        with torch.no_grad():
+            raw, h = policy(torch.tensor(X[:, t:t + 1], device=dev), h)
+            act = activate(raw)[:, 0].cpu().numpy()
+        for n in range(N):
+            executed = decisive(act[n])
+            Y[n, t] = teachers[n].step(S[n, t], pace[n, t], worlds[n].out, executed=executed)
+            worlds[n].step(*deed_acts(teachers[n].deed))
+            C.inject(S[n], t + 1, worlds[n].answers)
     return X, Y
 
 
@@ -106,13 +134,39 @@ def class_weights(Y, idx, dev, power=0.5, cap=5.0, keep=()):
     return torch.tensor(w, dtype=torch.float32, device=dev)
 
 
-def loss_fn(raw, y, emo_w, head_w=None):
-    l_emo = F.cross_entropy(raw[..., EMO_IDX].reshape(-1, len(EMO_IDX)), y[..., EMO_IDX].argmax(-1).reshape(-1),
-                            weight=emo_w)
-    l_grp = sum(F.cross_entropy(raw[..., idx].reshape(-1, len(idx)), y[..., idx].argmax(-1).reshape(-1),
-                                weight=head_w if g == "head" else None)
-                for g, idx in GROUPS.items())
-    l_say = F.binary_cross_entropy_with_logits(raw[..., SAY], y[..., SAY], pos_weight=torch.tensor(4.0, device=raw.device))
+def tick_weights(xb):
+    """Per-tick importance weights [B, T]: emphasize gentle touches (especially from low/ignored moods so petting
+    never flashes Annoyed) and contingency/answered ticks (joy of control + circular reaction)."""
+    sh, ss = xb[..., S_IDX["sal_touch_head"]], xb[..., S_IDX["sal_touch_screen"]]
+    hh, hs = xb[..., S_IDX["hed_touch_head"]], xb[..., S_IDX["hed_touch_screen"]]
+    touch = torch.maximum(sh, ss)
+    touch_hed = torch.where(sh >= ss, hh, hs)
+    gentle = (touch > 0.12) & (touch_hed >= 0.4)
+    low_prev = (xb[..., P_IDX["prev_valence"]] < 0.35) | (xb[..., P_IDX["ignored"]] > 0.3)
+    answered = (xb[..., P_IDX["answered"]] > 0.35) | ((xb[..., P_IDX["agency"]] > 0.10) & (xb[..., P_IDX["answered"]] > 0.10))
+    ignored = xb[..., P_IDX["ignored"]] > 0.35
+    w = torch.ones_like(touch)
+    w = torch.where(ignored, w * 1.5, w)
+    w = torch.where(answered, w * 2.5, w)
+    w = torch.where(gentle, w * 2.5, w)
+    w = torch.where(gentle & low_prev, w * 2.0, w)  # total 5x on gentle touch while sad/ignored
+    return w / (w.mean() + 1e-6)
+
+
+def loss_fn(raw, y, emo_w, head_w=None, tw=None):
+    w_flat = tw.reshape(-1) if tw is not None else None
+    l_emo_t = F.cross_entropy(raw[..., EMO_IDX].reshape(-1, len(EMO_IDX)), y[..., EMO_IDX].argmax(-1).reshape(-1),
+                              weight=emo_w, reduction="none")
+    l_emo = (l_emo_t * w_flat).mean() if w_flat is not None else l_emo_t.mean()
+    l_grp = 0.0
+    for g, idx in GROUPS.items():
+        lg = F.cross_entropy(raw[..., idx].reshape(-1, len(idx)), y[..., idx].argmax(-1).reshape(-1),
+                             weight=head_w if g == "head" else None, reduction="none")
+        l_grp = l_grp + ((lg * w_flat).mean() if w_flat is not None else lg.mean())
+    l_say_t = F.binary_cross_entropy_with_logits(raw[..., SAY], y[..., SAY],
+                                                 pos_weight=torch.tensor(SAY_POS_WEIGHT, device=raw.device),
+                                                 reduction="none")
+    l_say = (l_say_t * tw).mean() if tw is not None else l_say_t.mean()
     sig = [STRENGTH] + [i for i in SIG if i != SAY]
     l_sig = F.mse_loss(torch.sigmoid(raw[..., sig]), y[..., sig])
     looking = y[..., LOOKS].sum(-1, keepdim=True)
@@ -136,7 +190,7 @@ def fit(model, X, Y, epochs, dev, emo_w, log, head_w=None, n_val=None):
         for b in np.array_split(rng.permutation(tr), max(1, len(tr) // 48)):
             xb, yb = torch.tensor(X[b], device=dev), torch.tensor(Y[b], device=dev)
             raw, _ = model(xb)
-            loss = loss_fn(raw, yb, emo_w, head_w)
+            loss = loss_fn(raw, yb, emo_w, head_w, tick_weights(xb))
             opt.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -145,8 +199,9 @@ def fit(model, X, Y, epochs, dev, emo_w, log, head_w=None, n_val=None):
         with torch.no_grad():  # in chunks: with three DAgger rounds the whole validation set no longer fits the GPU
             vls, accs = [], []
             for c in np.array_split(va, max(1, len(va) // 64)):
-                raw, _ = model(torch.tensor(X[c], device=dev))
-                vls.append(float(loss_fn(raw, torch.tensor(Y[c], device=dev), emo_w, head_w)) * len(c))
+                xc, yc = torch.tensor(X[c], device=dev), torch.tensor(Y[c], device=dev)
+                raw, _ = model(xc)
+                vls.append(float(loss_fn(raw, yc, emo_w, head_w, tick_weights(xc))) * len(c))
                 accs.append(float((raw[..., EMO_IDX].argmax(-1).cpu() == torch.tensor(Y[c][..., EMO_IDX]).argmax(-1))
                                   .float().mean()) * len(c))
             vl, acc = sum(vls) / len(va), sum(accs) / len(va)

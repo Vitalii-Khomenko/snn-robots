@@ -59,7 +59,11 @@ public:
     void screenTouch(uint32_t now) { (void)now, screen_ev_ = 1.0f; }
     // intensity as MicrophoneEngine reports it (0.4 .. 1.0)
     void loudSound(float intensity01) { loud_event_ = std::max(loud_event_, intensity01); }
-    void soundOnset(float strength01) { onset_event_ = std::max(onset_event_, strength01); }
+    void soundOnset(float strength01, int16_t peak = 0)
+    {
+        onset_event_ = std::max(onset_event_, strength01);
+        if (peak >= kSharpOnsetPeak) sharp_onset_event_ = std::max(sharp_onset_event_, strength01);
+    }
     void vision(const CameraEngine::VisionFrame& f, uint32_t now);
     // The servo rail was power-cycled: the head jolts as the servos take hold again - not a shake (2026-10-24: shake
     // 0.33 right after a power cycle). The IMU channels are not read for the next 3 s.
@@ -161,7 +165,8 @@ private:
     std::array<uint32_t, 9> touch_times_{};  // the last head touches: a storm with nobody around is pad noise
     uint32_t touch_n_ = 0, storm_dropped_ = 0, storm_logged_ms_ = 0, last_somebody_ms_ = 0;
     // sound
-    float loud_event_ = 0.0f, onset_event_ = 0.0f, loud_hold_ = 0.0f, onset_hold_ = 0.0f;
+    static constexpr int16_t kSharpOnsetPeak = 5500;  // quiet taps/clicks (<5500) feed AuditoryNet onset01, not sharp flinches
+    float loud_event_ = 0.0f, onset_event_ = 0.0f, sharp_onset_event_ = 0.0f, loud_hold_ = 0.0f, onset_hold_ = 0.0f;
     std::array<bool, 3> heard_{};  // clap / sharp / speech above 0.5 (rising edges are logged)
     // our own motion and voice
     bool was_moving_ = false;

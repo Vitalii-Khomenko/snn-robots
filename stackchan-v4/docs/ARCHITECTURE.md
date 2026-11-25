@@ -302,8 +302,10 @@ section 3). After the executor, every tick:
 - **Outputs (diary `ct_*`):**
   - agency (the best kind, 0..1);
   - answered (a pulse that fades in ~3 s);
-  - ignored (rises by 0.1 per unanswered call or gesture with someone around: a face is not a bid; a pet, a tap
-    or speech resets it; fades in ~5 min);
+  - **ignored** (rises by 0.1 per unanswered social bid with someone around: an asking call `style == ask`, a gesture,
+    or any call while engaged `agency > 0.08` or already bidding `ignored > 0.35` — since 2026-11-25 calm/play idle
+    babble while the owner quietly works nearby no longer triggers false still-face `Sad`; a pet, a tap or speech resets
+    it; fades in ~5 min);
   - call, gesture, face contingency (-1..1).
 - **Log:** `contingency: face answered by pet after 1.9 s (agency 0.00)`.
 - **First measurements:** 2026-10-26 replayed by the twin: 613 credits, 594 of them by speech (noise), all kinds
@@ -344,9 +346,9 @@ Learning happens on the PC at night; the robot only receives the result, without
 - **The Muse's ideas** (`sleep_v4.learn_muse`, since 2026-10-26): one bias per idea moves (the reservoir and its
   readout are fixed; CREATIVITY section 0). For each idea, its episodes by day (above 0.5, at least 10 s apart). An idea after which people answered more than usual over 20 s (reward_v4, in units of
   its spread) comes a little more often. So does one after which the world turned out other than the robot
-  expected: curiosity is the error of a ridge forward model of the 13 channels 1 s ahead, over 5 s, weighted
-  0.3 (unexpectedness, not learning progress: the robot's own act is not among the model's inputs, and a noisy room
-  scores high too). The bias moves at most 0.05 a night (with >= 3 episodes), stays within -0.4..+0.6 so no idea dies out,
+  expected: curiosity is the out-of-sample error (2-fold 10-block temporal CV, clipped at p99, since 2026-11-25) of an
+  action-conditioned ridge forward model `[channels, recent call/gesture/head motion] -> channels 1 s ahead`, over 5 s,
+  weighted 0.3. The bias moves at most 0.05 a night (with >= 3 episodes), stays within -0.4..+0.6 so no idea dies out,
   and drifts back by 0.005 a night when the idea was not had.
 - **Zone shift** (`main/v4/zone_shift.h`): per channel a shift s of its alarm border a (the lower border of its first
   anxiety or anger zone), |s| <= 0.15, applied as a monotone warp of the channel value before the analyzer (the
@@ -425,9 +427,10 @@ Learning happens on the PC at night; the robot only receives the result, without
 | diary sender | 0 | 1 | UDP to the PC from a PSRAM ring |
 | update server | 0 | 2 | HTTP: status, touch sensitivity, learned blob, firmware |
 
-Measured 2026-11-25 (after SNN separable-Gaussian + zero-skipping and 4-row tiled NN optimizations, live ESP32-S3):
-SNN ~3.4 ms (was ~3.9 ms), NN ~5.4 ms (was ~5.65 ms), brain stage per 20 ms pass in `loop_us` ~4.6 ms (was ~5.9 ms),
-main loop paced with `vTaskDelayUntil`, busy ~40 %, PSRAM free ~7.8 MB; LEDs + head pad ~1.5 ms, IMU + microphone ~1.4 ms
-(both I2C, 50 ms timeouts), the face ~0.25 ms, the rest < 0.25 ms (apart from the once-a-minute ~100 ms LCD panel
-recovery). The networks read their weights from PSRAM (copied at boot: this board's flash is DIO,
-about half as fast); the pixel face redraws only the pixels that changed (a blink: ~1/10 of the screen, ~15 ms).
+Measured 2026-11-25 (after SNN/NN optimizations, non-blocking servo rail init, VSYS-triggered + 10 min LCD recovery,
+and `CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096`, live ESP32-S3): SNN ~2.8-3.4 ms (was ~3.9 ms), NN ~5.4 ms (was
+~5.65 ms), brain stage per 20 ms pass in `loop_us` ~4.6 ms (was ~5.9 ms), `servos` worst pass at rail switch-on 1.95 ms
+(was 35.3 ms), `internal_free` ~39.6 KB (was ~35 KB), PSRAM free ~7.78 MB, main loop paced with `vTaskDelayUntil`, busy
+~39 %; LEDs + head pad ~1.1 ms, IMU + microphone ~1.4 ms (50 ms I2C timeouts), the face ~0.3 ms. The networks read their
+weights from PSRAM (copied at boot: this board's flash is DIO, about half as fast); the pixel face redraws only the
+pixels that changed (a blink: ~1/10 of the screen, ~15 ms).

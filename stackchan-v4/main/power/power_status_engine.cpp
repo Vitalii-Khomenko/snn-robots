@@ -101,7 +101,9 @@ void PowerStatusEngine::update()
         // (no VBUS at all, on the battery, is not a sag)
         sag_s_ = (status_ & 0x20) && mv(4) > 3000 && mv(4) < 4600 ? sag_s_ + 1 : 0;
         vbus_min_ = std::min(vbus_min_, mv(4));
-        vsys_min_ = std::min(vsys_min_, mv(6));
+        const uint16_t vsys = mv(6);
+        vsys_min_ = std::min(vsys_min_, vsys);
+        if (vsys > 2500 && vsys < 4100) vsys_dip_ = true;
         die_c_ = 22.0f + (7274.0f - static_cast<float>(mv(8))) / 20.0f;
     }
 }

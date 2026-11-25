@@ -61,6 +61,7 @@ public:
     struct Onset {
         uint32_t ms = 0;
         float strength = 0.0f;  // 0.3..1
+        int16_t peak = 0;       // block peak int16 amplitude
     };
     bool takeOnset(Onset& out);
 
