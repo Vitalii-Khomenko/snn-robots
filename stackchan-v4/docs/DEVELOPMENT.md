@@ -185,16 +185,18 @@ behavior_test_v4.py          24 scenarios in C++ digital twin, then build, flash
 - Checkpoints: `tools/v4/data/*.pt` (in git); reports and logs: `tools/v4/out/*.txt|*.log` (in git); the large `.npz`
   and `.tar.gz` bundles are not.
 
-### 4a. Compute Routing & Timing Guide (Local RTX A3000 vs Google Colab Tesla T4)
+### 4a. Compute Routing & Timing Guide (Local RTX A3000 vs Google Colab Pro L4 / Free T4)
 
-This project has two GPU environments with very different strengths. Always route each job to the machine whose
-hardware bottleneck fits it best — never burn Colab quota on CPU/RAM-bound tasks, and never choke a local laptop on
-long VRAM-heavy sweeps.
+This project has both a strong local workstation and Google Colab Pro (`colab` CLI, 200 compute units). Route each job
+to the machine whose hardware bottleneck fits it best, and always release Colab VMs immediately (`colab_train.py` does
+this automatically in `finally:`).
 
 | Machine | GPU / VRAM | CPU / System RAM | Cost | Best for | Avoid |
 |---|---|---|---|---|---|
-| **Local PC** (`./tools/v4/py`) | NVIDIA RTX A3000 Laptop (CUDA) | **16 cores / 62 GB RAM** | $0 (local) | `train_nn_v4.py` (DAgger + 12-core `label()`), `nn_snn.npz` build, dataset `prep_*.py`, C++ simulator (`behavior_test_v4.py`), nightly `sleep_v4.py`, firmware `./build.sh` | Leaving laptop GPU pegged for 1+ hour sweeps when Colab T4 is free |
-| **Colab Free CLI** (`tools/v4/colab_train.py`) | **NVIDIA Tesla T4 (15 GB VRAM, CUDA 13.0)** | **2 vCPU / 12 GB RAM** | **$0** (free tier; always release VM!) | `SnnV4` warm-start (`B=256`), `AuditoryNetV2` ConvNet, `VisionNetV2` CNN, `WorldModel + Offline IQL`, **512-parallel GPU World-Model Sim + Dream RL** | `ProcessPoolExecutor` with large arrays (OOMs 12 GB RAM!), C++ simulator (4–5× slower on 2 vCPU) |
+| **Local PC** (`./tools/v4/py`) | NVIDIA RTX A3000 Laptop (CUDA) | **16 cores / 62 GB RAM** | $0 (local) | Dataset `prep_*.py`, `behavior_test_v4.py` (24 C++ twin tests), nightly `sleep_v4.py`, firmware `./build.sh`, quick `train_nn_v4.py` runs | Leaving laptop GPU pegged for 1+ hour sweeps when Colab is idle |
+| **Colab Pro CLI (`--gpu L4`)** | **NVIDIA L4 (23.7 GB VRAM, CUDA 13.0)** | **12 vCPU / 52 GB RAM** | **2.33 CU/hr** (~85 h per 200 CU) | **Everything heavy:** `SnnV4` (~2× faster than T4), `train_nn_v4.py` (fits easily in 52 GB RAM / 12 vCPU!), `AuditoryNetV2`, `VisionNetV2`, `WorldModel + Offline IQL`, **1024–2048 parallel GPU World-Model Sim + Dream RL** | Forgetting to stop a VM (`colab usage` / `colab sessions`) |
+| **Colab Pro CLI (`--gpu A100`)** | **NVIDIA A100 (40/80 GB VRAM)** | **12 vCPU / 83 GB RAM** | ~11.8 CU/hr (~17 h per 200 CU) | Full from-scratch `SnnV4` (35 ep), massive hyperparameter sweeps, large vision/audio datasets | Small < 2 min jobs where `L4` is 5× cheaper in CU |
+| **Colab Free / Low-CU (`--gpu T4`)** | NVIDIA Tesla T4 (15 GB VRAM) | 2 vCPU / 12 GB RAM | ~1.2 CU/hr (or Free) | Small/medium GPU jobs (`AuditoryNetV2`, `VisionNetV2`, `WorldModel`, 512× GPU sim) | `ProcessPoolExecutor` with large arrays (OOMs 12 GB RAM!), C++ simulator (4–5× slower on 2 vCPU) |
 
 **Measured wall-clock timings (2026-11-26):**
 

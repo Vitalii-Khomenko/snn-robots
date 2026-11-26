@@ -55,11 +55,12 @@ whose sensor does not read holds its value (light: a room's light changes slowly
 2026-10-28, it held someone near for ever) or reads no tilt and shake (IMU). The simulator tests each of these
 (`fault imu|light|ntp`, DEVELOPMENT).
 
-**What the senses do not know** (2026-10-28, an audit): the camera gives motion and the brightest spot, not a person,
-a face or the owner; the ear gives loudness, sharp sounds and a voice, not words or whether the voice speaks to the
-robot; "someone near" is the IR proximity, which a hand or a cup also gives; "someone around" (contingency) is a touch,
-something near or motion in view in the last 2 minutes. So "the owner" in these documents means *whoever is there*:
-the robot does not tell one person from another, and a still person out of the IR's reach is nobody to it.
+**What the senses do and do not know** (updated 2026-11-26): since 2026-11-26 the camera runs `VisionNetV2` (23.8 KB
+int8 CNN on Core 1 @ 7 fps) plus a 13-bin room background model, so the robot *can* now detect the presence of a still
+person or face and coarse `(x, y)` direction — however it still does not recognize *who* the person is (identity). The
+ear (`AuditoryNetV2` 2D ConvNet + `VoiceCheck`) gives loudness, sharp sounds, claps, speech presence and pitch/energy,
+not words or whether the voice speaks to the robot; "someone near" is the IR proximity, which a hand or a cup also
+gives. So "the owner" in these documents still means *whoever is there*.
 
 Slow clocks (minutes, hours) are computed in code, not by the SNN: a spiking network cannot count minutes (v3's lesson,
 2026-10-03). `tools/v4/channels.py` is the same encoder for training; a parity test keeps them identical (error 0).

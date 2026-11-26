@@ -5,15 +5,15 @@ signals - work it out as a concept."* Then: *"implement it all the way."* Steps 
 (ARCHITECTURE sections 3 and 7). The curious glances in the executor (section 4) stay as the head's own small
 chance.
 
-## 0. Status (2026-10-28, after an audit: what is built against what the concept below promised)
+## 0. Status (updated 2026-11-26: what is built against what the concept below promised)
 
 | Part | Concept | Built | Measured | Open |
 |---|---|---|---|---|
-| Reservoir | 64 tanh neurons at the edge of chaos, driven by mood and attention | as proposed (`muse_v4.cpp`, `muse.py`, parity 9e-7) | 5 kinds of ideas by itself (`day_alone`) | a spectral radius near 1 is not by itself proof of creativity |
-| Ideas | 5 ideas the main network acts on | as proposed; what each idea means is the teacher's fixed rule | the network acts on them (simulator) | the ideas do not invent new acts: a *generator of structured initiatives* over a fixed repertoire |
-| Habituation | "bored of itself": pushes the reservoir to new regions | damps an idea's own positive output (90 s); **it does not feed back into the reservoir** | - | feed back into the reservoir, or drop the claim |
-| Selection | AWR trains the readout at night | **the readout is fixed**; the night moves one bias per idea (`muse.bias`, +-0.05 a night, within +-0.6) | 5 biases moved by < 0.01 so far (the ideas were hardly answered) | learning the readout itself |
-| Curiosity | "learning progress, after Oudeyer" | **the error of a 1 s ridge forward model of the channels, fitted on the same day**: unexpectedness, not progress; the robot's own act is not among its inputs, so a noisy room scores high with nothing learned | - | a forward model with the robot's own act and context, and progress measured on held-out moments (Oudeyer, Kaplan & Hafner 2007) |
+| Reservoir | 64 tanh neurons at the edge of chaos, driven by mood and attention | as proposed (`muse_v4.cpp`, `muse.py`, parity `9.83e-7`) | 5 kinds of ideas by itself (`day_alone`) | a spectral radius near 1 is not by itself proof of creativity |
+| Ideas | 5 ideas the main network acts on | as proposed; what each idea means is the teacher's rule + learned action heads | the network acts on them (simulator + live) | the ideas do not invent new actuators: a *generator of structured initiatives* over the robot's repertoire |
+| Habituation | "bored of itself": pushes the reservoir to new regions | damps an idea's own positive output (90 s) **AND feeds back into the reservoir** (`kHabFeedback = 0.12`, 2026-11-26) | parity C++/Python `9.83e-7 PASS` | long-horizon diversity metrics over weeks |
+| Selection | AWR trains the readout at night | nightly learning updates both `muse.bias` (8, ±0.05/night) **AND contextual readout delta `muse.wout`** (5×64, ±0.25 max, 2026-11-26) | verified in `learned.py` & `MuseV4` | multi-week real-life drift |
+| Curiosity | "learning progress, after Oudeyer" | action-conditioned out-of-sample 2-fold block-CV forward model in `sleep_v4.py` + online 10 Hz NLMS `PredictorV4` Oudeyer Learning Progress on ESP32-S3 (`pred=err/lp`, 2026-11-26) | live on ESP32-S3 (`<15 µs`) | combining curiosity directly with `WorldModel` uncertainty |
 
 ## 1. Where variety comes from today
 

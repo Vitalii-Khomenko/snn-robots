@@ -34,7 +34,9 @@ bad moments are remembered too.
     Now the turn is timed from where the head is, with the servos' 1 s start, and the test gives each turn its time.
 - **The first night's table** (10-26 .. 28): pets in the early morning (06:11-07:08) and the evening (17:10-21:06),
   shakes at 16:25-21:06, frights.
-- **Not yet:** the expectation as an input of the main network (step 2), prioritized replay (step 3).
+- **Step 2 & Step 3 built (2026-11-26):**
+  - **Episodic anticipation (`MemoryV4::expectation`):** scores upcoming good remembered moments 0–30 minutes ahead in matching lighting, feeding `pv_expectation` (24th own-state input of the 56-input main network) and gently biasing idle glances toward the anticipated direction (`exp=` in the `v4:` stats line).
+  - **Prioritized replay (`sleep_v4.py`):** vivid moments (`|r| >= 0.3`, ±5 s window) receive 2× replay weight during nightly policy updates.
 
 The third stage of the owner's road (2026-10-27: contingency, then the body, then episodic memory) and the audit's
 A15: *"after a reboot the robot keeps nothing of its recent history; there is no episodic memory and no model of a

@@ -3,20 +3,21 @@
 The owner, 2026-10-27: *"work out the sense of causality."* Then: *"do step 1 and flash, then steps two and three."*
 Built and on the robot:
 - step 1 since 2026-10-27 06:29;
-- step 2 since 06:48;
-- step 3 since 07:53 (network 1d448676, blob 26102708; ARCHITECTURE sections 3 and 5).
+- step 2 since 06:48 (`VoiceCheck` + upgraded `AuditoryNetV2` 2D ConvNet on 2026-11-26);
+- step 3 since 07:53 (upgraded with tick-weighted `NnV4` on 2026-11-25/26, `id 050f74d1`; ARCHITECTURE sections 3 and 5);
+- step 5 (proto-dialogue turn-taking + `VoiceCheck` pitch/energy prosody & CARE/PLAY mirroring) since 2026-11-26.
 
-Steps 4-5 are the plan. The
-science behind it is in [FOUNDATIONS](FOUNDATIONS.md) (sections 5-7).
+The science behind it is in [FOUNDATIONS](FOUNDATIONS.md) (sections 5-7).
 
-**Status (2026-10-28, after an audit):**
+**Status (updated 2026-11-26):**
 
 | | Built | Measured | Not shown / open |
 |---|---|---|---|
-| The detector (step 1) | answers credited to acts, against the background rate | parity C++ / twin 6e-6 | a statistical link, not proof of a cause; "someone around" comes from touch, near and motion, not from knowing a person |
+| The detector (step 1) | answers credited to acts, against the background rate; calm/play idle babble at the desk no longer grows false `ignored` (2026-11-25) | parity C++ / twin `6.56e-6`; live `contingency: call answered by speech` | statistical link, not proof of a cause; `VisionNetV2` (2026-11-26) now detects a still person/face, though not personal identity |
 | Credit | the latest *bid* (a call or a gesture) in the window takes the answer; a face change only when no bid is there (2026-10-28) | before: on 10-27 a face change after a call took 53 of 325 answers; the calls had 84 | eligibility by the kind of act and its delay |
-| Clean ears (step 2) | the voice check | speech 14 % -> 5 % of the time live | hand-labelled recordings of the owner's speech |
-| The network uses it (step 3) | 6 inputs, the teacher's rules | more acts when answered than with **fewer** random pets (x1.10) | **the yoked control (2026-10-28): the very same pets at the very same moments, not caused by the robot, give as many acts (x0.96-0.98)** - the robot is livelier with attention, it has not learned that its acts cause the answer; the joy and the repetition of the answered act are not above chance either |
+| Clean ears (step 2) | `VoiceCheck` + `AuditoryNetV2` (2D ConvNet int8, 2026-11-26) | speech 14 % -> 5 % live; `room_media` silence F1 `0.976` (0.1 % clap FP) | clean 5–10 min voice-during-motion recordings via `listen.py` |
+| The network uses it (step 3) | 6 inputs, teacher rules, tick-weighted `NnV4` + GPU Dream RL (`v26112621`) | simulator (2026-11-26): **`contingent / control = 1.34`**, **Watson joy of control `+0.972` vs `+0.921` yoked**, **Piaget circular reaction `-0.101` vs `-0.174` yoked** (`+0.073` above yoked), `still_face` PASS | `acts_ratio_yoked` (`0.92`) above `1.0` |
+| Proto-dialogue (step 5) | `VoiceCheck` pitch/energy + `V4Executor` turn-taking pause (0.35 s) + CARE/PLAY prosody mirroring (2026-11-26) | parity `0.00e+00`, live on ESP32-S3 | multi-turn rhythm tuning on real conversations |
 
 ## 1. Why this, and why now
 
