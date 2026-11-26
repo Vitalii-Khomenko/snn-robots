@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1490" width="2400" height="1490">
 <defs>
 <marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
-<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
-<marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
-<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
-<marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
-<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
-<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
 <marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
+<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
 <marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
-<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
+<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
+<marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
+<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
 <marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
+<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
 <marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
 <marker id="a26a6a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#26a6a6"/></marker>
+<marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
+<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
 </defs>
 <rect width="2400" height="1490" fill="#0f1420"/>
 <text x="40" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="32" fill="#e6ebf5" font-weight="bold" text-anchor="start">StackChan, brain v4: a spiking stimulus analyzer and one decision network</text>
@@ -34,8 +34,8 @@
 <rect x="40" y="130" width="290" height="30" rx="10" fill="#3a9d6e"/>
 <rect x="40" y="148" width="290" height="12" fill="#3a9d6e"/>
 <text x="52" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Microphones (2x ES7210)</text>
-<text x="52" y="182" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">24 kHz, loudness, onsets,</text>
-<text x="52" y="200" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">speech detector</text>
+<text x="52" y="182" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">24 kHz, AuditoryNetV2 (2D ConvNet</text>
+<text x="52" y="200" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">int8), VoiceCheck pitch / energy</text>
 <rect x="40" y="234" width="290" height="70" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
 <rect x="40" y="234" width="290" height="30" rx="10" fill="#3a9d6e"/>
 <rect x="40" y="252" width="290" height="12" fill="#3a9d6e"/>
@@ -61,14 +61,14 @@
 <rect x="40" y="596" width="290" height="30" rx="10" fill="#3a9d6e"/>
 <rect x="40" y="614" width="290" height="12" fill="#3a9d6e"/>
 <text x="52" y="617" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Camera GC0308</text>
-<text x="52" y="648" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">160x120, motion grid + brightest spot</text>
-<text x="52" y="666" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ where (x, y)</text>
+<text x="52" y="648" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">160x120 7 fps, motion + bright spot,</text>
+<text x="52" y="666" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">VisionNetV2 int8 CNN (person / face)</text>
 <rect x="40" y="700" width="290" height="88" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
 <rect x="40" y="700" width="290" height="30" rx="10" fill="#3a9d6e"/>
 <rect x="40" y="718" width="290" height="12" fill="#3a9d6e"/>
 <text x="52" y="721" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Battery, clock, body</text>
-<text x="52" y="752" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">AXP2101, NTP time, sleep pressure,</text>
-<text x="52" y="770" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">time since contact</text>
+<text x="52" y="752" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">AXP2101, NTP+RTC, body budget,</text>
+<text x="52" y="770" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">sleep pressure, time since contact</text>
 <rect x="390" y="130" width="580" height="892" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
 <rect x="390" y="130" width="580" height="30" rx="10" fill="#3a9d6e"/>
 <rect x="390" y="148" width="580" height="12" fill="#3a9d6e"/>
@@ -157,12 +157,12 @@
 <rect x="540" y="732" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
 <rect x="540.0" y="732" width="125.0" height="16" rx="2" fill="#3a9d6e"/>
 <rect x="665.0" y="732" width="125.0" height="16" rx="2" fill="#e8743b"/>
-<text x="802" y="745" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">1 - battery</text>
+<text x="802" y="745" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">battery / body budget</text>
 <path d="M330,744.0 L360,744.0 L360,740 L388,740" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
 <text x="404" y="799" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">12  tired</text>
 <rect x="540" y="786" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
 <rect x="540.0" y="786" width="150.0" height="16" rx="2" fill="#3a9d6e"/>
-<text x="802" y="799" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">night ramp + sleep pressure above usual</text>
+<text x="802" y="799" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">night ramp + sleep pressure</text>
 <path d="M330,744.0 L360,744.0 L360,794 L388,794" stroke="#3a9d6e" stroke-width="1.4" fill="none" marker-end="url(#a3a9d6e)"/>
 <text x="404" y="853" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">13  lonely</text>
 <rect x="540" y="840" width="250" height="16" rx="3" fill="#0b0f18" stroke="#3a4660" stroke-width="1"/>
@@ -218,7 +218,7 @@
 <text x="1026" y="650" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">· trained: surrogate gradients, TBPTT, int8 QAT</text>
 <text x="1026" y="669" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">· matches its teacher at 0.96-0.99 (correlation)</text>
 <path d="M970,576.0 L1008,576.0" stroke="#26a6a6" stroke-width="3" fill="none" marker-end="url(#a26a6a6)"/>
-<text x="990" y="550.0" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#26a6a6" font-weight="bold" text-anchor="middle">15</text>
+<text x="990" y="550.0" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#26a6a6" font-weight="bold" text-anchor="middle">18</text>
 <text x="990" y="566.0" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#26a6a6" font-weight="normal" text-anchor="middle">nums</text>
 <rect x="1440" y="130" width="250" height="334" rx="10" fill="#171e2e" stroke="#26a6a6" stroke-width="2.5"/>
 <rect x="1440" y="130" width="250" height="30" rx="10" fill="#26a6a6"/>
@@ -244,7 +244,7 @@
 <rect x="1730" y="130" width="330" height="30" rx="10" fill="#2f6fdd"/>
 <rect x="1730" y="148" width="330" height="12" fill="#2f6fdd"/>
 <text x="1742" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#ffffff" font-weight="bold" text-anchor="start">Main network (the one decider)</text>
-<text x="1744" y="186" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">input 55 = 32 from the SNN + 23 own state</text>
+<text x="1744" y="186" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">input 56 = 32 from the SNN + 24 own state</text>
 <text x="1744" y="204" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">runs at 10 Hz, float, 33 k parameters</text>
 <rect x="1746" y="226" width="298" height="51" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
 <text x="1758" y="248" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">GRU 64</text>
@@ -261,15 +261,15 @@
 <text x="1758" y="457" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">head 14: mode, gaze, gesture size,</text>
 <text x="1758" y="474" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">         speed, repeats</text>
 <path d="M1895.0,346 L1895.0,362" stroke="#2f6fdd" stroke-width="1.8" fill="none" marker-end="url(#a2f6fdd)"/>
-<text x="1744" y="507" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">own state (23):</text>
-<text x="1744" y="527" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">last mood, how long the face is shown,</text>
-<text x="1744" y="545" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">time since a sound / a gesture, head pose,</text>
-<text x="1744" y="563" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">LED level, was the touch answered,</text>
-<text x="1744" y="581" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">from the MUSE (64-neuron chaotic reservoir,</text>
-<text x="1744" y="599" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">pushed by the mood): 3 pacemakers + 5 ideas</text>
-<text x="1744" y="617" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">(play, show, still, social, surprise)</text>
-<text x="1744" y="635" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">· trained: imitation of a teacher with</text>
-<text x="1744" y="653" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">· memory, then DAgger; agrees 0.84</text>
+<text x="1744" y="507" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">own state (24):</text>
+<text x="1744" y="527" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">last mood, face age, since sound/gesture,</text>
+<text x="1744" y="545" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">head gaze, LED level, touch answered,</text>
+<text x="1744" y="563" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">MUSE (64-neuron chaotic reservoir):</text>
+<text x="1744" y="581" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">  3 pacemakers + 5 ideas + hab feedback</text>
+<text x="1744" y="599" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">CONTINGENCY (6): agency, answered, ignored</text>
+<text x="1744" y="617" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">MEMORY (1): episodic expectation (0..30m)</text>
+<text x="1744" y="635" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">· trained: imitation + 2 DAgger rounds;</text>
+<text x="1744" y="653" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">· real-diary agreement 0.90 (all 0.85)</text>
 <path d="M1690,297.0 L1728,297.0" stroke="#26a6a6" stroke-width="3" fill="none" marker-end="url(#a26a6a6)"/>
 <rect x="2090" y="130" width="280" height="310" rx="10" fill="#171e2e" stroke="#3a9d6e" stroke-width="2.5"/>
 <rect x="2090" y="130" width="280" height="30" rx="10" fill="#3a9d6e"/>
@@ -277,12 +277,12 @@
 <text x="2102" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Executor (safety in C++)</text>
 <text x="2102" y="182" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">takes the 61 outputs every 100 ms</text>
 <text x="2102" y="200" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">face shown &gt;= 1.5 s, confirmed 2 ticks</text>
-<text x="2102" y="218" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">voice budget: 5 tokens, 1 per 10 s;</text>
-<text x="2102" y="236" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">  reactions may spend the last one</text>
-<text x="2102" y="254" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">night 21:45-06:00: silent,</text>
-<text x="2102" y="272" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">  LEDs &lt;= 6 %, head only dozes</text>
-<text x="2102" y="290" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">nod / shake at most every 4 s</text>
-<text x="2102" y="308" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">servo bus &lt;= 8 commands / s</text>
+<text x="2102" y="218" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">voice budget: 6 tokens, 1 per 5 s;</text>
+<text x="2102" y="236" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">  proto-dialogue turn-taking + CARE</text>
+<text x="2102" y="254" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">night 21:45-06:00 + morning wait:</text>
+<text x="2102" y="272" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">  silent, LEDs &lt;= 6 %, head dozes</text>
+<text x="2102" y="290" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">nod / shake &gt;= 4 s; PredictorV4 NLMS</text>
+<text x="2102" y="308" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">MemoryV4 recall + expectant glances</text>
 <text x="2102" y="326" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">yaw ±100°, pitch -20..35°</text>
 <text x="2102" y="344" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">· the network decides WHAT,</text>
 <text x="2102" y="362" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">· the executor only HOW</text>
@@ -298,7 +298,7 @@
 <rect x="2090" y="562" width="280" height="30" rx="10" fill="#d9a441"/>
 <rect x="2090" y="580" width="280" height="12" fill="#d9a441"/>
 <text x="2102" y="583" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Speaker: droid babble</text>
-<text x="2102" y="614" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">phrases with the network's mood;</text>
+<text x="2102" y="614" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">BabbleNet + learned babble.pref;</text>
 <text x="2102" y="632" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">volume 0-10: button on the screen</text>
 <path d="M2110,548 L2110,560" stroke="#d9a441" stroke-width="1.6" fill="none" marker-end="url(#ad9a441)"/>
 <rect x="2090" y="664" width="280" height="88" rx="10" fill="#171e2e" stroke="#d9a441" stroke-width="2.5"/>
@@ -324,50 +324,50 @@
 <rect x="50" y="1120" width="330" height="30" rx="10" fill="#b06bd1"/>
 <rect x="50" y="1138" width="330" height="12" fill="#b06bd1"/>
 <text x="62" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">Diary (UDP, 20 Hz)</text>
-<text x="62" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">27 raw readings, 13 + 2 channels</text>
-<text x="62" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">32 SNN numbers, 61 outputs</text>
-<text x="62" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">body + 23 own-state inputs</text>
+<text x="62" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">27 raw, 18 ch+where, vis_person/face</text>
+<text x="62" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">32 SNN, 61 NN, 24 own state</text>
+<text x="62" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">178 cols x 3 ticks = 1122 B/UDP</text>
 <text x="62" y="1226" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">float16, + every log line</text>
 <text x="62" y="1244" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">-&gt; lifelogd -&gt; data/life/&lt;day&gt;</text>
 <text x="62" y="1262" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">gzipped daily (~5x)</text>
 <rect x="420" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
 <rect x="420" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
 <rect x="420" y="1138" width="300" height="12" fill="#b06bd1"/>
-<text x="432" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">0  Calibration</text>
-<text x="432" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">7 days of real diary:</text>
-<text x="432" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">where each channel sits,</text>
-<text x="432" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">which zones it visits</text>
+<text x="432" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">0  Data &amp; Perception</text>
+<text x="432" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">16+ days of real diary:</text>
+<text x="432" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">AuditoryV2 (2D ConvNet) &amp;</text>
+<text x="432" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">VisionV2 (CNN) on Colab GPU</text>
 <rect x="740" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
 <rect x="740" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
 <rect x="740" y="1138" width="300" height="12" fill="#b06bd1"/>
 <text x="752" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">1  Teachers</text>
 <text x="752" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">innate appraisal -&gt; 32</text>
 <text x="752" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">behaviour teacher with</text>
-<text x="752" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">memory -&gt; 61</text>
+<text x="752" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">memory + contingency -&gt; 61</text>
 <path d="M720,1185 L738,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
 <rect x="1060" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
 <rect x="1060" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
 <rect x="1060" y="1138" width="300" height="12" fill="#b06bd1"/>
 <text x="1072" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">2  Train the SNN</text>
-<text x="1072" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">1400 synthetic + 400 real</text>
-<text x="1072" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">5-minute lives, surrogate</text>
-<text x="1072" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">gradients, int8 QAT</text>
+<text x="1072" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">1400 synth + 800 real v4</text>
+<text x="1072" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">lives (Colab GPU warm-start,</text>
+<text x="1072" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">surrogate grad, int8 QAT)</text>
 <path d="M1040,1185 L1058,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
 <rect x="1380" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
 <rect x="1380" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
 <rect x="1380" y="1138" width="300" height="12" fill="#b06bd1"/>
-<text x="1392" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">3  Train the NN</text>
-<text x="1392" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">imitation of the teacher,</text>
-<text x="1392" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">2 DAgger rounds: the net</text>
-<text x="1392" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">acts, the teacher corrects</text>
+<text x="1392" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">3  Train the NN + RL</text>
+<text x="1392" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">imitation + 2 DAgger rounds</text>
+<text x="1392" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">(local GPU) + 512x GPU</text>
+<text x="1392" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">World-Model Dream RL</text>
 <path d="M1360,1185 L1378,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
 <rect x="1700" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
 <rect x="1700" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
 <rect x="1700" y="1138" width="300" height="12" fill="#b06bd1"/>
 <text x="1712" y="1141" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#ffffff" font-weight="bold" text-anchor="start">4  Check</text>
 <text x="1712" y="1172" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">export -&gt; C++, exact parity,</text>
-<text x="1712" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">simulator (digital twin):</text>
-<text x="1712" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">behaviour tests</text>
+<text x="1712" y="1190" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">digital twin simulator:</text>
+<text x="1712" y="1208" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="normal" text-anchor="start">24/24 behaviour tests</text>
 <path d="M1680,1185 L1698,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
 <rect x="2020" y="1120" width="300" height="130" rx="10" fill="#171e2e" stroke="#b06bd1" stroke-width="2.5"/>
 <rect x="2020" y="1120" width="300" height="30" rx="10" fill="#b06bd1"/>
@@ -380,8 +380,8 @@
 <path d="M380,1185 L418,1185" stroke="#b06bd1" stroke-width="2.2" fill="none" marker-end="url(#ab06bd1)"/>
 <rect x="420" y="1280" width="1900" height="100" rx="10" fill="#1d1428" stroke="#b06bd1" stroke-width="1.5"/>
 <text x="440" y="1310" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#e2c4f2" font-weight="bold" text-anchor="start">6  Night sleep 03:30: learning from its own life (sleep_v4.py)</text>
-<text x="440" y="1336" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">replay every decision from the diary -&gt; reward by people's answers (petting, talk, coming close / shaking, rough pokes, leaving) -&gt; AWR on the action heads -&gt; zones shift (habituation, ±0.15) -&gt; the Muse's idea biases (answered ideas + curiosity)</text>
-<text x="440" y="1360" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">-&gt; gates (behaviour tests in the simulator) -&gt; learned blob to the robot, switched in without a reboot; the SNN and the emotions stay innate</text>
+<text x="440" y="1336" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">replay decisions -&gt; reward by people's answers -&gt; safety-anchored AWR on action heads -&gt; zones shift (±0.15) -&gt; Muse bias + wout delta (Oudeyer LP curiosity) -&gt;</text>
+<text x="440" y="1360" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">episodic memories (mem.episodes) -&gt; voice idiolect (babble.pref) -&gt; 24/24 simulator gate -&gt; learned blob over Wi-Fi without a reboot; SNN &amp; emotions stay innate</text>
 <text x="50" y="1340" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="bold" text-anchor="start">teacher-free on the robot:</text>
 <text x="50" y="1360" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">the teachers exist only on the PC</text>
 <text x="50" y="1420" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#9aa6bf" font-weight="normal" text-anchor="start">The firmware holds only brain v4 and what it learned (zone shifts, action heads, idea biases); the PC records, analyses and trains. No camera frames leave the robot; its sound only on request, to the home PC.</text>

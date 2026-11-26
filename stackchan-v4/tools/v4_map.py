@@ -88,7 +88,7 @@ NOTES = {
     "touch_screen": "taps / pokes on the face", "shake": "accelerometer jitter",
     "tilt": "lean from the learned upright", "near": "IR proximity (LTR-553)",
     "light": "ambient light, log scale", "motion": "camera: share of moving cells",
-    "hunger": "1 - battery", "tired": "night ramp + sleep pressure above usual", "lonely": "time without contact (40 min)",
+    "hunger": "battery / body budget", "tired": "night ramp + sleep pressure", "lonely": "time without contact (40 min)",
 }
 
 N_ENC, N_ZONE, N_MIX, N_ATT = len(S.CHANNELS) * 10, len(S.CHANNELS) * len(S.ZONES) * 4, 282, 96
@@ -117,13 +117,13 @@ def brain_map():
     s.text(1560, 100, "dashed = feedback", 13, C["dim"])
 
     # ---------------------------------------------------------------- sensors
-    sens = [("Microphones (2x ES7210)", ["24 kHz, loudness, onsets,", "speech detector"], ["loud", "sharp", "voice"]),
+    sens = [("Microphones (2x ES7210)", ["24 kHz, AuditoryNetV2 (2D ConvNet", "int8), VoiceCheck pitch / energy"], ["loud", "sharp", "voice"]),
             ("Head touch pad", ["3 pads, strokes and holds"], ["touch_head"]),
             ("Touchscreen", ["taps on the face"], ["touch_screen"]),
             ("IMU BMI270", ["accelerometer jitter and lean", "(masked while servos re-power)"], ["shake", "tilt"]),
             ("LTR-553", ["IR proximity + ambient light"], ["near", "light"]),
-            ("Camera GC0308", ["160x120, motion grid + brightest spot", "+ where (x, y)"], ["motion"]),
-            ("Battery, clock, body", ["AXP2101, NTP time, sleep pressure,", "time since contact"], ["hunger", "tired", "lonely"])]
+            ("Camera GC0308", ["160x120 7 fps, motion + bright spot,", "VisionNetV2 int8 CNN (person / face)"], ["motion"]),
+            ("Battery, clock, body", ["AXP2101, NTP+RTC, body budget,", "sleep pressure, time since contact"], ["hunger", "tired", "lonely"])]
     y, ys = 130, {}
     for title, lines, chans in sens:
         hh = 52 + 18 * len(lines)
@@ -184,7 +184,7 @@ def brain_map():
                             "· matches its teacher at 0.96-0.99 (correlation)"]):
         s.text(sx + 16, yy + 6 + k * 19, ln, 13, C["dim"] if ln.startswith("·") else C["text"])
     s.arrow([(ex + ew, ey + eh / 2), (sx - 2, sy + sh / 2)], C["bus"], width=3)
-    s.text(ex + ew + 20, ey + eh / 2 - 26, "15", 13, C["bus"], "bold", "middle")
+    s.text(ex + ew + 20, ey + eh / 2 - 26, f"{len(S.SNN_IN)}", 13, C["bus"], "bold", "middle")
     s.text(ex + ew + 20, ey + eh / 2 - 10, "nums", 11, C["bus"], anchor="middle")
 
     # ---------------------------------------------------------------- 32 numbers
@@ -228,24 +228,24 @@ def brain_map():
         prev = yy + hh
         yy += hh + 18
     s.text(nx + 14, yy + 6, f"own state ({len(S.PREV)}):", 13, weight="bold")
-    for k, ln in enumerate(["last mood, how long the face is shown,", "time since a sound / a gesture, head pose,",
-                            "LED level, was the touch answered,", "from the MUSE (64-neuron chaotic reservoir,",
-                            "pushed by the mood): 3 pacemakers + 5 ideas",
-                            "(play, show, still, social, surprise)",
-                            "· trained: imitation of a teacher with", "· memory, then DAgger; agrees 0.84"]):
+    for k, ln in enumerate(["last mood, face age, since sound/gesture,", "head gaze, LED level, touch answered,",
+                            "MUSE (64-neuron chaotic reservoir):", "  3 pacemakers + 5 ideas + hab feedback",
+                            "CONTINGENCY (6): agency, answered, ignored",
+                            "MEMORY (1): episodic expectation (0..30m)",
+                            "· trained: imitation + 2 DAgger rounds;", "· real-diary agreement 0.90 (all 0.85)"]):
         s.text(nx + 14, yy + 26 + k * 18, ln, 12, C["dim"] if ln.startswith("·") else C["text"])
     s.arrow([(bx + bw, by + bh / 2), (nx - 2, by + bh / 2)], C["bus"], width=3)
 
     # ---------------------------------------------------------------- executor + body
     xx, xw = 2090, 280
     s.box(xx, 130, xw, 310, C["det"], "Executor (safety in C++)",
-          [f"takes the {len(S.NN_OUT)} outputs every 100 ms", "face shown >= 1.5 s, confirmed 2 ticks", "voice budget: 5 tokens, 1 per 10 s;",
-           "  reactions may spend the last one", "night 21:45-06:00: silent,", "  LEDs <= 6 %, head only dozes",
-           "nod / shake at most every 4 s", "servo bus <= 8 commands / s", "yaw ±100°, pitch -20..35°",
+          [f"takes the {len(S.NN_OUT)} outputs every 100 ms", "face shown >= 1.5 s, confirmed 2 ticks", "voice budget: 6 tokens, 1 per 5 s;",
+           "  proto-dialogue turn-taking + CARE", "night 21:45-06:00 + morning wait:", "  silent, LEDs <= 6 %, head dozes",
+           "nod / shake >= 4 s; PredictorV4 NLMS", "MemoryV4 recall + expectant glances", "yaw ±100°, pitch -20..35°",
            "· the network decides WHAT,", "· the executor only HOW"], tsize=15)
     s.arrow([(nx + nw, ny + 150), (xx - 2, ny + 150)], C["nn"], width=3)
     body = [("Display: the face", [f"{N_EMO} pixel-art faces (airwitech", "style), eyes follow attention"]),
-            ("Speaker: droid babble", ["phrases with the network's mood;", "volume 0-10: button on the screen"]),
+            ("Speaker: droid babble", ["BabbleNet + learned babble.pref;", "volume 0-10: button on the screen"]),
             ("LED ring", [f"{len(S.LED_COLORS)} colours x {len(S.LED_PATTERNS)} patterns", "steady breathe pulse flicker wave"]),
             ("Head servos (yaw, pitch)", ["each mood its own head motion;", "nod YES, shake NO, flinch, doze;", "powered only while moving"])]
     yy = 460
@@ -261,14 +261,14 @@ def brain_map():
     s.rect(30, py0, 2340, 410, "#140f1c", C["pc"], rx=14, sw=2)
     s.text(50, py0 + 34, "Home PC (192.168.8.110): records every tick, learns at night, sends firmware and what the robot learned", 22, "#e2c4f2", "bold")
     s.box(50, py0 + 60, 330, 170, C["pc"], "Diary (UDP, 20 Hz)",
-          [f"{len(S.RAW)} raw readings, 13 + 2 channels", f"{len(S.SNN_OUT)} SNN numbers, {len(S.NN_OUT)} outputs",
-           f"body + {len(S.PREV)} own-state inputs", "float16, + every log line", "-> lifelogd -> data/life/<day>",
+          [f"{len(S.RAW)} raw, {len(S.SNN_IN)} ch+where, vis_person/face", f"{len(S.SNN_OUT)} SNN, {len(S.NN_OUT)} NN, {len(S.PREV)} own state",
+           f"{len(S.DIARY)} cols x {S.DATAGRAM_TICKS} ticks = {S.datagram_bytes()} B/UDP", "float16, + every log line", "-> lifelogd -> data/life/<day>",
            "gzipped daily (~5x)"], tsize=15)
-    steps = [("0  Calibration", ["7 days of real diary:", "where each channel sits,", "which zones it visits"]),
-             ("1  Teachers", ["innate appraisal -> 32", "behaviour teacher with", "memory -> 61"]),
-             ("2  Train the SNN", ["1400 synthetic + 400 real", "5-minute lives, surrogate", "gradients, int8 QAT"]),
-             ("3  Train the NN", ["imitation of the teacher,", "2 DAgger rounds: the net", "acts, the teacher corrects"]),
-             ("4  Check", ["export -> C++, exact parity,", "simulator (digital twin):", "behaviour tests"]),
+    steps = [("0  Data & Perception", ["16+ days of real diary:", "AuditoryV2 (2D ConvNet) &", "VisionV2 (CNN) on Colab GPU"]),
+             ("1  Teachers", ["innate appraisal -> 32", "behaviour teacher with", "memory + contingency -> 61"]),
+             ("2  Train the SNN", ["1400 synth + 800 real v4", "lives (Colab GPU warm-start,", "surrogate grad, int8 QAT)"]),
+             ("3  Train the NN + RL", ["imitation + 2 DAgger rounds", "(local GPU) + 512x GPU", "World-Model Dream RL"]),
+             ("4  Check", ["export -> C++, exact parity,", "digital twin simulator:", "24/24 behaviour tests"]),
              ("5  OTA over Wi-Fi", ["new firmware on trial,", "confirmed after a healthy", "minute, else rolled back"])]
     x = 420
     for i, (title, lines) in enumerate(steps):
@@ -279,11 +279,10 @@ def brain_map():
     s.arrow([(380, py0 + 125), (418, py0 + 125)], C["pc"])
     s.rect(420, py0 + 220, 1900, 100, "#1d1428", C["pc"], rx=10, sw=1.5)
     s.text(440, py0 + 250, "6  Night sleep 03:30: learning from its own life (sleep_v4.py)", 17, "#e2c4f2", "bold")
-    s.text(440, py0 + 276, "replay every decision from the diary -> reward by people's answers (petting, talk, coming close / "
-                           "shaking, rough pokes, leaving) -> AWR on the action heads -> zones shift (habituation, "
-                           f"±{S.SHIFT_MAX}) -> the Muse's idea biases (answered ideas + curiosity)", 14)
-    s.text(440, py0 + 300, "-> gates (behaviour tests in the simulator) -> learned blob to the robot, switched in without a "
-                           "reboot; the SNN and the emotions stay innate", 13, C["dim"])
+    s.text(440, py0 + 276, "replay decisions -> reward by people's answers -> safety-anchored AWR on action heads -> zones shift "
+                           f"(±{S.SHIFT_MAX}) -> Muse bias + wout delta (Oudeyer LP curiosity) ->", 14)
+    s.text(440, py0 + 300, "episodic memories (mem.episodes) -> voice idiolect (babble.pref) -> 24/24 simulator gate -> "
+                           "learned blob over Wi-Fi without a reboot; SNN & emotions stay innate", 13, C["dim"])
     s.text(50, py0 + 280, "teacher-free on the robot:", 14, weight="bold")
     s.text(50, py0 + 300, "the teachers exist only on the PC", 13, C["dim"])
     s.text(50, py0 + 360, "The firmware holds only brain v4 and what it learned (zone shifts, action heads, idea biases); the PC records, "
@@ -376,8 +375,17 @@ def networks():
     # ---- 3. the main network
     y1 = 730
     s.box(40, y1, 2320, 730, C["nn"], f"Main network: one decider, {len(S.NN_OUT)} outputs")
-    blocks = [(60, f"input {NIN}", [f"{len(S.SNN_OUT)} SNN numbers"] + [f"+ {p}" for p in S.PREV]),
-              (380, f"GRU {H}", ["gated recurrent unit:", "remembers the last", "seconds"]),
+    # Draw input box in two columns so all 24 PREV inputs fit cleanly above the training panel
+    half = (len(S.PREV) + 1) // 2
+    in_h = 74 + 17 * half
+    s.rect(60, y1 + 50, 290, in_h, "#16213a", C["nn"], rx=8)
+    s.text(72, y1 + 74, f"input {NIN}", 15, "#a9c6ff", "bold")
+    s.text(72, y1 + 96, f"{len(S.SNN_OUT)} SNN numbers + {len(S.PREV)} own state:", 12)
+    for k in range(half):
+        s.text(72, y1 + 116 + k * 17, f"+ {S.PREV[k]}", 11, C["dim"])
+        if k + half < len(S.PREV):
+            s.text(208, y1 + 116 + k * 17, f"+ {S.PREV[k + half]}", 11, C["dim"])
+    blocks = [(380, f"GRU {H}", ["gated recurrent unit:", "remembers the last", "seconds"]),
               (660, f"emotion head", [f"{N_EMO} emotions (softmax)", "+ strength"]),
               (960, "action hidden 64", ["sees the GRU state", "and the chosen", "emotion"])]
     for bx, title, lines in blocks:
@@ -386,21 +394,21 @@ def networks():
         s.text(bx + 12, y1 + 74, title, 15, "#a9c6ff", "bold")
         for k, ln in enumerate(lines):
             s.text(bx + 12, y1 + 96 + k * 17, ln, 12)
-    s.arrow([(320, y1 + 100), (378, y1 + 100)], C["nn"])
+    s.arrow([(350, y1 + 100), (378, y1 + 100)], C["nn"])
     s.arrow([(640, y1 + 100), (658, y1 + 100)], C["nn"])
     s.arrow([(920, y1 + 100), (958, y1 + 100)], C["nn"])
     s.arrow([(640, y1 + 150), (940, y1 + 150), (958, y1 + 150)], C["nn"], dash=True)
     s.text(380, y1 + 180, f"{NN_PARAMS} float parameters, 10 Hz", 12, C["dim"])
 
     # the Muse: where the pace_* and idea_* inputs come from
-    s.rect(380, y1 + 210, 260, 200, "#1d1a30", C["snn"], rx=8)
+    s.rect(380, y1 + 210, 260, 215, "#1d1a30", C["snn"], rx=8)
     s.text(392, y1 + 234, "the Muse (muse_v4.cpp)", 15, "#e2c4f2", "bold")
     for k, ln in enumerate(["64 leaky tanh neurons, a chaotic", "reservoir (0.5 s / 3 s / 60 s groups),",
                             "pushed by 8 of the SNN's moods", "-> 3 pacemakers + 5 ideas:",
-                            "play, show, still, social, surprise", "bored of its own ideas (90 s);",
-                            "the night learns one bias per idea", "(answered ideas + curiosity)"]):
+                            "play, show, still, social, surprise", "habituation (90 s) + feedback (0.12);",
+                            "night learns bias + wout delta (5x64)", "(answered ideas + Oudeyer LP)"]):
         s.text(392, y1 + 256 + k * 18, ln, 12, C["dim"] if k >= 5 else C["text"])
-    s.arrow([(378, y1 + 310), (322, y1 + 310)], C["snn"])
+    s.arrow([(378, y1 + 310), (352, y1 + 310)], C["snn"])
 
     # emotions grid
     s.text(660, y1 + 240, "emotions", 16, "#a9c6ff", "bold")
@@ -425,7 +433,7 @@ def networks():
     gy = y1 + 240
     s.text(1280, gy, "gesture library (the executor plays it on the network's wish)", 16, C["out"], "bold")
     gest = [("nod = YES", "pitch down / up, 5-12°, x1-3"), ("shake = NO", "yaw left / right, 5-14°, x1-3"),
-            ("flinch", "head jerks back +12°, 0.6 s"), ("look / scan", "gaze x 60° yaw, 30° pitch"),
+            ("flinch", "head jerks back +6°, 60°/s"), ("look / scan", "gaze x 60° yaw, 30° pitch"),
             ("look down / up", "-15° / +22° pitch"), ("doze", "head sinks -18°, slow")]
     for i, (a, b) in enumerate(gest):
         s.text(1280 + (i % 2) * 520, gy + 30 + (i // 2) * 24, a, 13, weight="bold")
@@ -434,24 +442,23 @@ def networks():
     # training
     ty = y1 + 450
     s.rect(60, ty, 2280, 270, "#121a2c", C["line"], rx=10)
-    s.text(80, ty + 32, "How it was taught", 18, weight="bold")
+    s.text(80, ty + 32, "How it was taught (v4.3: Local RTX A3000 + Google Colab GPU)", 18, weight="bold")
     lines = [
-        "SNN: an innate appraisal (teacher_snn.py) turns channel histories into the 32 numbers; the SNN learns to reproduce "
-        "them from its own spikes",
-        "      (surrogate gradients, TBPTT; the last 30 % of the epochs with int8 fake quantisation, as on the robot).",
-        "Data: 1400 synthetic 5-minute lives (quiet nights, play, being alone, rough handling) + 400 slices of the real diary.",
-        "NN: a behaviour teacher with memory (teacher_nn.py) acts on the SNN's numbers and the network imitates it; then "
-        "DAgger: the network acts, its own choices",
-        "      feed back into its inputs and the teacher labels the states it really visits. Emotion agreement acting "
-        "alone: 0.84 (real lives 0.82), three DAgger rounds since the Muse.",
-        "Checks: C++ on the robot gives the same numbers as PyTorch (parity tests); simulator behaviour tests: every touch "
-        "answered, petting is not annoying,",
-        "      pokes are, nights are silent, play shows many faces, a lonely robot talks, shakes and claps frighten.",
-        "Life (stage 6): every night the action heads are fine-tuned on the robot's real days with AWR, rewarded by how people "
-        "answered; the zones of the environment channels shift by experience; the Muse's idea biases follow what was answered.",
+        "Perception (Colab GPU): AuditoryNetV2 (21 KB int8 2D ConvNet over 6x16 mel-time grid, parity 2.2e-6) and "
+        "VisionNetV2 (23.8 KB int8 CNN on Core 1 @ 7 fps, parity 3.0e-7).",
+        "SNN (Colab GPU): innate appraisal (teacher_snn.py) across 1400 synthetic + 800 event-biased real v4 5-minute "
+        "lives (surrogate gradients, TBPTT, int8 QAT).",
+        "NN (Local RTX A3000): imitation of teacher_nn.py + 2 DAgger rounds with AnswerWorld contingency and episodic "
+        "anticipation; real-diary emotion agreement 0.90 (all 0.85).",
+        "GPU World-Model Sim & Dream RL (Colab GPU): 3-model stochastic ensemble trained on 147 h of real life simulates "
+        "512 parallel virtual lives at 11,117x real-time (KL-anchored AWR).",
+        "Checks: exact C++ / PyTorch parity for every network (SNN, NN, Muse, AuditoryV2, VisionV2, Contingency, VoiceCheck); "
+        "all 24/24 scenarios pass in the C++ digital twin simulator.",
+        "Life (stage 6, 03:30 nightly): safety-anchored AWR on action heads, zone shifts, Muse bias + wout delta (Oudeyer LP), "
+        "episodic memories, and BabbleNet voice idiolect (babble.pref).",
     ]
     for k, ln in enumerate(lines):
-        s.text(80, ty + 64 + k * 26, ln, 14)
+        s.text(80, ty + 66 + k * 31, ln, 14)
     s.save("NETWORKS_V4.svg")
 
 

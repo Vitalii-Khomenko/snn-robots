@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1500" width="2400" height="1500">
 <defs>
 <marker id="ad9534f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9534f"/></marker>
-<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
-<marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
-<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
-<marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
-<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
-<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
 <marker id="a9aa6bf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bf"/></marker>
+<marker id="ae6ebf5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e6ebf5"/></marker>
 <marker id="a171e2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171e2e"/></marker>
-<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
+<marker id="a3a9d6e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a9d6e"/></marker>
+<marker id="a6c7a96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6c7a96"/></marker>
+<marker id="ae8743b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8743b"/></marker>
 <marker id="a3a4660" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4660"/></marker>
+<marker id="ad9a441" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d9a441"/></marker>
 <marker id="a0f1420" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f1420"/></marker>
 <marker id="a26a6a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#26a6a6"/></marker>
+<marker id="ab06bd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b06bd1"/></marker>
+<marker id="a2f6fdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f6fdd"/></marker>
 </defs>
 <rect width="2400" height="1500" fill="#0f1420"/>
 <text x="40" y="52" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="32" fill="#e6ebf5" font-weight="bold" text-anchor="start">Brain v4: inside the networks</text>
@@ -264,32 +264,33 @@
 <rect x="40" y="730" width="2320" height="30" rx="10" fill="#2f6fdd"/>
 <rect x="40" y="748" width="2320" height="12" fill="#2f6fdd"/>
 <text x="52" y="751" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" fill="#ffffff" font-weight="bold" text-anchor="start">Main network: one decider, 61 outputs</text>
-<rect x="60" y="780" width="260" height="458" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
-<text x="72" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">input 55</text>
-<text x="72" y="826" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">32 SNN numbers</text>
-<text x="72" y="843" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ prev_valence</text>
-<text x="72" y="860" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ prev_arousal</text>
-<text x="72" y="877" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ emo_age</text>
-<text x="72" y="894" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ since_sound</text>
-<text x="72" y="911" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ since_gesture</text>
-<text x="72" y="928" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ head_yaw</text>
-<text x="72" y="945" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ head_pitch</text>
-<text x="72" y="962" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ led_level</text>
-<text x="72" y="979" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ touch_answered</text>
-<text x="72" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ pace_fast</text>
-<text x="72" y="1013" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ pace_slow</text>
-<text x="72" y="1030" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ pace_jitter</text>
-<text x="72" y="1047" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ idea_play</text>
-<text x="72" y="1064" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ idea_show</text>
-<text x="72" y="1081" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ idea_still</text>
-<text x="72" y="1098" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ idea_social</text>
-<text x="72" y="1115" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ idea_surprise</text>
-<text x="72" y="1132" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ agency</text>
-<text x="72" y="1149" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ answered</text>
-<text x="72" y="1166" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ ignored</text>
-<text x="72" y="1183" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ works_call</text>
-<text x="72" y="1200" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ works_gesture</text>
-<text x="72" y="1217" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">+ works_face</text>
+<rect x="60" y="780" width="290" height="278" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
+<text x="72" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">input 56</text>
+<text x="72" y="826" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">32 SNN numbers + 24 own state:</text>
+<text x="72" y="846" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ prev_valence</text>
+<text x="208" y="846" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ idea_play</text>
+<text x="72" y="863" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ prev_arousal</text>
+<text x="208" y="863" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ idea_show</text>
+<text x="72" y="880" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ emo_age</text>
+<text x="208" y="880" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ idea_still</text>
+<text x="72" y="897" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ since_sound</text>
+<text x="208" y="897" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ idea_social</text>
+<text x="72" y="914" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ since_gesture</text>
+<text x="208" y="914" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ idea_surprise</text>
+<text x="72" y="931" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ head_yaw</text>
+<text x="208" y="931" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ agency</text>
+<text x="72" y="948" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ head_pitch</text>
+<text x="208" y="948" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ answered</text>
+<text x="72" y="965" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ led_level</text>
+<text x="208" y="965" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ ignored</text>
+<text x="72" y="982" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ touch_answered</text>
+<text x="208" y="982" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ works_call</text>
+<text x="72" y="999" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ pace_fast</text>
+<text x="208" y="999" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ works_gesture</text>
+<text x="72" y="1016" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ pace_slow</text>
+<text x="208" y="1016" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ works_face</text>
+<text x="72" y="1033" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ pace_jitter</text>
+<text x="208" y="1033" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" fill="#9aa6bf" font-weight="normal" text-anchor="start">+ expectation</text>
 <rect x="380" y="780" width="260" height="101" rx="8" fill="#16213a" stroke="#2f6fdd" stroke-width="1.5"/>
 <text x="392" y="804" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#a9c6ff" font-weight="bold" text-anchor="start">GRU 64</text>
 <text x="392" y="826" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">gated recurrent unit:</text>
@@ -304,22 +305,22 @@
 <text x="972" y="826" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">sees the GRU state</text>
 <text x="972" y="843" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">and the chosen</text>
 <text x="972" y="860" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">emotion</text>
-<path d="M320,830 L378,830" stroke="#2f6fdd" stroke-width="2.2" fill="none" marker-end="url(#a2f6fdd)"/>
+<path d="M350,830 L378,830" stroke="#2f6fdd" stroke-width="2.2" fill="none" marker-end="url(#a2f6fdd)"/>
 <path d="M640,830 L658,830" stroke="#2f6fdd" stroke-width="2.2" fill="none" marker-end="url(#a2f6fdd)"/>
 <path d="M920,830 L958,830" stroke="#2f6fdd" stroke-width="2.2" fill="none" marker-end="url(#a2f6fdd)"/>
 <path d="M640,880 L940,880 L958,880" stroke="#2f6fdd" stroke-width="2.2" fill="none" stroke-dasharray="7 5" marker-end="url(#a2f6fdd)"/>
-<text x="380" y="910" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">32701 float parameters, 10 Hz</text>
-<rect x="380" y="940" width="260" height="200" rx="8" fill="#1d1a30" stroke="#d9534f" stroke-width="1.5"/>
+<text x="380" y="910" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">32893 float parameters, 10 Hz</text>
+<rect x="380" y="940" width="260" height="215" rx="8" fill="#1d1a30" stroke="#d9534f" stroke-width="1.5"/>
 <text x="392" y="964" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#e2c4f2" font-weight="bold" text-anchor="start">the Muse (muse_v4.cpp)</text>
 <text x="392" y="986" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">64 leaky tanh neurons, a chaotic</text>
 <text x="392" y="1004" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">reservoir (0.5 s / 3 s / 60 s groups),</text>
 <text x="392" y="1022" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">pushed by 8 of the SNN's moods</text>
 <text x="392" y="1040" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">-&gt; 3 pacemakers + 5 ideas:</text>
 <text x="392" y="1058" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">play, show, still, social, surprise</text>
-<text x="392" y="1076" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">bored of its own ideas (90 s);</text>
-<text x="392" y="1094" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">the night learns one bias per idea</text>
-<text x="392" y="1112" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">(answered ideas + curiosity)</text>
-<path d="M378,1040 L322,1040" stroke="#d9534f" stroke-width="2.2" fill="none" marker-end="url(#ad9534f)"/>
+<text x="392" y="1076" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">habituation (90 s) + feedback (0.12);</text>
+<text x="392" y="1094" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">night learns bias + wout delta (5x64)</text>
+<text x="392" y="1112" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#9aa6bf" font-weight="normal" text-anchor="start">(answered ideas + Oudeyer LP)</text>
+<path d="M378,1040 L352,1040" stroke="#d9534f" stroke-width="2.2" fill="none" marker-end="url(#ad9534f)"/>
 <text x="660" y="970" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#a9c6ff" font-weight="bold" text-anchor="start">emotions</text>
 <text x="660" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">normal</text>
 <text x="755" y="996" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#e6ebf5" font-weight="normal" text-anchor="start">happy</text>
@@ -367,7 +368,7 @@
 <text x="1800" y="1000" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">shake = NO</text>
 <text x="1930" y="1000" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">yaw left / right, 5-14°, x1-3</text>
 <text x="1280" y="1024" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">flinch</text>
-<text x="1410" y="1024" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">head jerks back +12°, 0.6 s</text>
+<text x="1410" y="1024" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">head jerks back +6°, 60°/s</text>
 <text x="1800" y="1024" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">look / scan</text>
 <text x="1930" y="1024" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">gaze x 60° yaw, 30° pitch</text>
 <text x="1280" y="1048" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">look down / up</text>
@@ -375,13 +376,11 @@
 <text x="1800" y="1048" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#e6ebf5" font-weight="bold" text-anchor="start">doze</text>
 <text x="1930" y="1048" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9aa6bf" font-weight="normal" text-anchor="start">head sinks -18°, slow</text>
 <rect x="60" y="1180" width="2280" height="270" rx="10" fill="#121a2c" stroke="#3a4660" stroke-width="1.5"/>
-<text x="80" y="1212" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" fill="#e6ebf5" font-weight="bold" text-anchor="start">How it was taught</text>
-<text x="80" y="1244" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">SNN: an innate appraisal (teacher_snn.py) turns channel histories into the 32 numbers; the SNN learns to reproduce them from its own spikes</text>
-<text x="80" y="1270" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      (surrogate gradients, TBPTT; the last 30 % of the epochs with int8 fake quantisation, as on the robot).</text>
-<text x="80" y="1296" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Data: 1400 synthetic 5-minute lives (quiet nights, play, being alone, rough handling) + 400 slices of the real diary.</text>
-<text x="80" y="1322" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">NN: a behaviour teacher with memory (teacher_nn.py) acts on the SNN's numbers and the network imitates it; then DAgger: the network acts, its own choices</text>
-<text x="80" y="1348" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      feed back into its inputs and the teacher labels the states it really visits. Emotion agreement acting alone: 0.84 (real lives 0.82), three DAgger rounds since the Muse.</text>
-<text x="80" y="1374" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Checks: C++ on the robot gives the same numbers as PyTorch (parity tests); simulator behaviour tests: every touch answered, petting is not annoying,</text>
-<text x="80" y="1400" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">      pokes are, nights are silent, play shows many faces, a lonely robot talks, shakes and claps frighten.</text>
-<text x="80" y="1426" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Life (stage 6): every night the action heads are fine-tuned on the robot's real days with AWR, rewarded by how people answered; the zones of the environment channels shift by experience; the Muse's idea biases follow what was answered.</text>
+<text x="80" y="1212" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" fill="#e6ebf5" font-weight="bold" text-anchor="start">How it was taught (v4.3: Local RTX A3000 + Google Colab GPU)</text>
+<text x="80" y="1246" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Perception (Colab GPU): AuditoryNetV2 (21 KB int8 2D ConvNet over 6x16 mel-time grid, parity 2.2e-6) and VisionNetV2 (23.8 KB int8 CNN on Core 1 @ 7 fps, parity 3.0e-7).</text>
+<text x="80" y="1277" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">SNN (Colab GPU): innate appraisal (teacher_snn.py) across 1400 synthetic + 800 event-biased real v4 5-minute lives (surrogate gradients, TBPTT, int8 QAT).</text>
+<text x="80" y="1308" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">NN (Local RTX A3000): imitation of teacher_nn.py + 2 DAgger rounds with AnswerWorld contingency and episodic anticipation; real-diary emotion agreement 0.90 (all 0.85).</text>
+<text x="80" y="1339" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">GPU World-Model Sim &amp; Dream RL (Colab GPU): 3-model stochastic ensemble trained on 147 h of real life simulates 512 parallel virtual lives at 11,117x real-time (KL-anchored AWR).</text>
+<text x="80" y="1370" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Checks: exact C++ / PyTorch parity for every network (SNN, NN, Muse, AuditoryV2, VisionV2, Contingency, VoiceCheck); all 24/24 scenarios pass in the C++ digital twin simulator.</text>
+<text x="80" y="1401" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#e6ebf5" font-weight="normal" text-anchor="start">Life (stage 6, 03:30 nightly): safety-anchored AWR on action heads, zone shifts, Muse bias + wout delta (Oudeyer LP), episodic memories, and BabbleNet voice idiolect (babble.pref).</text>
 </svg>
