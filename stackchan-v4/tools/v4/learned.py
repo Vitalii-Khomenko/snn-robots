@@ -22,6 +22,8 @@ HEADER = struct.Struct("<4sIIII12x")
 ENTRY = struct.Struct("<32sIIII")
 HEADS = ("act1_w", "act1_b", "act2_w", "act2_b")
 MUSE_BIAS_MAX = 0.6  # muse.py BIAS_MAX
+MUSE_WOUT_MAX = 0.25  # muse.py WOUT_DELTA_MAX
+MUSE_WOUT_SHAPE = (5, 64)
 
 
 def alarm(c):
@@ -77,7 +79,7 @@ def id_of(arrays):
 MEM_ROWS, MEM_FIELDS = 24, 8  # main/v4/memory_v4.h kMax, kFields: minute, valence, strength, yaw, around, lit, kind, date
 
 
-def pack(version, heads=None, shift=None, muse_bias=None, nn=None, episodes=None):
+def pack(version, heads=None, shift=None, muse_bias=None, nn=None, episodes=None, muse_wout=None):
     """episodes: the remembered moments (episodes.table: up to MEM_ROWS rows of MEM_FIELDS; docs/EPISODES.md)."""
     arrays = []
     if heads is not None:
@@ -92,6 +94,9 @@ def pack(version, heads=None, shift=None, muse_bias=None, nn=None, episodes=None
         b = np.clip(np.asarray(muse_bias, np.float32), -MUSE_BIAS_MAX, MUSE_BIAS_MAX)
         assert b.shape == (8,)
         arrays.append(("muse.bias", b))
+    if muse_wout is not None:  # learned readout delta for the 5 ideas (5 x 64)
+        w = np.clip(np.asarray(muse_wout, np.float32).reshape(MUSE_WOUT_SHAPE), -MUSE_WOUT_MAX, MUSE_WOUT_MAX)
+        arrays.append(("muse.wout", w.ravel()))
     if episodes is not None:
         e = np.zeros((MEM_ROWS, MEM_FIELDS), np.float32)
         rows = np.asarray(episodes, np.float32).reshape(-1, MEM_FIELDS)[:MEM_ROWS]

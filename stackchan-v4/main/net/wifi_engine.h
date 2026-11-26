@@ -75,6 +75,7 @@ private:
     static constexpr uint8_t kRtcAddr = 0x51;
     bool readRtc(time_t& utc);
     void writeRtc(time_t utc);
+    void applyNetwork(int index);
     static void taskEntry(void* arg);
     void taskLoop();
     void checkKnownDevices();
@@ -84,6 +85,7 @@ private:
     std::atomic<bool> ntp_synced_{false};
     i2c_master_dev_handle_t rtc_ = nullptr;
     uint32_t ms_since_retry_ = 0;
+    int active_net_ = 0;  // 0 = primary Wi-Fi, 1 = optional WIFI_FALLBACK_SSID
     std::atomic<bool> known_device_nearby_{false};
     // Consecutive checks in which no known device answered. A phone in
     // power save often misses a ping: "away" only after kAwayAfterMisses

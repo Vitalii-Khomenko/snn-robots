@@ -71,6 +71,30 @@ void V4Executor::applyFace(const BrainV4& brain, uint32_t now)
     }
 }
 
+void V4Executor::setDialogueContext(bool humanSpeaking, float voicePitch01, float voiceEnergy01, float expect01,
+                                    float expectYawDeg, uint32_t now)
+{
+    voice_pitch_ = std::clamp(voicePitch01, 0.0f, 1.0f);
+    voice_energy_ = std::clamp(voiceEnergy01, 0.0f, 1.0f);
+    expect_ = std::clamp(expect01, 0.0f, 1.0f);
+    expect_yaw_ = std::clamp(expectYawDeg, -kOrientLimitDeg, kOrientLimitDeg);
+    if (humanSpeaking && !night_) {
+        if (!human_speaking_) human_speech_start_ms_ = now;
+        human_speech_last_ms_ = now;
+        dialogue_wait_until_ms_ = 0;  // human answered our turn
+        if (now - human_speech_start_ms_ >= 350) dialogue_reply_armed_ = true;
+    } else if (dialogue_reply_armed_ && !night_) {
+        const uint32_t pause = now - human_speech_last_ms_;
+        if (pause >= 350 && pause <= 2000) {
+            dialogue_reply_until_ms_ = (now + 1500) | 1u;
+            dialogue_reply_armed_ = false;
+        } else if (pause > 2000) {
+            dialogue_reply_armed_ = false;
+        }
+    }
+    human_speaking_ = humanSpeaking && !night_;
+}
+
 void V4Executor::applyVoice(const BrainV4& brain, bool night, uint32_t now, BrainV4::Executed& done)
 {
     const auto& o = brain.nn();
@@ -103,13 +127,42 @@ void V4Executor::applyVoice(const BrainV4& brain, bool night, uint32_t now, Brai
     if (answered > kTurnOn && prev_answered_ <= kTurnOn) turn_until_ms_ = (now + kTurnMs) | 1u;
     prev_answered_ = answered;
     const bool turn = turn_until_ms_ != 0 && msWithin(now, turn_until_ms_, kTurnMs);
-    const bool budget = tokens_ >= (reaction || turn ? kReactionTokens : kIdleTokens);
-    const bool allowed = !night && budget;
+    const bool dialogue_turn = !night && dialogue_reply_until_ms_ != 0 && msWithin(now, dialogue_reply_until_ms_, 2000);
+    if (!dialogue_turn) dialogue_reply_until_ms_ = 0;
+    const bool waiting_human = !night && dialogue_wait_until_ms_ != 0 && msWithin(now, dialogue_wait_until_ms_, 3000);
+    if (!waiting_human) dialogue_wait_until_ms_ = 0;
+    // Proto-dialogue turn-taking + prosody matching (CONTINGENCY step 5 + Panksepp CARE/PLAY):
+    // listen quietly while human speaks (unless urgent reaction), then reply naturally during the pause.
+    if (dialogue_turn && shown_ != Emotion::Sleepy && shown_ != Emotion::Angry) {
+        a.say = std::max(a.say, 0.72f);
+        if (voice_energy_ < 0.30f && voice_pitch_ < 0.42f) {  // soft / tired human voice -> soothing CARE murmur
+            a.calm += 0.50f;
+            a.arousal *= 0.65f;
+            a.rate *= 0.80f;
+            a.reg = 0.35f + 0.30f * a.reg;
+        } else if (voice_energy_ > 0.82f) {  // loud / sharp human voice -> attentive, yielding
+            a.ask += 0.35f;
+            a.arousal *= 0.70f;
+        } else if (voice_energy_ > 0.50f || voice_pitch_ > 0.58f) {  // lively / bright human voice -> playful PLAY
+            a.play += 0.35f;
+            a.rate = std::min(1.0f, a.rate + 0.15f);
+        }
+    }
+    const bool hold_for_human = !reaction && (human_speaking_ || waiting_human);
+    const bool budget = tokens_ >= (reaction || turn || dialogue_turn ? kReactionTokens : kIdleTokens);
+    const bool allowed = !night && budget && !hold_for_human;
     if (vocal_.step(a, allowed, static_cast<int>(shown_), reaction)) {
         tokens_ -= 1.0f;
         ++calls_;
         done.said = true;
-        ESP_LOGI(kTag, "call (face=%s%s)", emotionName(shown_), reaction ? ", reaction" : "");
+        if (dialogue_turn) {
+            dialogue_reply_until_ms_ = 0;
+            dialogue_wait_until_ms_ = (now + 2500) | 1u;  // wait for human's next turn
+            ESP_LOGI(kTag, "call (face=%s, dialogue pitch=%.2f energy=%.2f)", emotionName(shown_),
+                     static_cast<double>(voice_pitch_), static_cast<double>(voice_energy_));
+        } else {
+            ESP_LOGI(kTag, "call (face=%s%s)", emotionName(shown_), reaction ? ", reaction" : "");
+        }
     } else if (a.say > 0.55f && vocal_.armed()) {
         held_ |= night ? kCallNight : !budget ? kCallBudget : kCallBusy;
     }
@@ -216,9 +269,10 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
         held_ |= night ? kGestureNight : kGestureSoon;  // another gesture still running
     if (gesture_ == Gesture::None && edge) {
         const bool gap_ok = last_gesture_ms_ == 0 || now - last_gesture_ms_ >= kGestureGapMs;
+        const bool remembering = memory_until_ms_ != 0 && !night && !msReached(now, memory_until_ms_);
         Gesture g = Gesture::None;
-        if (mode == kHeadNod && gap_ok && !night) g = Gesture::Nod;
-        else if (mode == kHeadShake && gap_ok && !night) g = Gesture::Shake;
+        if (mode == kHeadNod && gap_ok && !night && !remembering) g = Gesture::Nod;
+        else if (mode == kHeadShake && gap_ok && !night && !remembering) g = Gesture::Shake;
         // not at night either: a jerk of the head is servo noise next to the sleeping owner
         else if (mode == kHeadFlinch && !night && (last_flinch_ms_ == 0 || now - last_flinch_ms_ >= kFlinchGapMs) &&
                  (last_gesture_ms_ == 0 || now - last_gesture_ms_ >= 1500))
@@ -355,6 +409,11 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
         held_ |= kGazeOwn;
         return;
     }
+    // Attentive stillness while human is speaking to the robot (proto-dialogue turn-taking)
+    if (!night && free_head && human_speaking_) {
+        held_ |= kGazeOwn;
+        return;
+    }
 
     // ---- a curious glance (kGlanceGapMinMs): only while it wanders by day, looking or scanning
     const bool idle = wander && !night && (mode == kHeadLook || mode == kHeadScan);
@@ -368,8 +427,10 @@ void V4Executor::applyHead(const BrainV4& brain, bool night, uint32_t now, Brain
         next_glance_ms_ = now + rndMs(kGlanceGapMinMs, kGlanceGapMaxMs, now);
         wander_hold_ms_ = 0;
     } else if (idle && msReached(now, next_glance_ms_) && now - last_command_ms_ >= kGazeGapMs) {
+        const bool expectant = expect_ > 0.45f && rnd01(now) < 0.6f;
         const float side = std::fabs(sent_yaw_) > 30.0f ? (sent_yaw_ > 0 ? -1.0f : 1.0f) : (rnd01(now) < 0.5f ? -1.0f : 1.0f);
-        const float yaw = side * (kGlanceYawMinDeg + (kGlanceYawMaxDeg - kGlanceYawMinDeg) * rnd01(now));
+        const float yaw = expectant ? expect_yaw_
+                                    : side * (kGlanceYawMinDeg + (kGlanceYawMaxDeg - kGlanceYawMinDeg) * rnd01(now));
         const float pitch = -5.0f + 23.0f * rnd01(now);
         // the turn there takes T = pi/2 * distance / peak speed (MotionEngine: eased, at half the asked speed)
         float hy = 0, hp = 0;

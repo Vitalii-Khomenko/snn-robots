@@ -1,5 +1,6 @@
 #include "memory_v4.h"
 
+#include <algorithm>
 #include <cmath>
 
 void MemoryV4::set(const float* table)
@@ -31,6 +32,32 @@ int MemoryV4::candidate(uint32_t nowMs, bool clockOk, float hour, bool lit, bool
         d = std::fmin(d, 1440.0f - d);
         if (d > kWindowMin || (e.lit > 0.5f) != lit || (e.around > 0.5f) != around) continue;
         if (best < 0 || e.strength > ep_[best].strength) best = i;
+    }
+    return best;
+}
+
+float MemoryV4::expectation(bool clockOk, float hour, bool lit, float& bestYawDeg) const
+{
+    bestYawDeg = 0.0f;
+    if (!clockOk || n_ == 0) return 0.0f;
+    const float minute = hour * 60.0f;
+    float best = 0.0f;
+    for (int i = 0; i < n_; ++i) {
+        const Episode& e = ep_[i];
+        if (e.valence <= 0.0f || (e.lit > 0.5f) != lit) continue;
+        // Signed minutes ahead: positive when episode is upcoming (0..30 min ahead), small tail up to 10 min after.
+        float ahead = e.minute - minute;
+        if (ahead < -720.0f) ahead += 1440.0f;
+        if (ahead > 720.0f) ahead -= 1440.0f;
+        if (ahead < -10.0f || ahead > 30.0f) continue;
+        // Peak anticipation at ~5 min ahead (sigma 14 min ahead, 6 min after)
+        const float sigma = ahead >= 0.0f ? 14.0f : 6.0f;
+        const float z = (ahead - 5.0f) / sigma;
+        const float score = std::clamp(e.strength * std::exp(-0.5f * z * z), 0.0f, 1.0f);
+        if (score > best) {
+            best = score;
+            bestYawDeg = e.yawDeg;
+        }
     }
     return best;
 }

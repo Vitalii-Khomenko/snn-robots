@@ -33,6 +33,7 @@ data/life/sleep_v4.log.
 """
 import argparse
 import datetime as dt
+import gzip
 import os
 import shutil
 import subprocess
@@ -111,6 +112,47 @@ def boot_ids(lines):
     return ids
 
 
+def lookup_older_boot_ids(missing, before_day, max_days=30):
+    """Find main-network / firmware boot lines for long-uptime boots that started before the 3-day window."""
+    found = {}
+    if not missing or not os.path.isdir(D.LIFE):
+        return found
+    older = sorted(d for d in os.listdir(D.LIFE) if d[:2] == "20" and d < before_day)[-max_days:]
+    for day in reversed(older):
+        log_path = os.path.join(D.LIFE, day, "log.txt")
+        gz_path = log_path + ".gz"
+        path = log_path if os.path.exists(log_path) else gz_path if os.path.exists(gz_path) else None
+        if not path:
+            continue
+        try:
+            opener = gzip.open if path.endswith(".gz") else open
+            with opener(path, "rt", errors="ignore") as f:
+                for line in f:
+                    if "main network" not in line and "firmware in" not in line:
+                        continue
+                    parts = line.split(None, 3)
+                    if len(parts) < 4 or len(parts[1]) != 8:
+                        continue
+                    try:
+                        b = int(parts[1], 16)
+                    except ValueError:
+                        continue
+                    if b not in missing:
+                        continue
+                    nn, fw = found.get(b, (None, None))
+                    text = parts[3]
+                    if "main network" in text and "(id " in text:
+                        nn = int(text.split("(id ")[1].split(")")[0], 16)
+                    elif "firmware in" in text and ", sha " in text:
+                        fw = text.split(", sha ")[1].split()[0]
+                    found[b] = (nn, fw)
+        except OSError:
+            continue
+        if all(found.get(b, (None, None))[0] is not None for b in missing):
+            break
+    return found
+
+
 def load_life(days):
     """Per boot and day: the decided ticks with a full input (the own-state columns exist since 2026-10-24 13:22). A
     boot that runs past midnight gives one part per day, with its id and the seq of its first and last decision: the
@@ -153,6 +195,16 @@ def load_life(days):
                               head=np.stack([np.nan_to_num(v[:, D.col("head_yaw_deg")]),
                                              np.nan_to_num(v[:, D.col("head_pitch_deg")])], 1).astype(np.float32),
                               raw_r=rb, flags=f, hour=v[:, D.col("raw_hour")]))
+    missing = {b["boot"] for b in boots if b["nn_id"] is None}
+    if missing and days:
+        older = lookup_older_boot_ids(missing, min(days))
+        for b in boots:
+            if b["nn_id"] is None and b["boot"] in older:
+                nn, fw = older[b["boot"]]
+                if nn is not None:
+                    b["nn_id"] = nn
+                if b["fw"] is None and fw is not None:
+                    b["fw"] = fw
     return boots
 
 
@@ -172,6 +224,7 @@ def base_model():
     m = NnV4()
     m.load_state_dict(torch.load(os.path.join(HERE, "data", "nn_v4.pt"), weights_only=False, map_location="cpu")["state"])
     version, shift, mbias = 0, np.zeros(len(CHANNELS), np.float32), np.zeros(len(MU.OUTS), np.float32)
+    mwout = np.zeros((len(MU.IDEAS), MU.N), np.float32)
     if os.path.exists(LIVE):
         version, arrays = LR.unpack(open(LIVE, "rb").read())
         # the live heads only if they were made for this network (a retrained one starts from its own innate heads)
@@ -185,8 +238,10 @@ def base_model():
             shift = arrays["zones.shift"].astype(np.float32)
         if "muse.bias" in arrays:
             mbias = arrays["muse.bias"].astype(np.float32)
+        if "muse.wout" in arrays and arrays["muse.wout"].size == mwout.size:
+            mwout = arrays["muse.wout"].astype(np.float32).reshape(mwout.shape)
     m.eval()
-    return m, version, shift, mbias
+    return m, version, shift, mbias, mwout
 
 
 def replay(m, boots):
@@ -288,19 +343,13 @@ def carried_out(b):
     return ok
 
 
-def train_heads(m, F_all, act, adv, ok=None, epochs=40):
+def train_heads(m, F_all, act, adv, ok=None, epochs=40, prio=None):
     """The action heads towards the choices that turned out better than expected and away from those that turned out
     worse. adv: the centred advantage of each decision (mean ~0, in units of its spread). The target of a decision is
     the heads' own distribution with the odds of the choice made tilted by exp(adv / ETA): a decision of average
     outcome asks for no change at all, and no decision for more than exp(A_CLIP / ETA) in the odds. ok: per group,
-    the decisions whose wish the body carried out (carried_out); the others are not tilted. Anchored (KL) to the heads
-    the robot has.
-
-    2026-10-28: it was advantage-weighted regression (weights exp(A) > 0 on the robot's own greedy choices). With ~400
-    rewarded moments in 14 h the weights were ~1 almost everywhere: the step was the network imitating itself (KL 0.003
-    from a step with all weights 1) and cut the entropy of every choice by ~35 % a night - a slowly monotonous robot
-    (saved only by the KL gate, which dropped every night's step). Signed weights on -log p were unbounded; on
-    log(1 - p) for A < 0 they flattened every choice (entropy +20 % a night)."""
+    the decisions whose wish the body carried out (carried_out); the others are not tilted. prio: optional prioritized
+    replay weights (EPISODES step 3: vivid moments weigh more). Anchored (KL) to the heads the robot has."""
     new = NnV4()
     new.load_state_dict(m.state_dict())
     for p in new.parameters():
@@ -314,6 +363,7 @@ def train_heads(m, F_all, act, adv, ok=None, epochs=40):
         tilt = torch.tensor(adv) / ETA
         done = {g: torch.ones(len(adv)) if ok is None else torch.tensor(ok[g], dtype=torch.float32)
                 for g in list(GROUPS_ACT) + ["say"]}
+        w_prio = torch.ones(len(adv), dtype=torch.float32) if prio is None else torch.tensor(prio, dtype=torch.float32)
         targets = {}
         for g, idx in GROUPS_ACT.items():
             q = F.softmax(old[:, idx], -1) * torch.exp((tilt * done[g])[:, None] * F.one_hot(torch.tensor(act[g]), len(idx)))
@@ -330,12 +380,15 @@ def train_heads(m, F_all, act, adv, ok=None, epochs=40):
     for _ in range(epochs):
         for b in np.array_split(rng.permutation(n), max(1, n // 4096)):
             out = heads_out(new, F_all[b])
+            wb = w_prio[b]
             loss = 0.0
             for g, idx in GROUPS_ACT.items():
                 logp = F.log_softmax(out[:, idx], -1)
-                loss = loss + F.kl_div(logp, targets[g][b], reduction="batchmean")
+                kl_t = F.kl_div(logp, targets[g][b], reduction="none").sum(-1)
+                loss = loss + (kl_t * wb).mean()
                 loss = loss + ANCHOR * F.kl_div(logp, F.softmax(old[b][:, idx], -1), reduction="batchmean")
-            loss = loss + F.binary_cross_entropy_with_logits(out[:, SAY_ACT], say_q[b])
+            bce_t = F.binary_cross_entropy_with_logits(out[:, SAY_ACT], say_q[b], reduction="none")
+            loss = loss + (bce_t * wb).mean()
             loss = loss + ANCHOR * F.binary_cross_entropy_with_logits(out[:, SAY_ACT], p1[b])
             loss = loss + ANCHOR * F.mse_loss(out[:, other], old[b][:, other])
             opt.zero_grad()
@@ -343,6 +396,20 @@ def train_heads(m, F_all, act, adv, ok=None, epochs=40):
             opt.step()
     new.eval()
     return new
+
+
+def priority_weights(boots, idx):
+    """Prioritized replay weights (EPISODES step 3, Wilson & McNaughton): decisions within +-5 s of vivid moments
+    (|r| >= 0.3) weigh 2x, normalized to mean 1.0."""
+    parts = []
+    k = np.ones(101, np.float32)  # +-5 s at 10 Hz
+    for i in idx:
+        vivid = (np.abs(boots[i]["r"]) >= 0.3).astype(np.float32)
+        near = np.convolve(vivid, k, "same") > 0
+        w = np.where(near, 2.0, 1.0).astype(np.float32)[boots[i]["day_mask"]]
+        parts.append(w)
+    w_all = np.concatenate(parts) if parts else np.ones(0, np.float32)
+    return w_all / (w_all.mean() + 1e-6) if len(w_all) else w_all
 
 
 def prepare(m, boots, idx, feats, wv=None):
@@ -539,10 +606,15 @@ def _action_features(b):
     return np.column_stack([said_w, gest_w]).astype(np.float32)
 
 
-def learn_muse(boots, bias, lines):
-    """One night's step of the Muse's idea biases (docs/CREATIVITY.md step 3 + 4)."""
+def learn_muse(boots, bias, wout, lines):
+    """One night's step of the Muse's idea biases and readout delta (docs/CREATIVITY.md step 3 + 4).
+    Curiosity combines out-of-sample unexpectedness with Oudeyer learning progress (error drop over the episode),
+    and updates both scalar biases (muse.bias) and contextual readout weights (muse.wout, 5 x 64)."""
     new = bias.copy()
-    stats = {k: ([], []) for k in MU.IDEAS}
+    new_w = wout.copy()
+    if sum(int(b["day_mask"].sum()) for b in boots) < 6000:
+        return new.astype(np.float32), new_w.astype(np.float32)  # do not decay on a night with no daytime life
+    stats = {k: ([], [], []) for k in MU.IDEAS}  # reward_z, curiosity_z, (reservoir_x, adv_i)
     for b in boots:
         day, r = b["day_mask"], b["r"]
         if day.sum() < 6000:  # 10 min of daytime decisions
@@ -551,9 +623,25 @@ def learn_muse(boots, bias, lines):
         dec_seq = b.get("dec_seq")
         e = surprise_of(b["ch"], ((b["flags"] & D.FLAG_DRIVES) > 0) & ((b["flags"] & D.FLAG_NIGHT) == 0),
                         b.get("all_seq"), _action_features(b))
+        # Out-of-sample novelty (next 5 s) and Oudeyer learning progress (err in 5 s before - err in 5..10 s after)
         e_dec = np.array([np.nanmean(e[t:t + 100]) if np.isfinite(e[t:t + 100]).any() else np.nan for t in b["dec_idx"]])
+        lp_dec = np.full(len(b["dec_idx"]), np.nan, np.float32)
+        for di, t in enumerate(b["dec_idx"]):
+            if t >= 100 and t + 200 <= len(e):
+                eb, ea = e[t - 100:t], e[t + 100:t + 200]
+                if np.isfinite(eb).any() and np.isfinite(ea).any():
+                    lp_dec[di] = float(np.nanmean(eb) - np.nanmean(ea))
         rb, rs = win_r[day].mean(), win_r[day].std() + 1e-6
         cb, cs = np.nanmean(e_dec[day]), np.nanstd(e_dec[day]) + 1e-6
+        lb, ls = np.nanmean(lp_dec[day]), np.nanstd(lp_dec[day]) + 1e-6
+        # Replay deterministic mood-driven reservoir states x [T_dec, 64] for contextual readout learning
+        muse_sim = MU.load(bias=bias, B=1, wout_delta=wout)
+        zero_noise = np.zeros((1, MU.N), np.float32)
+        snn_seq = b["x"][:, :len(SNN_OUT)].astype(np.float32)
+        x_res = np.zeros((len(snn_seq), MU.N), np.float32)
+        for ti in range(len(snn_seq)):
+            muse_sim.step(snn_seq[ti:ti + 1], zero_noise)
+            x_res[ti] = muse_sim.x[0]
         for k, name in enumerate(MU.IDEAS):
             on = (b["x"][:, IDEA0 + k] > MU.IDEA_ON) & day
             last = -10 ** 9
@@ -563,22 +651,31 @@ def learn_muse(boots, bias, lines):
                 if dec_seq is not None and dec_seq[i + 199] - dec_seq[i] > 440:
                     continue  # skip episodes spanning a diary gap
                 last = i
-                stats[name][0].append((win_r[i] - rb) / rs)
-                if np.isfinite(e_dec[i]) and np.isfinite(cb):
-                    stats[name][1].append((e_dec[i] - cb) / cs)
+                rz = float((win_r[i] - rb) / rs)
+                cz = float((e_dec[i] - cb) / cs) if np.isfinite(e_dec[i]) and np.isfinite(cb) else 0.0
+                lz = float((lp_dec[i] - lb) / ls) if np.isfinite(lp_dec[i]) and np.isfinite(lb) else 0.0
+                cur_z = 0.5 * cz + 0.5 * lz
+                stats[name][0].append(rz)
+                stats[name][1].append(cur_z)
+                stats[name][2].append((x_res[i], rz + MUSE_CURIOSITY * cur_z))
     for k, name in enumerate(MU.IDEAS):
-        R, C = stats[name]
+        R, C, XW = stats[name]
         j = 3 + k
         if len(R) < MUSE_MIN_EPISODES:
             if new[j] != 0:  # not had: back towards innate
                 new[j] -= np.sign(new[j]) * min(0.005, abs(new[j]))
+            new_w[k] *= 0.95
             continue
         adv = float(np.mean(R)) + MUSE_CURIOSITY * (float(np.mean(C)) if C else 0.0)
         step = float(np.clip(MUSE_ETA * adv * min(1.0, len(R) / 10), -MUSE_STEP, MUSE_STEP))
         new[j] = float(np.clip(new[j] + step, MUSE_FLOOR, MU.BIAS_MAX))
-        say(lines, f"  muse {name}: {len(R)} ideas, answered {np.mean(R):+.2f}, curiosity "
-                   f"{np.mean(C) if C else 0:+.2f} -> bias {bias[j]:+.3f} -> {new[j]:+.3f}")
-    return new.astype(np.float32)
+        # Contextual readout update: reward+curiosity-weighted reservoir direction, L2-anchored to 0
+        grad = np.mean([np.clip(a_i, -2.0, 2.0) * xi for xi, a_i in XW], axis=0).astype(np.float32)
+        dw = np.clip(0.01 * grad * min(1.0, len(R) / 10.0), -0.015, 0.015)
+        new_w[k] = np.clip(0.95 * new_w[k] + dw, -MU.WOUT_DELTA_MAX, MU.WOUT_DELTA_MAX)
+        say(lines, f"  muse {name}: {len(R)} ideas, answered {np.mean(R):+.2f}, curiosity+LP "
+                   f"{np.mean(C) if C else 0:+.2f} -> bias {bias[j]:+.3f} -> {new[j]:+.3f} (|wout| {np.linalg.norm(new_w[k]):.3f})")
+    return new.astype(np.float32), new_w.astype(np.float32)
 
 
 def behaviour_gate(blob_path, lines):
@@ -603,7 +700,7 @@ def main():
     tonight = dt.date.today().isoformat()
     days = days_with_v4(a.days)
     say(lines, f"night of {tonight}: days {', '.join(days) or '-'}")
-    m, live_version, shift, mbias = base_model()
+    m, live_version, shift, mbias, mwout = base_model()
     boots = load_life(days)
     # boots of another network are not this network's life (the boot line's id, 2026-10-28 evening on)
     nn_id = LR.nn_id(m.state_dict())
@@ -641,7 +738,7 @@ def main():
             if len(held):
                 say(lines, "  held back (ticks, diary `held`): " + ", ".join(
                     f"{why} {int(((held & bit) > 0).sum())}" for bit, why in HELD))
-            new = train_heads(m, F_all, act, A, ok)
+            new = train_heads(m, F_all, act, A, ok, prio=priority_weights(boots, use))
             kl, flip = change(m, new, F_all)
             say(lines, f"  the action heads: KL {kl:.4f} (max {KL_MAX}), choices changed {100 * flip:.1f} % "
                        f"(max {100 * FLIP_MAX:.0f} %)")
@@ -676,10 +773,10 @@ def main():
     if not np.allclose(new_shift, shift):
         changed = True
         parts.append(f"zones ({int((~np.isclose(new_shift, shift)).sum())} channel(s))")
-    new_mbias = learn_muse(good, mbias, lines)
-    if not np.allclose(new_mbias, mbias):
+    new_mbias, new_mwout = learn_muse(good, mbias, mwout, lines)
+    if not np.allclose(new_mbias, mbias) or not np.allclose(new_mwout, mwout):
         changed = True
-        parts.append(f"Muse ({int((~np.isclose(new_mbias, mbias)).sum())} idea bias(es))")
+        parts.append(f"Muse ({int((~np.isclose(new_mbias, mbias)).sum())} bias, readout)")
     mem = EP.table(days)
     if len(mem):
         changed = True
@@ -698,7 +795,8 @@ def main():
     os.makedirs(store, exist_ok=True)
     blob_path = os.path.join(store, f"v{version}{'_dry' if a.dry_run else ''}.bin")
     open(blob_path, "wb").write(LR.pack(version, heads_new, new_shift, new_mbias, nn=LR.nn_id(m.state_dict()),
-                                        episodes=mem if len(mem) else None))
+                                        episodes=mem if len(mem) else None,
+                                        muse_wout=new_mwout if np.any(new_mwout != 0) else None))
     say(lines, f"  candidate {os.path.relpath(blob_path, ROOT)} (version {version})")
     if not behaviour_gate(blob_path, lines):
         return finish(lines, started, "gate failed: the robot keeps what it has")

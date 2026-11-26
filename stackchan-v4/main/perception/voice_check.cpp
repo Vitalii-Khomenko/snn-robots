@@ -1,5 +1,6 @@
 #include "voice_check.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace {
@@ -61,6 +62,7 @@ float VoiceCheck::frame()
     float e0 = 0.0f;
     for (int j = 0; j < kWin; ++j) e0 += cur[j] * cur[j];
     float best = 0.0f;
+    int best_lag = kLagLo;
     double el = 0.0;
     const float* prev0 = w + kLagHi - kLagLo;
     for (int j = 0; j < kWin; ++j) el += static_cast<double>(prev0[j]) * static_cast<double>(prev0[j]);
@@ -74,7 +76,10 @@ float VoiceCheck::frame()
         float r = 0.0f;
         for (int j = 0; j < kWin; ++j) r += cur[j] * prev[j];
         const float c = r / (static_cast<float>(std::sqrt(static_cast<double>(e0) * el)) + 1e-12f);
-        if (c > best) best = c;
+        if (c > best) {
+            best = c;
+            best_lag = lag;
+        }
     }
     const float level = 10.0f * std::log10(e0 / kWin + 1e-12f);
     if (!floor_set_) {
@@ -83,6 +88,15 @@ float VoiceCheck::frame()
     }
     floor_ += (level - floor_) * (level < floor_ ? kFloorDown : kFloorUp);
     const bool voiced = best > kPeriodic && level > floor_ + kAboveDb;
+    if (voiced) {
+        const float hz = 4000.0f / static_cast<float>(best_lag);  // 80..400 Hz
+        const float p01 = std::clamp((hz - 80.0f) / 280.0f, 0.0f, 1.0f);
+        const float e01 = std::clamp((level - floor_ - kAboveDb) / 24.0f, 0.0f, 1.0f);
+        pitch01_ += (p01 - pitch01_) * 0.25f;
+        energy01_ += (e01 - energy01_) * 0.25f;
+        pitch_out_.store(pitch01_, std::memory_order_relaxed);
+        energy_out_.store(energy01_, std::memory_order_relaxed);
+    }
     voice_ += ((voiced ? 1.0f : 0.0f) - voice_) * kVoiceRate;
     last_periodicity_ = best;
     last_level_ = level;

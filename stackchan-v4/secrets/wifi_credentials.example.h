@@ -7,3 +7,8 @@
 
 inline constexpr const char* kWifiSsid     = "your-network-name";
 inline constexpr const char* kWifiPassword = "your-password";
+
+// Optional fallback Wi-Fi (e.g. phone hotspot for showing the robot away from home).
+// Leave commented out or empty if not needed.
+// #define WIFI_FALLBACK_SSID     "your-phone-hotspot"
+// #define WIFI_FALLBACK_PASSWORD "your-hotspot-password"

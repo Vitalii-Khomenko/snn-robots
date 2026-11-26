@@ -55,9 +55,25 @@ def build():
     print("SNN outputs", S.shape)
 
 
+def _make_expect(N, T, rng):
+    """Synthetic episodic anticipation waves [N, T] (EPISODES step 2): smooth 0..0.95 bumps on ~25 % of lives."""
+    exp = np.zeros((N, T), np.float32)
+    t_grid = np.arange(T, dtype=np.float32)
+    for n in range(N):
+        if rng.random() > 0.25:
+            continue
+        for _ in range(int(rng.integers(1, 4))):
+            center = float(rng.uniform(100, T - 100))
+            width = float(rng.uniform(80.0, 250.0))
+            amp = float(rng.uniform(0.45, 0.95))
+            wave = amp * np.exp(-0.5 * ((t_grid - center) / width) ** 2)
+            exp[n] = np.maximum(exp[n], wave.astype(np.float32))
+    return exp
+
+
 def _label_imitation_chunk(args):
     """Worker for parallel imitation labelling (policy=None): each life is independent."""
-    S_chunk, pace_chunk, seeds = args
+    S_chunk, pace_chunk, exp_chunk, seeds = args
     N, T, _ = S_chunk.shape
     S_c = np.array(S_chunk, np.float32)
     X = np.zeros((N, T, len(SNN_OUT) + len(PREV)), np.float32)
@@ -65,11 +81,11 @@ def _label_imitation_chunk(args):
     for n in range(N):
         tch = Teacher()
         world = C.AnswerWorld(np.random.default_rng(int(seeds[n])))
-        sn, pn = S_c[n], pace_chunk[n]
+        sn, pn, en = S_c[n], pace_chunk[n], exp_chunk[n]
         for t in range(T):
             X[n, t, :32] = sn[t]
-            X[n, t, 32:] = tch.prev_inputs(pn[t], world.out)
-            Y[n, t] = tch.step(sn[t], pn[t], world.out)
+            X[n, t, 32:] = tch.prev_inputs(pn[t], world.out, float(en[t]))
+            Y[n, t] = tch.step(sn[t], pn[t], world.out, expect=float(en[t]))
             world.step(*deed_acts(tch.deed))
             C.inject(sn, t + 1, world.answers)
     return X, Y
@@ -78,19 +94,20 @@ def _label_imitation_chunk(args):
 def label(S, rng, policy=None, dev="cpu"):
     """Teacher rollouts over SNN output sequences S [N, T, 32]. policy=None: the teacher acts itself (imitation);
     else the network acts (DAgger) and the teacher labels. People answer what is really done or not
-    (contingency.AnswerWorld, one per life). -> inputs [N, T, 55], targets [N, T, 61]."""
+    (contingency.AnswerWorld, one per life). -> inputs [N, T, 56], targets [N, T, 61]."""
     N, T, _ = S.shape
     pace = M.run(S.astype(np.float32), rng)  # the Muse: pacemakers + ideas, driven by each life's mood
+    exp = _make_expect(N, T, rng)
     seeds = rng.integers(1 << 31, size=N)
     if policy is None:
         workers = min(12, os.cpu_count() or 1, max(1, N // 32))
         if workers > 1:
             chunks = np.array_split(np.arange(N), workers)
-            jobs = [(S[c], pace[c], seeds[c]) for c in chunks]
+            jobs = [(S[c], pace[c], exp[c], seeds[c]) for c in chunks]
             with ProcessPoolExecutor(max_workers=workers) as ex:
                 parts = list(ex.map(_label_imitation_chunk, jobs))
             return np.concatenate([p[0] for p in parts]), np.concatenate([p[1] for p in parts])
-        return _label_imitation_chunk((S, pace, seeds))
+        return _label_imitation_chunk((S, pace, exp, seeds))
     S = np.array(S, np.float32)  # a copy: the people's answers are written into it (contingency.inject)
     X = np.zeros((N, T, len(SNN_OUT) + len(PREV)), np.float32)
     Y = np.zeros((N, T, len(NN_OUT)), np.float32)
@@ -100,13 +117,13 @@ def label(S, rng, policy=None, dev="cpu"):
     for t in range(T):
         for n in range(N):
             X[n, t, :32] = S[n, t]
-            X[n, t, 32:] = teachers[n].prev_inputs(pace[n, t], worlds[n].out)
+            X[n, t, 32:] = teachers[n].prev_inputs(pace[n, t], worlds[n].out, float(exp[n, t]))
         with torch.no_grad():
             raw, h = policy(torch.tensor(X[:, t:t + 1], device=dev), h)
             act = activate(raw)[:, 0].cpu().numpy()
         for n in range(N):
             executed = decisive(act[n])
-            Y[n, t] = teachers[n].step(S[n, t], pace[n, t], worlds[n].out, executed=executed)
+            Y[n, t] = teachers[n].step(S[n, t], pace[n, t], worlds[n].out, executed=executed, expect=float(exp[n, t]))
             worlds[n].step(*deed_acts(teachers[n].deed))
             C.inject(S[n], t + 1, worlds[n].answers)
     return X, Y
@@ -145,8 +162,10 @@ def tick_weights(xb):
     low_prev = (xb[..., P_IDX["prev_valence"]] < 0.35) | (xb[..., P_IDX["ignored"]] > 0.3)
     answered = (xb[..., P_IDX["answered"]] > 0.35) | ((xb[..., P_IDX["agency"]] > 0.10) & (xb[..., P_IDX["answered"]] > 0.10))
     ignored = xb[..., P_IDX["ignored"]] > 0.35
+    expecting = xb[..., P_IDX["expectation"]] > 0.35
     w = torch.ones_like(touch)
     w = torch.where(ignored, w * 1.5, w)
+    w = torch.where(expecting, w * 1.5, w)
     w = torch.where(answered, w * 2.5, w)
     w = torch.where(gentle, w * 2.5, w)
     w = torch.where(gentle & low_prev, w * 2.0, w)  # total 5x on gentle touch while sad/ignored

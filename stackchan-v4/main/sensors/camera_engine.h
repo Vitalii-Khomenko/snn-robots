@@ -21,10 +21,12 @@ public:
         bool blind = false;                                        // too dark to see anything
         float motionFrac = 0.0f, motionX = 0.0f, motionY = 0.0f;  // share of the picture that moves, its centre
         float lightX = 0.0f, lightY = 0.0f, lightStrength = 0.0f;  // the brightest spot (-1..1) and its excess (0..1)
+        float presenceFrac = 0.0f, presenceX = 0.0f, presenceY = 0.0f;  // static foreground diff vs slow background
     };
 
     bool begin();
     void update();  // call every main-loop tick; delivers a new frame here
+    void setHeadYaw(float yawDeg) { head_yaw_deg_.store(yawDeg, std::memory_order_relaxed); }
 
     // Delivers the latest result from the main-loop thread. The camera task never calls application code directly.
     void onVision(std::function<void(const VisionFrame&)> cb) { on_vision_ = std::move(cb); }
@@ -43,6 +45,7 @@ private:
     std::atomic<uint32_t> last_ms_{0};
     std::atomic<uint32_t> frames_{0};
     std::atomic<uint32_t> front_us_{0};
+    std::atomic<float> head_yaw_deg_{0.0f};
     // Camera-task scratch and the lock-protected hand-off copy. Members rather than locals so neither task's small
     // stack carries a frame.
     VisionFrontEnd::Frame frame_{};

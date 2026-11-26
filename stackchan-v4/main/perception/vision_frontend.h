@@ -39,6 +39,8 @@ public:
         // shift searched out), and the centre of that movement (-1..1, x right, y down). 0 for a frame whose whole
         // brightness jumped (a lamp switched) - that is light, not movement.
         float motionFrac = 0.0f, motionX = 0.0f, motionY = 0.0f;
+        // Slow-adapting room background difference (static presence: someone sitting quietly in view).
+        float presenceFrac = 0.0f, presenceX = 0.0f, presenceY = 0.0f;
         // Spread of the luminance image (8-bit levels). A dark room is sensor noise
         // only (< ~3.5): nothing can be seen, and the network must not guess.
         float contrast = 0.0f;
@@ -46,11 +48,13 @@ public:
     };
 
     // False while the first frame primes the temporal reference.
-    bool process(const uint8_t* rgb565, size_t width, size_t height, Frame& out);
+    bool process(const uint8_t* rgb565, size_t width, size_t height, Frame& out, float headYawDeg = 0.0f);
 
 private:
     static constexpr int kSampleW = kWidth * 2, kSampleH = kHeight * 2, kSampleCount = kSampleW * kSampleH;
     static constexpr int kBlock = 8, kGridW = kSampleW / kBlock, kGridH = kSampleH / kBlock;
+    static constexpr int kBgBins = 13;  // 15 deg yaw bins (-90..+90 deg) for slow static-presence background
+    static constexpr float kPresenceDiff = 18.0f;
     // The brightest block over the frame mean (exposure aims at ~118): a lamp or a window glares to 255 (+137), a
     // white sheet reads ~+90..110. 25 / 60 until 2026-10-25 read any white thing as a full light (brain v4 looks
     // for a NEW light, a cup must not be one).
@@ -61,6 +65,8 @@ private:
 
     std::array<uint8_t, kSampleCount> sample_{};
     std::array<uint8_t, kCells> current_{}, previous_{};
+    std::array<std::array<float, kCells>, kBgBins> bg_{};
+    std::array<uint16_t, kBgBins> bg_frames_{};
     float previous_mean_ = 0.0f;
     bool primed_ = false;
 };

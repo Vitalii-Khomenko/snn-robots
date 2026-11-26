@@ -246,9 +246,11 @@ GC0308 at QQVGA, one frame buffer, capture task on core 1 at priority 2, ~7 fps.
 Exposure, white balance and gain are locked after a short warm-up so the
 vision front end does not see global brightness drift. The task is paced from the start of the previous frame
 (7.0 fps). Brain v4 uses the motion sense - the share of the picture that moves after the head's own turn is
-searched out, and its centre (the "where" values for attention) - and, since 2026-10-25, the brightest spot (8x8-sample
+searched out, and its centre (the "where" values for attention) - the brightest spot (8x8-sample
 blocks over the frame mean, from 60 levels brighter, full at 130: a lamp or a window glares to 255 over a mean of ~118,
-a white sheet reads ~+90..110; `VisionFrontEnd::findLight`): where it is and how strong. A frame taken while the head
+a white sheet reads ~+90..110; `VisionFrontEnd::findLight`), and since 2026-11-26 a 13-yaw-bin (15° spacing) slow-adapting
+room background difference (`presenceFrac`, logged as `vis=` in `v4:`) that detects a still person sitting in view
+without any neural network or cloud calls. A frame taken while the head
 itself moves is not used. Dark frames (luminance spread < 3.5 levels) are "blind". No frame leaves the robot.
 
 ## Display
@@ -398,8 +400,11 @@ wrapper), `py32_io_expander`, `si12t`. A review fixed:
   NTP). Measured: a reboot after a sync is 1 s off; before the first sync the RTC was 254 s behind. Only if the RTC has
   lost its power (or never been set) is there no clock: quiet for the first 2 minutes after a boot, then daytime rules
   while the room is lit.
-- Without a known network Wi-Fi retries 10 times at once, then one connect every 30 s (`no network after 10 tries`):
+- Without a known network Wi-Fi retries 10 times at once, then one connect every 30 s (`no network after 10 tries`; since
+  2026-11-26 it alternates with an optional `WIFI_FALLBACK_SSID` phone hotspot in `secrets/wifi_credentials.h` if set):
   the robot lives on by itself; the diary of that time is lost (it waits in a small ring only for short drop-outs).
+- Since 2026-11-26 `logStats()` staggers its 4 `ESP_LOGI` lines across 4 loop passes (eliminating the ~50 ms UART burst
+  that caused ~12 `missed_ticks`/min), and morning `awake_` state is persisted in NVS `v4/awday` across morning reboots.
 - Nearly deaf to quiet sounds while turning (servo noise, see above).
 - Millisecond timestamps wrap after 49.7 days of uptime; all comparisons go
   through `main/core/ms_clock.h` (`msReached` for periodic deadlines,

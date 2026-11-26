@@ -94,17 +94,19 @@ which channel each comes from; it does not choose emotions.
 One network decides everything (the owner's choice: one decider, the voice is only a synthesizer):
 
 ```
-input 55 = 32 SNN numbers + 23 own state -> GRU 64 -> emotion head: 21 emotions (softmax) + strength
+input 56 = 32 SNN numbers + 24 own state -> GRU 64 -> emotion head: 21 emotions (softmax) + strength
                                                     -> [GRU state, emotion] -> hidden 64 -> action heads (39)
             SNN mood --> Muse (64-neuron reservoir) --> 3 pacemakers + 5 ideas (part of the own state)
    acts + answers --> contingency detector (section 5) --> agency, answered, ignored, what works (own state)
+   episodes + clock -> episodic memory (section 4) -----> expectation (own state)
 ```
 
-- **Own state (23):** last valence and arousal, how long the face has been shown, time since a sound and since a
+- **Own state (24):** last valence and arousal, how long the face has been shown, time since a sound and since a
   gesture, head yaw and pitch, LED level, whether the last touch was answered, three pacemakers (slow, fast,
   jitter: random processes the network can see, so its "spontaneous" choices are learnable and reproducible), the
-  Muse's five ideas (below) and, since 2026-10-27, the six numbers of the sense of "I did that" (section 5,
-  [CONTINGENCY](CONTINGENCY.md)).
+  Muse's five ideas (below), the six numbers of the sense of "I did that" (section 5,
+  [CONTINGENCY](CONTINGENCY.md)), and since 2026-11-26 **expectation** (episodic anticipation, [EPISODES](EPISODES.md)
+  step 2: how strongly a good remembered moment is expected within the next 30 minutes in the current lighting).
 - **The sense of "I did that"** (CONTINGENCY step 3, 2026-10-27). The teacher (`teacher_nn.py`) does the following,
   and the network learned it:
   - **Joy of control:** an answer to its own act brings joy: happy, very happy, laughing or wink; "very happy" when
@@ -140,11 +142,14 @@ input 55 = 32 SNN numbers + 23 own state -> GRU 64 -> emotion head: 21 emotions 
     call, a look to where someone was last seen) and **surprise** (a nod dance, a burst of light). Each idea is a
     reservoir readout plus a direct mood push: play from lively and content, still from sleepy, social from
     lonely, surprise from bored.
-  - It gets bored of its own ideas: an idea it keeps having fades (habituation over 90 s).
+  - It gets bored of its own ideas: an idea it keeps having fades (habituation over 90 s), and since 2026-11-26 its
+    habituation feeds back into the reservoir (`kHabFeedback = 0.12`) to push trajectories into unexplored subspaces.
   - The teacher (`IDEA_ACTS` in `teacher_nn.py`) acts an idea above 0.5 (lower when bored) for 2.5-10 s, at most
     one every 12 s. It does so only when nothing calls for a reaction: no touch, fright or threat, not sleepy, not
     at night.
-  - The night learns one bias per idea (`muse.bias` in the learned blob, section 7).
+  - The night learns one bias per idea (`muse.bias`) and since 2026-11-26 a contextual readout delta (`muse.wout`,
+    5 x 64) in the learned blob, combining social reward, out-of-sample novelty, and Oudeyer Learning Progress
+    (section 7).
   - Cost: ~5 k multiply-adds and 64 Gaussian draws per decision.
 - **Outputs (61):** 21 emotions + strength; voice 10 (say, 4 styles: calm / ask / play / grumble, arousal, valence,
   register, length, rate); LEDs 15 (8 colours, 5 patterns: steady / breathe / pulse / flicker / wave, brightness,
@@ -203,6 +208,19 @@ shake or flinch wanted but not made by night (8) or too soon after the last (16)
 a watch or a glance instead of the network's look / scan / hold (32). On 10-27 45 % of the stretches of a wanted call
 never sounded. The night learns only from what was carried out (section 7). `NO_EMO_STRENGTH`, the network's emotion
 strength, is not used by the face (the faces have one strength each): an output with no visible effect.
+
+**Proto-dialogue & online prediction (2026-11-26):**
+- **Turn-taking and prosody (`CONTINGENCY` step 5 + Panksepp `CARE`/`PLAY`):** `VoiceCheck` extracts human fundamental
+  pitch (80–360 Hz) and voice loudness above the room floor (6–30 dB) with zero extra autocorrelation cost. While a
+  person is speaking (`raw_speech > 0.4`), `V4Executor` holds idle babble and head wandering attentively; after a
+  natural 0.35 s pause it opens a 1.5 s reply window, mirrors prosody (soft/low voice -> soothing CARE murmur; lively
+  voice -> PLAY; loud voice -> yielding ask), and then waits 2.5 s for the human's next turn.
+- **Online forward model (`main/v4/predictor_v4.*`, `FOUNDATIONS` §10):** a 10 Hz action-conditioned NLMS predictor
+  (14 inputs -> 10 external channels 1 s ahead, 140 floats, <15 µs) tracks predictive surprise and Oudeyer Learning
+  Progress (`pred=err/lp` in the `v4:` stats line).
+- **Episodic anticipation (`EPISODES` steps 2–3):** `MemoryV4::expectation()` scores upcoming good remembered moments
+  (0–30 min ahead in matching lighting), feeding `pv_expectation` into the main network and biasing idle glances toward
+  the anticipated direction; `sleep_v4.py` prioritizes vivid moments (2x weight within ±5 s of `|r| >= 0.3`).
 
 **Remembering** (2026-10-28, [EPISODES](EPISODES.md)): the night sends the most vivid moments of the last days, good
 and bad (`mem.episodes`; one moment once, and a fright within 45 s of a touch is the touch's, not a bad moment:
@@ -314,15 +332,15 @@ section 3). After the executor, every tick:
 ## 6. The diary
 
 Every tick goes to the home PC over UDP (`main/net/life_log.*`, kind 3 datagrams, four ticks each, float16), with
-every log line. Columns (`spec_v4.DIARY`, 175): the 27 raw readings the channels are made from, the 18 channel values
+every log line. Columns (`spec_v4.DIARY`, 176): the 27 raw readings the channels are made from, the 18 channel values
 (after the zone shift: what the analyzer saw), the 32 SNN numbers, the 61 network outputs, what the body did (head
-yaw / pitch, shown face, said, gestured, and what the executor held back: `held`, section 4) the main network's 23 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), and the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got). `raw_stamina` is 1 - the sleep pressure since 2026-10-27 (1.0 before). With the raw
+yaw / pitch, shown face, said, gestured, and what the executor held back: `held`, section 4) the main network's 24 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), and the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got). `raw_stamina` is 1 - the sleep pressure since 2026-10-27 (1.0 before). With the raw
 readings any day can be re-encoded after a change of the channels; with the own state every decision can be replayed
 exactly on the PC (stage 6). Flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided
 this tick. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it (also the older layouts by column name: 135
 values until 2026-10-24 14:30, 147 until the camera's bright spot and the head yaw as a raw reading came in on 2026-10-25, 154 until
-the Muse's ideas on 2026-10-26, 159 until the contingency detector on 2026-10-27, 165 until the ear's columns the same morning, 173 until the body budget (`raw_budget`) that evening, 174 until `held` on 2026-10-28 evening; missing columns
-are NaN). Four ticks of 175 values make a datagram of 1464 bytes: 8 bytes below one unfragmented UDP packet, so the
+the Muse's ideas on 2026-10-26, 159 until the contingency detector on 2026-10-27, 165 until the ear's columns the same morning, 173 until the body budget (`raw_budget`) that evening, 174 until `held` on 2026-10-28 evening, 175 until `pv_expectation` on 2026-11-26; missing columns
+are NaN). Four ticks of 176 values make a datagram of 1472 bytes: right at one unfragmented UDP packet (MTU 1500), so the
 next column needs three ticks a datagram. Each boot names its firmware (`firmware in ota_0 ..., sha c8b5d903`, the
 ELF's SHA-256) and its network (`main network trained (id 1d448676)`): the night learns only from boots of the
 network it trains.

@@ -95,8 +95,19 @@ secrets/             your Wi-Fi, device IPs, diary host and OTA token (templates
 data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) shared with platform B's history
 ```
 
-## Status (2026-11-25)
+## Status (2026-11-26)
 
+- Brain v4.2 technical & cognitive upgrade (2026-11-26, NN `id a3f82bb9`, 56 inputs, 176 diary columns = 1472 B/UDP):
+  - **Technical:** staggered 4-line `logStats()` across 4 passes (eliminates 50 ms UART bursts & ~12 `missed_ticks`/min),
+    persisted morning `awake_` in NVS `v4/awday`, added optional `WIFI_FALLBACK_SSID` alternation, added 13-bin camera
+    static-presence background model (`VisionFrontEnd`), fixed `sleep_v4.py` deep `boot_ids` lookup across `.gz` logs
+    and idle `muse.bias` decay.
+  - **Cognitive (FOUNDATIONS / CONTINGENCY / CREATIVITY / EPISODES):** proto-dialogue turn-taking with voice prosody &
+    CARE/PLAY mirroring (`VoiceCheck` pitch/energy + `V4Executor`), online 10 Hz NLMS 1 s forward model & Oudeyer
+    Learning Progress on ESP32-S3 (`PredictorV4`), Muse reservoir habituation feedback (`kHabFeedback=0.12`) + night-learned
+    readout delta (`muse.wout`, 5×64) + Learning Progress curiosity, episodic anticipation (`MemoryV4::expectation` ->
+    `pv_expectation` input + expectant glances) and prioritized replay in `sleep_v4.py`. All parity tests & 24/24
+    simulator scenarios PASS.
 - Retrained main network (`id 9b7e5851`) & second optimization pass (2026-11-25): calibrated `say` (`pos_weight` 4.0
   -> 2.4), added tick-level importance weighting for gentle touch transitions (including from `Sad`/`ignored`) and
   answered/contingency ticks (validation emotion acc 0.929 -> 0.943; in simulator **joy of control 0.900 vs 0.807

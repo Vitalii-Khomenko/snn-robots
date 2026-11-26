@@ -70,10 +70,12 @@ private:
     // the body's slow state across reboots (keepBody): given back once the clock is known, saved every kBodySaveMs
     bool body_restored_ = false;
     uint32_t body_save_ms_ = 0;
+    uint32_t awake_saved_day_ = 0;  // YYYYMMDD persisted to NVS "v4"/"awday" so a morning reboot stays awake
     static constexpr uint32_t kBodySaveMs = 600000;
     ServoSupervisor servos_{motion_, imu_};  // the servo watchdog (motion/servo_supervisor.h)
     uint32_t panel_recover_ms_ = 0, next_panel_refresh_ms_ = 60000;
     uint32_t next_diagnostics_ms_ = 0;
+    uint8_t stats_step_ = 0;  // staggers the 4 logStats lines across 4 loop passes to avoid ~50 ms UART bursts
     uint64_t diagnostics_window_start_us_ = 0;
     uint64_t diagnostics_busy_us_ = 0;
     static constexpr int kStages = 8;  // the main loop's stages (RobotRuntime::loop, stats line loop_us)

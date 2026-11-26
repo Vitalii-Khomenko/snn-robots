@@ -21,6 +21,7 @@
 #include "../v4/contingency_v4.h"
 #include "../v4/learned_blob.h"
 #include "../v4/memory_v4.h"
+#include "../v4/predictor_v4.h"
 #include "../v4/v4_executor.h"
 #include "../v4/zone_shift.h"
 
@@ -96,6 +97,9 @@ public:
     const BrainV4& brain() const { return brain_; }
     const V4Executor& executor() const { return exec_; }
     bool night() const { return night_; }
+    bool awake() const { return awake_; }
+    void restoreAwake() { awake_ = true; morning_ = 0.0f; wake_ms_ = 0; }
+    float staticPresence() const { return presence_frac_; }
     bool driving() const { return brain_.trained(); }  // brain v4 drives the body (false: untrained networks)
     bool saidThisTick() const { return said_tick_; }
     bool decidedThisTick() const { return decided_tick_; }
@@ -105,6 +109,7 @@ public:
     // the body (docs/BODY.md): the sleep pressure (the diary's raw_stamina is 1 - it)
     const BodyV4& body() const { return body_; }
     const MemoryV4& memory() const { return memory_; }
+    const PredictorV4& predictor() const { return predictor_; }
     // what a reboot keeps (RobotRuntime saves it): the body as it was, switched off for offS seconds
     void restoreBody(const BodyV4::Saved& s, float offS) { body_.restore(s, offS); }
     // diagnostics
@@ -137,6 +142,7 @@ private:
     ContingencyV4::Out contingency_out_{};
     BodyV4 body_;
     MemoryV4 memory_;  // the remembered moments (docs/EPISODES.md), from the learned blob
+    PredictorV4 predictor_;  // online 1 s forward model & Oudeyer learning progress (FOUNDATIONS §10)
     float body_yaw_ = 0.0f, body_pitch_ = 0.0f;
     bool body_head_ = false, hurt_ = false;
     uint32_t lit_ms_ = 0;  // the room was last lit (night rules without a clock)
@@ -153,9 +159,10 @@ private:
     bool morning_logged_ = false;
     float morning_ = 0.0f;       // ChannelEncoder::Raw::morning for the next tick
 
-    // the camera's last frame (~7 fps): motion share and centre
+    // the camera's last frame (~7 fps): motion share and centre + static background-difference presence
     float motion_[3] = {0, 0, 0};
     float light_spot_[3] = {0, 0, 0};  // the camera's brightest spot: x, y, strength
+    float presence_frac_ = 0.0f, presence_x_ = 0.0f, presence_y_ = 0.0f;
     bool frame_ok_ = false, light_ok_ = false, frame_this_tick_ = false;
     static constexpr float kLightTurnDegS = 12.0f;  // the bright spot is read in turns slower than this
     // touches

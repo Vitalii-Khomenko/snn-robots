@@ -11,7 +11,7 @@ uint8_t luminance(uint16_t pixel)
 }
 }  // namespace
 
-bool VisionFrontEnd::process(const uint8_t* buffer, size_t width, size_t height, Frame& out)
+bool VisionFrontEnd::process(const uint8_t* buffer, size_t width, size_t height, Frame& out, float headYawDeg)
 {
     if (!buffer || !width || !height) return false;
     for (int row = 0; row < kSampleH; ++row) {
@@ -107,6 +107,38 @@ bool VisionFrontEnd::process(const uint8_t* buffer, size_t width, size_t height,
         out.motionFrac = light_jump ? 0.0f : static_cast<float>(moving) / kSamples;
         out.motionX = moving ? (sx / moving + 0.5f) / (kWidth * 0.5f) - 1.0f : 0.0f;
         out.motionY = moving ? (sy / moving + 0.5f) / (kHeight * 0.5f) - 1.0f : 0.0f;
+        // Slow-adapting room background per 15 deg yaw bin: detects a still person sitting in view without cloud/NN.
+        out.presenceFrac = out.presenceX = out.presenceY = 0.0f;
+        if (!out.blind() && !light_jump && !trusted) {
+            const int bin = std::clamp(static_cast<int>(std::lround(headYawDeg / 15.0f)) + 6, 0, kBgBins - 1);
+            auto& bg = bg_[bin];
+            uint16_t& n = bg_frames_[bin];
+            if (n == 0) {
+                for (int i = 0; i < kCells; ++i) bg[i] = static_cast<float>(current_[i]) - mean;
+                n = 1;
+            } else if (n < 20) {
+                for (int i = 0; i < kCells; ++i) bg[i] += 0.1f * ((static_cast<float>(current_[i]) - mean) - bg[i]);
+                ++n;
+            } else {
+                int diff_n = 0;
+                float px = 0.0f, py = 0.0f;
+                for (int y = kMaxShift; y < kHeight - kMaxShift; ++y) {
+                    for (int x = kMaxShift; x < kWidth - kMaxShift; ++x) {
+                        const int i = y * kWidth + x;
+                        const float d = (static_cast<float>(current_[i]) - mean) - bg[i];
+                        if (std::fabs(d) > kPresenceDiff) {
+                            ++diff_n;
+                            px += static_cast<float>(x);
+                            py += static_cast<float>(y);
+                        }
+                    }
+                }
+                for (int i = 0; i < kCells; ++i) bg[i] += 0.002f * ((static_cast<float>(current_[i]) - mean) - bg[i]);
+                out.presenceFrac = static_cast<float>(diff_n) / kSamples;
+                out.presenceX = diff_n ? (px / diff_n + 0.5f) / (kWidth * 0.5f) - 1.0f : 0.0f;
+                out.presenceY = diff_n ? (py / diff_n + 0.5f) / (kHeight * 0.5f) - 1.0f : 0.0f;
+            }
+        }
     }
     out.side = {out.shiftX / kMaxShift, out.shiftY / kMaxShift, trusted ? 1.0f : 0.0f, mean / 255.0f};
     previous_ = current_;

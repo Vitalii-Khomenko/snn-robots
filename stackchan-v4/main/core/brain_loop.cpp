@@ -74,6 +74,13 @@ void BrainLoop::vision(const CameraEngine::VisionFrame& f, uint32_t now)
     light_spot_[0] = f.lightX;
     light_spot_[1] = f.lightY;
     light_spot_[2] = f.lightStrength;
+    if (frame_ok_) {
+        presence_frac_ = f.presenceFrac;
+        presence_x_ = f.presenceX;
+        presence_y_ = f.presenceY;
+    } else if (f.blind) {
+        presence_frac_ = 0.0f;
+    }
     frame_this_tick_ = true;
 }
 
@@ -269,9 +276,16 @@ void BrainLoop::tick(uint32_t now, const Env& env)
     hear(now, sharp_ev);
     updateChannels(now, sharp_ev, env);
     using namespace v4;
-    if (ear_[AUD_SPEECH] > 0.4f || channels_[CH_MOTION] > 0.1f || channels_[CH_NEAR] > 0.3f) last_somebody_ms_ = now;
+    if (ear_[AUD_SPEECH] > 0.4f || channels_[CH_MOTION] > 0.1f || channels_[CH_NEAR] > 0.3f || presence_frac_ > 0.12f)
+        last_somebody_ms_ = now;
 
+    if (env.timeSynced) memory_.clock(env.hour);
+    float expect_yaw = 0.0f;
+    const float expect01 =
+        (brain_.trained() && !night_) ? memory_.expectation(env.timeSynced, env.hour, channels_[CH_LIGHT] >= kLitRoom, expect_yaw)
+                                      : 0.0f;
     brain_.setContingency(contingency_out_.data());  // the last tick's (it is computed after the executor)
+    brain_.setExpectation(expect01);
     const bool decided = brain_.tick(channels_);
     decided_tick_ = decided;
     // the owner's sleep (21:45-06:00, and a morning nobody has come to yet: nightRules): the executor keeps silent and
@@ -292,13 +306,14 @@ void BrainLoop::tick(uint32_t now, const Env& env)
     synced_night_ = env.timeSynced && night_;
     const uint32_t calls = exec_.calls(), gestures = exec_.gestures();
     if (brain_.trained()) {
+        exec_.setDialogueContext(raw_.speech > 0.4f, e_.mic.voicePitch01(), e_.mic.voiceEnergy01(),
+                                 night_ ? 0.0f : expect01, expect_yaw, now);
         exec_.apply(brain_, decided, night_, now, done_);
     }
     said_tick_ = exec_.calls() != calls;
     gesture_tick_ = exec_.gestures() != gestures;
     // remembering (docs/EPISODES.md): a moment of the last days like this one - the same time of day, light, someone
     // around or not (somebody heard, seen moving or near in the last 2 minutes)
-    if (env.timeSynced) memory_.clock(env.hour);
     if (brain_.trained() && !night_) {
         const bool around = last_somebody_ms_ != 0 && now - last_somebody_ms_ < 120000;
         const int k = memory_.candidate(now, env.timeSynced, env.hour, channels_[CH_LIGHT] >= kLitRoom, around);
@@ -355,6 +370,10 @@ void BrainLoop::tick(uint32_t now, const Env& env)
         body_yaw_ = yaw, body_pitch_ = pitch, body_head_ = true;
     }
     if (decided) {
+        float vy = 0.0f, vp = 0.0f;
+        e_.motion.getVelocityDegS(vy, vp);
+        predictor_.step(channels_.data(), done_.said, done_.gesture, std::min(1.0f, std::hypot(vy, vp) / 40.0f),
+                        brain_.trained() && !night_);
         if (!brain_.trained()) {
             // untrained networks drive nothing: their own choices stand in for what was done
             const auto& o = brain_.nn();
@@ -433,12 +452,17 @@ int BrainLoop::useLearned(const learned::View& v)
     const float* mem = v.find("mem.episodes", MemoryV4::kMax * MemoryV4::kFields);
     memory_.set(mem);
     if (mem) ++taken;
-    // the Muse: which ideas the owner answered (sleep_v4.py learn_muse)
+    // the Muse: which ideas the owner answered (sleep_v4.py learn_muse: biases + optional learned readout delta)
     const float* mb = v.find("muse.bias", muse_data::kOuts);
     bool mb_ok = mb != nullptr;
     for (int k = 0; mb_ok && k < muse_data::kOuts; ++k) mb_ok = std::isfinite(mb[k]);
     brain_.muse().setBias(mb_ok ? mb : nullptr);
     if (mb_ok) ++taken;
+    const float* mw = v.find("muse.wout", MuseV4::kWoutDeltaSize);
+    bool mw_ok = mw != nullptr;
+    for (int k = 0; mw_ok && k < MuseV4::kWoutDeltaSize; ++k) mw_ok = std::isfinite(mw[k]);
+    brain_.muse().setReadoutDelta(mw_ok ? mw : nullptr);
+    if (mw_ok) ++taken;
     return taken;
 }
 

@@ -89,7 +89,9 @@ PREV = ["prev_valence", "prev_arousal", "emo_age", "since_sound", "since_gesture
         "idea_play", "idea_show", "idea_still", "idea_social", "idea_surprise",
         # the sense of "I did that" (contingency_v4.cpp, docs/CONTINGENCY.md step 3; 2026-10-27): the world answers me,
         # an answer just came, ignored by someone around, which kind of act works now
-        "agency", "answered", "ignored", "works_call", "works_gesture", "works_face"]
+        "agency", "answered", "ignored", "works_call", "works_gesture", "works_face",
+        # episodic anticipation (memory_v4.cpp, docs/EPISODES.md step 2; 2026-11-26): a good remembered moment is due soon
+        "expectation"]
 NN_IN = SNN_OUT + PREV
 SOUND_STYLES = ["calm", "ask", "play", "grumble"]
 LED_COLORS = ["white", "yellow", "orange", "red", "pink", "violet", "blue", "cyan"]

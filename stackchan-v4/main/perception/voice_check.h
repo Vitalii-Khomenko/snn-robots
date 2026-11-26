@@ -19,6 +19,9 @@ public:
     VoiceCheck();
     void feed(const int16_t* mono, size_t n);
     float voice() const { return voice_out_.load(std::memory_order_relaxed); }
+    // Human voice prosody over voiced frames (0..1: pitch 80..360 Hz, loudness 6..30 dB above room floor).
+    float voicePitch01() const { return pitch_out_.load(std::memory_order_relaxed); }
+    float voiceEnergy01() const { return energy_out_.load(std::memory_order_relaxed); }
     // the last frame (for the twin's parity test)
     float periodicity() const { return last_periodicity_; }
     float levelDb() const { return last_level_; }
@@ -38,5 +41,6 @@ private:
     int phase_ = 0;
     bool floor_set_ = false;
     float floor_ = 0, voice_ = 0, last_periodicity_ = 0, last_level_ = -120;
-    std::atomic<float> voice_out_{0.0f};
+    float pitch01_ = 0.5f, energy01_ = 0.5f;
+    std::atomic<float> voice_out_{0.0f}, pitch_out_{0.5f}, energy_out_{0.5f};
 };

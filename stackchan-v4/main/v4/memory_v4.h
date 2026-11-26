@@ -33,6 +33,9 @@ public:
     void clock(float hour);
     // By day: the moment to remember now (its index), or -1. Nothing at night or without a clock.
     int candidate(uint32_t nowMs, bool clockOk, float hour, bool lit, bool around) const;
+    // Anticipation (EPISODES step 2): how strongly a good remembered moment is expected soon (0..30 min ahead,
+    // matching room lighting); writes its yaw direction into bestYawDeg. Returns 0..1.
+    float expectation(bool clockOk, float hour, bool lit, float& bestYawDeg) const;
     // the executor remembered it (it may not: a gesture, a reaction, something new in view come first)
     void recalled(int index, uint32_t nowMs);
     const Episode& episode(int index) const { return ep_[index]; }

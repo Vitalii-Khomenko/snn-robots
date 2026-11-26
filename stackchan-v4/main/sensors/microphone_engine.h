@@ -45,6 +45,8 @@ public:
     uint32_t stackHeadroom() const { return task_ ? uxTaskGetStackHighWaterMark(task_) : 0; }
     // Is it a voice (perception/voice_check.h): ~250 ms share of voiced 25 ms frames, 0..1.
     float voice() const { return voice_check_.voice(); }
+    float voicePitch01() const { return voice_check_.voicePitch01(); }
+    float voiceEnergy01() const { return voice_check_.voiceEnergy01(); }
     // The filter-bank frames the Auditory NN reads (perception/audio_frontend.h).
     const AudioFrontEnd& audioFront() const { return front_; }
 

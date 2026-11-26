@@ -206,7 +206,7 @@ class Teacher:
         self.deed = {"said": False, "gesture": False, "emotion": EMOTIONS.index("normal")}
 
     # ---- what the network sees of the past (PREV), from the executed state
-    def prev_inputs(self, muse, ct=None):
+    def prev_inputs(self, muse, ct=None, expect=0.0):
         v, a = EMO[self.emo][0], EMO[self.emo][1]
         x = np.zeros(len(PREV), np.float32)
         x[P["prev_valence"]], x[P["prev_arousal"]] = v, a
@@ -219,6 +219,7 @@ class Teacher:
         x[P["pace_fast"]:P["pace_fast"] + 8] = muse  # pace_* and idea_* (muse.py OUTS order)
         if ct is not None:
             x[P["agency"]:P["agency"] + 6] = ct  # contingency_v4 outputs (spec_v4.CONTINGENCY order)
+        x[P["expectation"]] = float(np.clip(expect, 0.0, 1.0))
         return x
 
     def idea_step(self, s, ideas, night, urgent):
@@ -295,7 +296,7 @@ class Teacher:
             return pick(["sad", "confused", "annoyed"], ps), False
         return pick(["normal", "normal", "thinking", "curious", "cool", "normal"], ps), False
 
-    def step(self, s, muse, ct=None, executed=None):
+    def step(self, s, muse, ct=None, executed=None, expect=0.0):
         """s: the SNN's 32 numbers, muse: the Muse's 8 outputs (3 pacemakers, 5 ideas), ct: the contingency detector's 6
         (agency, answered, ignored, works_call / gesture / face; None = nothing). -> target NN_OUT vector.
         `executed`: what the robot really did this tick (the network's decision during DAgger) - updates the memory
@@ -365,6 +366,9 @@ class Teacher:
             want = pick(["sad", "bored", "sad"], pace[1])  # the still face: withdrawn, never angry (Tronick 1978)
         elif bid and want not in ("sleepy",):
             want = pick(["curious", "confused", "curious", "happy"], pace[1])  # bids: asking, inviting
+        elif not urgent and not night and not joy and not withdraw and expect > 0.35 and want in ("normal", "bored", "thinking"):
+            # Episodic anticipation (EPISODES step 2): a good remembered moment is expected soon -> expectant curiosity
+            want = pick(["curious", "happy", "curious", "wink"], pace[1])
         if do_repeat == "face":
             # the same act a little different (Piaget's tertiary circular reaction): another face of the joyful kind
             others = [f for f in JOY_FACES + ["love", "surprised"] if f != self.emo]

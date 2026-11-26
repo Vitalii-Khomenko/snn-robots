@@ -9,6 +9,12 @@ void MuseV4::setBias(const float* bias)
         bias_[k] = bias ? std::clamp(bias[k], -muse_data::kBiasMax, muse_data::kBiasMax) : 0.0f;
 }
 
+void MuseV4::setReadoutDelta(const float* woutDelta)
+{
+    for (int i = 0; i < kWoutDeltaSize; ++i)
+        wout_delta_[i] = woutDelta ? std::clamp(woutDelta[i], -kWoutDeltaMax, kWoutDeltaMax) : 0.0f;
+}
+
 void MuseV4::step(const float* snn, const float* noise, Out& out)
 {
     using namespace muse_data;
@@ -21,14 +27,22 @@ void MuseV4::step(const float* snn, const float* noise, Out& out)
         for (int j = 0; j < kN; ++j) s += w[j] * x_[j];
         const float* wi = kWin + i * kDrives;
         for (int d = 0; d < kDrives; ++d) s += wi[d] * u[d];
-        pre[i] = s;
+        // Habituation feedback into the reservoir (CREATIVITY §2): pushes state away from repeated idea subspaces.
+        float fb = 0.0f;
+        for (int k = 0; k < kIdeas; ++k) fb += kWout[(3 + k) * kN + i] * hab_[k];
+        pre[i] = s - kHabFeedback * fb;
     }
     for (int i = 0; i < kN; ++i)
         x_[i] = std::clamp((1.0f - kLeak[i]) * x_[i] + kLeak[i] * std::tanh(pre[i]) + kNoise[i] * noise[i], -3.0f, 3.0f);
     for (int k = 0; k < kOuts; ++k) {
         float s = kBout[k] + bias_[k];
         const float* w = kWout + k * kN;
-        for (int j = 0; j < kN; ++j) s += w[j] * x_[j];
+        if (k >= 3) {
+            const float* dw = wout_delta_.data() + (k - 3) * kN;
+            for (int j = 0; j < kN; ++j) s += (w[j] + dw[j]) * x_[j];
+        } else {
+            for (int j = 0; j < kN; ++j) s += w[j] * x_[j];
+        }
         const float* wu = kWu + k * kDrives;
         for (int d = 0; d < kDrives; ++d) s += wu[d] * u[d];
         float y = std::tanh(s);

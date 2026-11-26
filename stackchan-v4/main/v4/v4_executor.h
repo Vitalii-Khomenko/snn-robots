@@ -25,6 +25,9 @@ public:
     // Every brain tick (20 Hz) with the latest decision; `decided` when the main network ran this tick.
     // `night`: the owner's sleep window, or the clock not synced yet (it might be night: quiet until it is known). Fills `done` with what really happened (BrainV4::Executed).
     void apply(const BrainV4& brain, bool decided, bool night, uint32_t nowMs, BrainV4::Executed& done);
+    // Proto-dialogue & anticipation context (CONTINGENCY step 5 + EPISODES step 2 + CARE prosody).
+    void setDialogueContext(bool humanSpeaking, float voicePitch01, float voiceEnergy01, float expect01,
+                            float expectYawDeg, uint32_t nowMs);
 
     uint32_t calls() const { return calls_; }
     uint32_t gestures() const { return gestures_; }
@@ -143,6 +146,13 @@ private:
     float prev_touch_ = 0.0f;
     float prev_answered_ = 0.0f;
     uint32_t turn_until_ms_ = 0;  // an answer's turn is open until (kTurnMs)
+    // proto-dialogue turn-taking & prosody (CONTINGENCY step 5 + Panksepp CARE/PLAY)
+    bool human_speaking_ = false, dialogue_reply_armed_ = false;
+    uint32_t human_speech_start_ms_ = 0, human_speech_last_ms_ = 0;
+    uint32_t dialogue_reply_until_ms_ = 0, dialogue_wait_until_ms_ = 0;
+    float voice_pitch_ = 0.5f, voice_energy_ = 0.5f;
+    // episodic expectation (EPISODES step 2): biases idle glances toward where good moments usually happen
+    float expect_ = 0.0f, expect_yaw_ = 0.0f;
     // head
     Gesture gesture_ = Gesture::None;
     uint32_t gesture_start_ms_ = 0, gesture_wait_ms_ = 0, last_gesture_ms_ = 0, last_command_ms_ = 0, gestures_ = 0,

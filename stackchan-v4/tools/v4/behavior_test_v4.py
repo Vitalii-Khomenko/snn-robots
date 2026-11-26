@@ -29,15 +29,15 @@ MEMORY_ROWS = [[14 * 60 + 3, 1, 0.9, 45, 1, 1, 0, 261027], [14 * 60 + 25, -1, 0.
 
 def memory_blob():
     import learned as LR
-    heads = shift = mbias = nn = None
+    heads = shift = mbias = mwout = nn = None
     if LEARNED:
         _, arrays = LR.unpack(open(LEARNED, "rb").read())
         if "nn.act1_w" in arrays:
             heads, nn = {k: arrays["nn." + k] for k in LR.HEADS}, LR.id_of(arrays)
-        shift, mbias = arrays.get("zones.shift"), arrays.get("muse.bias")
+        shift, mbias, mwout = arrays.get("zones.shift"), arrays.get("muse.bias"), arrays.get("muse.wout")
     path = os.path.join(ROOT, "simulator", "out", "memory_test" + ("_learned" if LEARNED else "") + ".bin")
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    open(path, "wb").write(LR.pack(1, heads, shift, mbias, nn=nn, episodes=MEMORY_ROWS))
+    open(path, "wb").write(LR.pack(1, heads, shift, mbias, nn=nn, episodes=MEMORY_ROWS, muse_wout=mwout))
     return path
 
 

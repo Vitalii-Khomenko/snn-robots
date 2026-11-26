@@ -23,6 +23,11 @@
 #include "known_devices.h"
 #include "wifi_credentials.h"
 
+#ifndef WIFI_FALLBACK_SSID
+#define WIFI_FALLBACK_SSID ""
+#define WIFI_FALLBACK_PASSWORD ""
+#endif
+
 namespace {
 constexpr const char* kTag = "wifi";
 
@@ -198,6 +203,19 @@ void WifiEngine::writeRtc(time_t utc)
         ESP_LOGW(kTag, "clock: could not set the RTC");
 }
 
+void WifiEngine::applyNetwork(int index)
+{
+    const bool use_fallback = (index == 1 && WIFI_FALLBACK_SSID[0] != '\0');
+    const char* ssid = use_fallback ? WIFI_FALLBACK_SSID : kWifiSsid;
+    const char* pass = use_fallback ? WIFI_FALLBACK_PASSWORD : kWifiPassword;
+    active_net_ = use_fallback ? 1 : 0;
+    wifi_config_t wifi_config{};
+    std::snprintf(reinterpret_cast<char*>(wifi_config.sta.ssid), sizeof(wifi_config.sta.ssid), "%s", ssid);
+    std::snprintf(reinterpret_cast<char*>(wifi_config.sta.password), sizeof(wifi_config.sta.password), "%s", pass);
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+}
+
 bool WifiEngine::begin()
 {
     setenv("TZ", kTimezone, 1);
@@ -253,16 +271,8 @@ bool WifiEngine::begin()
     esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifiEventHandler, this, nullptr);
     esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifiEventHandler, this, nullptr);
 
-    wifi_config_t wifi_config{};
-    std::snprintf(reinterpret_cast<char*>(wifi_config.sta.ssid), sizeof(wifi_config.sta.ssid), "%s", kWifiSsid);
-    std::snprintf(reinterpret_cast<char*>(wifi_config.sta.password), sizeof(wifi_config.sta.password), "%s",
-                  kWifiPassword);
-    // WPA2-minimum, not WPA3-only or open - matches an ordinary home router
-    // rather than assuming a specific security mode.
-    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-
     esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    applyNetwork(0);
     err = esp_wifi_start();
     // No modem power save. Added while hunting the 2026-09-27 head freeze;
     // the real cause turned out to be the servos' PWM mode (see
@@ -326,6 +336,10 @@ void WifiEngine::taskLoop()
             ms_since_retry_ += kStatusPollMs;
             if (ms_since_retry_ >= kSlowRetryMs) {
                 ms_since_retry_ = 0;
+                if (WIFI_FALLBACK_SSID[0] != '\0') {
+                    applyNetwork(1 - active_net_);
+                    ESP_LOGI(kTag, "switching to %s Wi-Fi network", active_net_ ? "fallback" : "primary");
+                }
                 esp_wifi_connect();
             }
         }

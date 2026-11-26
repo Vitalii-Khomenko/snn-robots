@@ -77,7 +77,7 @@ void CameraEngine::taskLoop()
         camera_fb_t* fb = esp_camera_fb_get();
         if (fb) {
             const int64_t t0 = esp_timer_get_time();
-            if (front_.process(fb->buf, fb->width, fb->height, frame_)) {
+            if (front_.process(fb->buf, fb->width, fb->height, frame_, head_yaw_deg_.load(std::memory_order_relaxed))) {
                 VisionFrame result;
                 result.blind = frame_.blind();
                 result.motionFrac = frame_.motionFrac;
@@ -86,6 +86,9 @@ void CameraEngine::taskLoop()
                 result.lightX = frame_.lightX;
                 result.lightY = frame_.lightY;
                 result.lightStrength = frame_.lightStrength;
+                result.presenceFrac = frame_.presenceFrac;
+                result.presenceX = frame_.presenceX;
+                result.presenceY = frame_.presenceY;
                 front_us_.store(static_cast<uint32_t>(esp_timer_get_time() - t0));
                 portENTER_CRITICAL(&lock_);
                 published_ = result;

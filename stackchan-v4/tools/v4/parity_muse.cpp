@@ -17,6 +17,13 @@ int main(int argc, char** argv)
         std::fclose(bf);
         m.setBias(b);
     }
+    if (argc > 4) {
+        float dw[MuseV4::kWoutDeltaSize];
+        FILE* wf = std::fopen(argv[4], "rb");
+        if (!wf || std::fread(dw, sizeof(float), MuseV4::kWoutDeltaSize, wf) != MuseV4::kWoutDeltaSize) return 1;
+        std::fclose(wf);
+        m.setReadoutDelta(dw);
+    }
     float row[v4::SO_COUNT + MuseV4::kN];
     MuseV4::Out out;
     while (std::fread(row, sizeof(float), v4::SO_COUNT + MuseV4::kN, f) == v4::SO_COUNT + MuseV4::kN) {

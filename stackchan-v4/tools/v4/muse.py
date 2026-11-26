@@ -49,6 +49,8 @@ PACE_GROUP = {"pace_fast": 1, "pace_slow": 2, "pace_jitter": 0}
 RHO = 1.1          # spectral radius of the recurrent weights: a little past the edge of chaos
 TAU_HAB = 90.0     # s: how fast the Muse gets bored of an idea it keeps having
 HAB_CUT = 0.7
+HAB_FEEDBACK = 0.12  # pushes reservoir state away from repeated idea subspaces (MuseV4::kHabFeedback)
+WOUT_DELTA_MAX = 0.25  # max night-learned readout delta per weight (MuseV4::kWoutDeltaMax)
 IDEA_ON = 0.5      # an idea counts as had above this (teacher_nn.py, sleep_v4.py)
 IDEA_SHARE = 0.10  # calibrated: each idea above IDEA_ON ~10 % of the day before habituation and learning
 PACE_STD = 0.6     # the old pacemakers' spread (tanh(0.9 N(0, 1)))
@@ -90,18 +92,26 @@ def make(seed=20261026):
 class Muse:
     """B Muses at once (numpy, float32). step(snn [B, 32], noise [B, N]) -> [B, 8]."""
 
-    def __init__(self, p, B=1, bias=None):
+    def __init__(self, p, B=1, bias=None, wout_delta=None):
         self.p = p
         self.x = np.zeros((B, N), np.float32)
         self.h = np.zeros((B, len(IDEAS)), np.float32)
         self.bias = np.zeros(len(OUTS), np.float32) if bias is None else np.asarray(bias, np.float32)
+        if wout_delta is None:
+            self.wout_delta = np.zeros((len(IDEAS), N), np.float32)
+        else:
+            self.wout_delta = np.clip(np.asarray(wout_delta, np.float32).reshape(len(IDEAS), N),
+                                      -WOUT_DELTA_MAX, WOUT_DELTA_MAX)
 
     def raw(self, snn, noise):
         p = self.p
         u = (np.asarray(snn, np.float32)[:, DRIVE_IDX] - np.float32(0.5)).astype(np.float32)
-        pre = self.x @ p["W"].T + u @ p["Win"].T + p["b"]
+        fb = (self.h @ p["Wout"][3:]).astype(np.float32)
+        pre = self.x @ p["W"].T + u @ p["Win"].T + p["b"] - np.float32(HAB_FEEDBACK) * fb
         self.x = np.clip((1 - A) * self.x + A * np.tanh(pre) + NOISE * noise, -3.0, 3.0).astype(np.float32)
-        return np.tanh(self.x @ p["Wout"].T + u @ p["Wu"].T + p["bout"] + self.bias).astype(np.float32)
+        Wout = p["Wout"].copy()
+        Wout[3:] = Wout[3:] + self.wout_delta
+        return np.tanh(self.x @ Wout.T + u @ p["Wu"].T + p["bout"] + self.bias).astype(np.float32)
 
     def step(self, snn, noise):
         y = self.raw(snn, noise)
@@ -112,8 +122,8 @@ class Muse:
         return y
 
 
-def load(bias=None, B=1):
-    return Muse({k: v for k, v in np.load(DATA).items()}, B, bias)
+def load(bias=None, B=1, wout_delta=None):
+    return Muse({k: v for k, v in np.load(DATA).items()}, B, bias, wout_delta)
 
 
 def run(S, rng, bias=None):

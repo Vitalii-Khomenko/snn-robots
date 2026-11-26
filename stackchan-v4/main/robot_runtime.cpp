@@ -297,64 +297,71 @@ void RobotRuntime::superviseServos(uint32_t now)
 
 void RobotRuntime::logStats(uint32_t now)
 {
-    const uint32_t servo_sent = motion_.takePacketCount();
-    uint32_t imu_reads = 0, imu_fails = 0;
-    float gyro_max = 0.0f;
-    imu_.takeHealth(imu_reads, imu_fails, gyro_max);
-    const uint64_t now_us = static_cast<uint64_t>(esp_timer_get_time());
-    const uint32_t window_us = static_cast<uint32_t>(now_us - diagnostics_window_start_us_);
-    // The voice streams from its own task, so all of the main loop's busy time is work.
-    const unsigned busy = window_us ? static_cast<unsigned>(diagnostics_busy_us_ * 1000ULL / window_us) : 0;
-    float head_yaw = 0.0f, head_pitch = 0.0f;
-    motion_.getCurrentDeg(head_yaw, head_pitch);
-    auto pct = [](float x) { return static_cast<unsigned>(std::clamp(x, 0.0f, 1.0f) * 100.0f + 0.5f); };
-    uint32_t face_frames = 0, face_max_us = 0;
-    face_.takeDrawStats(face_frames, face_max_us);
-    const unsigned voice_permille = window_us ? static_cast<unsigned>(vocal_.takeRenderUs() * 1000ULL / window_us) : 0;
-    // the machine: CPU, memory, timing, servos, sensors, links
-    ESP_LOGI(kTag,
-             "stats: busy=%u.%u%% internal_free=%uB internal_min=%uB psram_free=%uB stack_headroom=%uB mic_stack=%uB wifi=%s time=%s "
-             "owner=%s tick_us=%u tick_max_us=%u missed_ticks=%u tick_ms=%u audio_us=%u mic_block_us=%u cam_fps=%.1f "
-             "cam_us=%u audio_nan=%u sleep_pressure=%.2f load=%.2f budget=%.2f travel=%udeg battery=%u%% head=%d,%d servo_packets=%u cmd_travel=%.0fdeg "
-             "real_rotation=%.0fdeg imu=%u/%u gyro_max=%.0f gyro_restarts=%u servo_repowers=%u servo_jerks=%u face_fps=%u "
-             "face_frame_max_us=%u mic_peak=%d/%d/%d voice=%s voice_gaps=%u voice_load=%u.%u%% touch_storms=%u diary=%u/%u",
-             busy / 10, busy % 10, static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
-             static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
-             static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)),
-             // ESP-IDF counts stacks in bytes (until 2026-10-27 this was multiplied by 4: 17360 of an 8192 B stack)
-             static_cast<unsigned>(uxTaskGetStackHighWaterMark(NULL)), static_cast<unsigned>(mic_.stackHeadroom()),
-             wifi_.isConnected() ? "up" : "down",
-             wifi_.timeSource(), wifi_.knownDeviceNearby() ? "near" : "away",
-             static_cast<unsigned>(loop_.tickLastUs()), static_cast<unsigned>(loop_.takeTickMaxUs()),
-             static_cast<unsigned>(loop_.missedTicks()), static_cast<unsigned>(loop_.tickPeriodMs()),
-             static_cast<unsigned>(loop_.audioUs()), static_cast<unsigned>(mic_.audioFront().blockUs()),
-             static_cast<double>(camera_.takeFrameCount() * 1e6f / static_cast<float>(window_us)),
-             static_cast<unsigned>(camera_.frontUs()), static_cast<unsigned>(loop_.auditory().nanCount()),
-             static_cast<double>(loop_.body().pressure()), static_cast<double>(loop_.body().load()),
-             static_cast<double>(loop_.body().budget()),
-             static_cast<unsigned>(motion_.travelledDeg()),
-             pct(power_status_.batteryLevel01()), static_cast<int>(head_yaw), static_cast<int>(head_pitch),
-             static_cast<unsigned>(servo_sent), motion_.travelledDeg() - last_travel_deg_, imu_.takeRotationDeg(),
-             static_cast<unsigned>(imu_reads), static_cast<unsigned>(imu_fails), static_cast<double>(gyro_max),
-             static_cast<unsigned>(imu_.gyroRestarts()), static_cast<unsigned>(servos_.repowers()),
-             static_cast<unsigned>(servos_.jerks()),
-             static_cast<unsigned>(face_frames / 5), static_cast<unsigned>(face_max_us), mic_.takePhasePeak(0),
-             mic_.takePhasePeak(1), mic_.takePhasePeak(2), vocal_.trained() ? "babble" : "silent",
-             static_cast<unsigned>(vocal_.gaps()), voice_permille / 10, voice_permille % 10,
-             static_cast<unsigned>(loop_.stormDropped()), static_cast<unsigned>(life_.sent()),
-             static_cast<unsigned>(life_.dropped()));
-    {
-        // the brain: the 13 channels now, the raw light / proximity readings, the analyzer's mood, what was done
+    // Staggered across 4 loop passes (1 ESP_LOGI line per pass): emitting all 4 lines (~1.2 KB) in a single pass
+    // blocked UART0 for ~50 ms every 5 s and caused ~12 missed_ticks/min.
+    if (stats_step_ == 0) {
+        const uint32_t servo_sent = motion_.takePacketCount();
+        uint32_t imu_reads = 0, imu_fails = 0;
+        float gyro_max = 0.0f;
+        imu_.takeHealth(imu_reads, imu_fails, gyro_max);
+        const uint64_t now_us = static_cast<uint64_t>(esp_timer_get_time());
+        const uint32_t window_us = static_cast<uint32_t>(now_us - diagnostics_window_start_us_);
+        const unsigned busy = window_us ? static_cast<unsigned>(diagnostics_busy_us_ * 1000ULL / window_us) : 0;
+        float head_yaw = 0.0f, head_pitch = 0.0f;
+        motion_.getCurrentDeg(head_yaw, head_pitch);
+        auto pct = [](float x) { return static_cast<unsigned>(std::clamp(x, 0.0f, 1.0f) * 100.0f + 0.5f); };
+        uint32_t face_frames = 0, face_max_us = 0;
+        face_.takeDrawStats(face_frames, face_max_us);
+        const unsigned voice_permille = window_us ? static_cast<unsigned>(vocal_.takeRenderUs() * 1000ULL / window_us) : 0;
+        ESP_LOGI(kTag,
+                 "stats: busy=%u.%u%% internal_free=%uB internal_min=%uB psram_free=%uB stack_headroom=%uB mic_stack=%uB wifi=%s time=%s "
+                 "owner=%s tick_us=%u tick_max_us=%u missed_ticks=%u tick_ms=%u audio_us=%u mic_block_us=%u cam_fps=%.1f "
+                 "cam_us=%u audio_nan=%u sleep_pressure=%.2f load=%.2f budget=%.2f travel=%udeg battery=%u%% head=%d,%d servo_packets=%u cmd_travel=%.0fdeg "
+                 "real_rotation=%.0fdeg imu=%u/%u gyro_max=%.0f gyro_restarts=%u servo_repowers=%u servo_jerks=%u face_fps=%u "
+                 "face_frame_max_us=%u mic_peak=%d/%d/%d voice=%s voice_gaps=%u voice_load=%u.%u%% touch_storms=%u diary=%u/%u",
+                 busy / 10, busy % 10, static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                 static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                 static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)),
+                 static_cast<unsigned>(uxTaskGetStackHighWaterMark(NULL)), static_cast<unsigned>(mic_.stackHeadroom()),
+                 wifi_.isConnected() ? "up" : "down",
+                 wifi_.timeSource(), wifi_.knownDeviceNearby() ? "near" : "away",
+                 static_cast<unsigned>(loop_.tickLastUs()), static_cast<unsigned>(loop_.takeTickMaxUs()),
+                 static_cast<unsigned>(loop_.missedTicks()), static_cast<unsigned>(loop_.tickPeriodMs()),
+                 static_cast<unsigned>(loop_.audioUs()), static_cast<unsigned>(mic_.audioFront().blockUs()),
+                 static_cast<double>(camera_.takeFrameCount() * 1e6f / static_cast<float>(window_us)),
+                 static_cast<unsigned>(camera_.frontUs()), static_cast<unsigned>(loop_.auditory().nanCount()),
+                 static_cast<double>(loop_.body().pressure()), static_cast<double>(loop_.body().load()),
+                 static_cast<double>(loop_.body().budget()),
+                 static_cast<unsigned>(motion_.travelledDeg()),
+                 pct(power_status_.batteryLevel01()), static_cast<int>(head_yaw), static_cast<int>(head_pitch),
+                 static_cast<unsigned>(servo_sent), motion_.travelledDeg() - last_travel_deg_, imu_.takeRotationDeg(),
+                 static_cast<unsigned>(imu_reads), static_cast<unsigned>(imu_fails), static_cast<double>(gyro_max),
+                 static_cast<unsigned>(imu_.gyroRestarts()), static_cast<unsigned>(servos_.repowers()),
+                 static_cast<unsigned>(servos_.jerks()),
+                 static_cast<unsigned>(face_frames / 5), static_cast<unsigned>(face_max_us), mic_.takePhasePeak(0),
+                 mic_.takePhasePeak(1), mic_.takePhasePeak(2), vocal_.trained() ? "babble" : "silent",
+                 static_cast<unsigned>(vocal_.gaps()), voice_permille / 10, voice_permille % 10,
+                 static_cast<unsigned>(loop_.stormDropped()), static_cast<unsigned>(life_.sent()),
+                 static_cast<unsigned>(life_.dropped()));
+        last_travel_deg_ = motion_.travelledDeg();
+        diagnostics_window_start_us_ = now_us;
+        diagnostics_busy_us_ = 0;
+        next_diagnostics_ms_ = now + 5000;
+        stats_step_ = 1;
+        return;
+    }
+    if (stats_step_ == 1) {
         const auto& c = loop_.channels();
         auto& b = loop_.brain();
         const auto& so = b.snn();
         const auto& ex = loop_.executor();
-        ESP_LOGI(kTag, "v4: als=%u ir=%u ps=%u/%02x near=%.0f ch=%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f "
+        ESP_LOGI(kTag, "v4: als=%u ir=%u ps=%u/%02x near=%.0f vis=%.2f ch=%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f "
                  "snn=%s/%uus/rate%.3f val=%.2f aro=%.2f under=%.2f over=%.2f threat=%.2f nn=%s/%uus/faults%u drives=%d "
-                 "night=%d face=%s calls=%u nods=%u shakes=%u gestures=%u learned=%u%s",
+                 "night=%d face=%s calls=%u nods=%u shakes=%u gestures=%u pred=%.3f/%+.2f exp=%.2f learned=%u%s",
                  static_cast<unsigned>(presence_.alsRaw()), static_cast<unsigned>(presence_.alsIrRaw()),
                  static_cast<unsigned>(presence_.lastRaw()), static_cast<unsigned>(presence_.psHigh()),
-                 static_cast<double>(presence_.nearOverBaseline()), c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8],
+                 static_cast<double>(presence_.nearOverBaseline()), static_cast<double>(loop_.staticPresence()),
+                 c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8],
                  c[9], c[10], c[11], c[12], b.analyzer().trained() ? "on" : "untrained",
                  static_cast<unsigned>(b.analyzer().lastUs()), static_cast<double>(b.analyzer().mixRate()),
                  so[v4::SO_VALENCE], so[v4::SO_AROUSAL], so[v4::SO_UNDER], so[v4::SO_OVER], so[v4::SO_THREAT],
@@ -362,11 +369,13 @@ void RobotRuntime::logStats(uint32_t now)
                  static_cast<unsigned>(b.nnFaults()), loop_.driving() ? 1 : 0,
                  loop_.night() ? 1 : 0, emotionName(static_cast<Emotion>(ex.shownEmotion())),
                  static_cast<unsigned>(ex.calls()), static_cast<unsigned>(ex.nods()), static_cast<unsigned>(ex.shakes()),
-                 static_cast<unsigned>(ex.gestures()), static_cast<unsigned>(learned_.version()),
-                 learned_.onTrial() ? "(trial)" : "");
+                 static_cast<unsigned>(ex.gestures()), static_cast<double>(loop_.predictor().error()),
+                 static_cast<double>(loop_.predictor().learningProgress()), static_cast<double>(b.expectation()),
+                 static_cast<unsigned>(learned_.version()), learned_.onTrial() ? "(trial)" : "");
+        stats_step_ = 2;
+        return;
     }
-    {
-        // where the main loop's time went in this window: mean / worst pass per stage, us
+    if (stats_step_ == 2) {
         const uint32_t n = std::max<uint32_t>(1, stage_passes_);
         char buf[200];
         int len = 0;
@@ -379,10 +388,10 @@ void RobotRuntime::logStats(uint32_t now)
         ESP_LOGI(kTag, "loop_us (servos face leds+pad imu+mic sensors brain diary supervise, mean/max): %s", buf);
         for (int i = 0; i < kStages; ++i) stage_sum_us_[i] = stage_max_us_[i] = 0;
         stage_passes_ = 0;
+        stats_step_ = 3;
+        return;
     }
     {
-        // the rails of the black-screen power-offs (2026-10-22/23): lowest VBUS / VSYS over the last stats window
-        // and the servo rail of the power-gated moves: switch-ons in the window, ms on
         const auto r = power_status_.takeRails();
         uint32_t rail_ons = 0, rail_ms = 0;
         motion_.takeRailStats(rail_ons, rail_ms);
@@ -390,10 +399,7 @@ void RobotRuntime::logStats(uint32_t now)
                  r.vbus_min, r.vsys_min, r.vbat, static_cast<double>(r.die_c), r.status, static_cast<unsigned>(rail_ons),
                  static_cast<unsigned>(rail_ms));
     }
-    last_travel_deg_ = motion_.travelledDeg();
-    diagnostics_window_start_us_ = now_us;
-    diagnostics_busy_us_ = 0;
-    next_diagnostics_ms_ = now + 5000;
+    stats_step_ = 0;
 }
 
 // The diary (net/life_log.h): every brain tick in the order of tools/v4/spec_v4.py DIARY.
@@ -530,6 +536,11 @@ struct BodySnapshot {
 void RobotRuntime::keepBody(uint32_t now)
 {
     const time_t unix_now = time(nullptr);
+    struct tm local_tm{};
+    localtime_r(&unix_now, &local_tm);
+    const uint32_t today = static_cast<uint32_t>((local_tm.tm_year + 1900) * 10000 + (local_tm.tm_mon + 1) * 100 +
+                                                 local_tm.tm_mday);
+    const float hour = static_cast<float>(local_tm.tm_hour) + static_cast<float>(local_tm.tm_min) / 60.0f;
     if (!body_restored_) {
         body_restored_ = true;
         body_save_ms_ = now + kBodySaveMs;
@@ -537,9 +548,16 @@ void RobotRuntime::keepBody(uint32_t now)
         size_t size = sizeof(snap);
         nvs_handle_t h;
         bool ok = false;
+        uint32_t awday = 0;
         if (nvs_open("v4", NVS_READONLY, &h) == ESP_OK) {
             ok = nvs_get_blob(h, "body", &snap, &size) == ESP_OK && size == sizeof(snap);
+            nvs_get_u32(h, "awday", &awday);
             nvs_close(h);
+        }
+        if (awday == today && hour >= 6.0f && hour < 9.0f) {
+            loop_.restoreAwake();
+            awake_saved_day_ = today;
+            ESP_LOGI(kTag, "morning: restored awake state after reboot (day %u)", static_cast<unsigned>(today));
         }
         const int64_t off = static_cast<int64_t>(unix_now) - static_cast<int64_t>(snap.unix);
         if (!ok || snap.magic != BodySnapshot{}.magic || !std::isfinite(snap.pressure) || !std::isfinite(snap.budget) ||
@@ -553,6 +571,13 @@ void RobotRuntime::keepBody(uint32_t now)
                  static_cast<unsigned>(off), static_cast<double>(snap.pressure), static_cast<double>(snap.budget),
                  static_cast<double>(loop_.body().pressure()), static_cast<double>(loop_.body().budget()));
         return;
+    }
+    if (loop_.awake() && awake_saved_day_ != today && hour >= 6.0f && hour < 21.75f) {
+        nvs_handle_t h;
+        if (nvs_open("v4", NVS_READWRITE, &h) == ESP_OK) {
+            if (nvs_set_u32(h, "awday", today) == ESP_OK && nvs_commit(h) == ESP_OK) awake_saved_day_ = today;
+            nvs_close(h);
+        }
     }
     if (!msReached(now, body_save_ms_) || !loop_.driving()) return;
     body_save_ms_ = now + kBodySaveMs;
@@ -735,6 +760,9 @@ void RobotRuntime::loop()
         lap();  // 3 IMU + microphone events
         presence_.update();
         if constexpr (kCameraEnabled) {
+            float cy = 0.0f, cp = 0.0f;
+            motion_.getCurrentDeg(cy, cp);
+            camera_.setHeadYaw(cy);
             camera_.update();
         }
         power_status_.update();
@@ -772,7 +800,7 @@ void RobotRuntime::loop()
 
         const uint64_t loop_elapsed_us = static_cast<uint64_t>(esp_timer_get_time()) - loop_start_us;
         diagnostics_busy_us_ += loop_elapsed_us;
-        if (msReached(now, next_diagnostics_ms_)) logStats(now);
+        if (stats_step_ != 0 || msReached(now, next_diagnostics_ms_)) logStats(now);
         // Pace to a steady 50 Hz (20 ms period) instead of sleeping 20 ms after every pass: eliminates the 2.3 % tick
         // drift and missed_ticks caused by work + 20 ms > 35 ms. Resync last_wake after long stalls (panel recovery).
         const TickType_t period = pdMS_TO_TICKS(kMainLoopIntervalMs);

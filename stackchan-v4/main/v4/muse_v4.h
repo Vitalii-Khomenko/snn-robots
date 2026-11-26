@@ -14,15 +14,21 @@ class MuseV4 {
 public:
     using Out = std::array<float, muse_data::kOuts>;
     static constexpr int kN = muse_data::kN;
+    static constexpr int kIdeas = muse_data::kOuts - 3;
+    static constexpr int kWoutDeltaSize = kIdeas * kN;  // 5 x 64 = 320 learned readout deltas ("muse.wout")
+    static constexpr float kHabFeedback = 0.12f;        // pushes reservoir away from repeated idea subspaces
+    static constexpr float kWoutDeltaMax = 0.25f;
 
     // one step at 10 Hz: snn = the analyzer's 32 numbers, noise = kN standard normal values
     void step(const float* snn, const float* noise, Out& out);
-    // what the night learned (8 values, clipped to +-kBiasMax); nullptr = none
+    // what the night learned: bias (8 values, +-kBiasMax) and optional readout delta (5 x 64, +-kWoutDeltaMax)
     void setBias(const float* bias);
+    void setReadoutDelta(const float* woutDelta);
     const std::array<float, muse_data::kOuts>& bias() const { return bias_; }
 
 private:
     std::array<float, kN> x_{};
-    std::array<float, muse_data::kOuts - 3> hab_{};
+    std::array<float, kIdeas> hab_{};
     std::array<float, muse_data::kOuts> bias_{};
+    std::array<float, kWoutDeltaSize> wout_delta_{};
 };
