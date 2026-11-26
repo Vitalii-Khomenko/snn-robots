@@ -113,6 +113,9 @@ void BabbleVoice::taskLoop()
             phrase_active_ = false;
             synth_.clear();
         }
+        if (kind_bias_dirty_.exchange(false, std::memory_order_acquire)) {
+            net_.setKindBias(pending_kind_bias_.data());
+        }
         if (pending_.exchange(false, std::memory_order_acquire)) {
             startPhrase();
             // step() set it already, but the idle branch below may have cleared it in between (it read pending_ just

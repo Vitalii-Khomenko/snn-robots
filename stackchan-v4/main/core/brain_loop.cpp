@@ -78,8 +78,14 @@ void BrainLoop::vision(const CameraEngine::VisionFrame& f, uint32_t now)
         presence_frac_ = f.presenceFrac;
         presence_x_ = f.presenceX;
         presence_y_ = f.presenceY;
+        vis_person_ += (f.person - vis_person_) * 0.35f;
+        vis_face_ += (f.face - vis_face_) * 0.35f;
+        vis_target_x_ = f.targetX;
+        vis_target_y_ = f.targetY;
+        vis_target_conf_ = f.targetConf;
     } else if (f.blind) {
         presence_frac_ = 0.0f;
+        vis_person_ = vis_face_ = vis_target_conf_ = 0.0f;
     }
     frame_this_tick_ = true;
 }
@@ -276,7 +282,8 @@ void BrainLoop::tick(uint32_t now, const Env& env)
     hear(now, sharp_ev);
     updateChannels(now, sharp_ev, env);
     using namespace v4;
-    if (ear_[AUD_SPEECH] > 0.4f || channels_[CH_MOTION] > 0.1f || channels_[CH_NEAR] > 0.3f || presence_frac_ > 0.12f)
+    if (ear_[AUD_SPEECH] > 0.4f || channels_[CH_MOTION] > 0.1f || channels_[CH_NEAR] > 0.3f ||
+        presence_frac_ > 0.12f || vis_person_ > 0.55f || vis_face_ > 0.45f)
         last_somebody_ms_ = now;
 
     if (env.timeSynced) memory_.clock(env.hour);
@@ -306,8 +313,15 @@ void BrainLoop::tick(uint32_t now, const Env& env)
     synced_night_ = env.timeSynced && night_;
     const uint32_t calls = exec_.calls(), gestures = exec_.gestures();
     if (brain_.trained()) {
+        float glance_exp = night_ ? 0.0f : expect01;
+        float glance_yaw = expect_yaw;
+        // When VisionNetV2 clearly sees a still person/face in view, gently bias idle glances toward them
+        if (!night_ && glance_exp < 0.35f && vis_target_conf_ > 0.55f && (vis_face_ > 0.45f || vis_person_ > 0.65f)) {
+            glance_exp = std::max(vis_face_, vis_person_ * 0.8f);
+            glance_yaw = std::clamp(raw_.headYaw + vis_target_x_ * 30.0f, -65.0f, 65.0f);
+        }
         exec_.setDialogueContext(raw_.speech > 0.4f, e_.mic.voicePitch01(), e_.mic.voiceEnergy01(),
-                                 night_ ? 0.0f : expect01, expect_yaw, now);
+                                 glance_exp, glance_yaw, now);
         exec_.apply(brain_, decided, night_, now, done_);
     }
     said_tick_ = exec_.calls() != calls;
@@ -463,6 +477,12 @@ int BrainLoop::useLearned(const learned::View& v)
     for (int k = 0; mw_ok && k < MuseV4::kWoutDeltaSize; ++k) mw_ok = std::isfinite(mw[k]);
     brain_.muse().setReadoutDelta(mw_ok ? mw : nullptr);
     if (mw_ok) ++taken;
+    // learned idiolect: per-kind syllable biases for BabbleNet (sleep_v4.py learn_babble)
+    const float* bp = v.find("babble.pref", BabbleNet::kKinds);
+    bool bp_ok = bp != nullptr;
+    for (int k = 0; bp_ok && k < BabbleNet::kKinds; ++k) bp_ok = std::isfinite(bp[k]);
+    e_.vocal.setKindBias(bp_ok ? bp : nullptr);
+    if (bp_ok) ++taken;
     return taken;
 }
 

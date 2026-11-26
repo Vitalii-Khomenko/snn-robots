@@ -11,7 +11,7 @@ class WifiEngine;
 //
 // Every brain tick (20 Hz) the main loop hands over the tick's values (v4::kDiaryValues, tools/v4/spec_v4.py DIARY:
 // the raw sense readings, the 13 + 2 channels, the analyzer's 32 numbers, the main network's 61 outputs, what the body
-// did); four ticks make one UDP datagram to the PC logger (tools/robot/lifelogd.py). Every ESP_LOG line goes out too,
+// did); three ticks make one UDP datagram to the PC logger (tools/robot/lifelogd.py), leaving headroom up to 235 columns. Every ESP_LOG line goes out too,
 // as text: the events (touches, faces, calls, gestures) and the 5 s stats lines. Nothing is sent from the main loop
 // itself - it only copies into a ring buffer in PSRAM; a low-priority task on core 0 sends it while Wi-Fi is up; what
 // does not fit the ring is dropped (counted).
@@ -26,7 +26,7 @@ class WifiEngine;
 class LifeLog {
 public:
     static constexpr int kValues = v4::kDiaryValues;
-    static constexpr int kTicksPerDatagram = 4;
+    static constexpr int kTicksPerDatagram = 3;
 
     // Starts the sender task and tees ESP_LOG into the diary. false if there is no host
     // configured (secrets/life_log_host.h) or no memory - then everything else is a no-op.

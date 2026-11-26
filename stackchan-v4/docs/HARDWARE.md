@@ -19,7 +19,7 @@ PY32 IO expander that switches servo power, LEDs (12 RGB565 LEDs, written as one
 | Touch | Si12T head pad; LCD touch via LVGL `LV_EVENT_PRESSED` (an atomic flag, handled in the main loop) |
 | Proximity / light | LTR-553 |
 | Power | AXP2101 (battery level, charging direction; "USB present but not charging" cannot be told apart) |
-| Camera | GC0308, QQVGA RGB565, ~7 fps (143 ms per frame), one frame buffer (a one-off `cam_hal: FB-SIZE: 30720 != 38400` warning at start-up is harmless); the task runs the vision front end (~3 ms per frame: brain v4's motion sense and the brightest spot) on core 1 at priority 2, below the microphone |
+| Camera | GC0308, QQVGA RGB565, ~7 fps (143 ms per frame), one frame buffer (a one-off `cam_hal: FB-SIZE: 30720 != 38400` warning at start-up is harmless); the task runs the vision front end plus `VisionNetV2` (23.8 KB int8 CNN, `main/perception/vision_net.*`, ~29–35 ms total per frame: motion sense, brightest spot, 13-bin room background presence, and person/face detection) on core 1 at priority 2, below the microphone |
 
 ## Servos
 
@@ -215,7 +215,9 @@ The gyro serves the servo watchdog (real rotation vs commanded travel).
 ## Microphones and speaker
 
 - The microphone task (core 1, priority 3) runs the 16-band filter bank (~0.27 ms per 5.3 ms block), the loud-sound
-  and onset detectors (millisecond timestamps) and a stereo balance. Loud and onset events are not passed to the
+  and onset detectors (millisecond timestamps) and a stereo balance. On core 0, `AuditoryNetV2` (`main/perception/auditory_net.*`,
+  21 KB int8 2D spectro-temporal ConvNet over a 6×16 mel-time grid + 4 side features, ~2.9–3.0 ms per 50 ms tick) classifies
+  silence, speech, clap, sharp, noise, music, and own-servo sounds. Loud and onset events are not passed to the
   brain while the head moves and 350 ms after (see below).
 - While the speaker plays, the main loop keeps extending the mute window
   (`suppressFor`), and the continuous level reads 0 too (the robot once
@@ -248,9 +250,11 @@ vision front end does not see global brightness drift. The task is paced from th
 (7.0 fps). Brain v4 uses the motion sense - the share of the picture that moves after the head's own turn is
 searched out, and its centre (the "where" values for attention) - the brightest spot (8x8-sample
 blocks over the frame mean, from 60 levels brighter, full at 130: a lamp or a window glares to 255 over a mean of ~118,
-a white sheet reads ~+90..110; `VisionFrontEnd::findLight`), and since 2026-11-26 a 13-yaw-bin (15° spacing) slow-adapting
-room background difference (`presenceFrac`, logged as `vis=` in `v4:`) that detects a still person sitting in view
-without any neural network or cloud calls. A frame taken while the head
+a white sheet reads ~+90..110; `VisionFrontEnd::findLight`), since 2026-11-26 a 13-yaw-bin (15° spacing) slow-adapting
+room background difference (`presenceFrac`), and **`VisionNetV2`** (`main/perception/vision_net.*`, 23.8 KB int8 CNN:
+`3->8->16->24->64->5` over downsampled RGB, ~29–35 ms total frame pass on core 1 at full 7.0 fps) that outputs
+`[person, face, target_x, target_y, target_conf]` (`vis=bg/p.../f...` in `v4:`, logged as `vis_person` and `vis_face` in the
+diary) to detect a still person or face in view without any cloud calls. A frame taken while the head
 itself moves is not used. Dark frames (luminance spread < 3.5 levels) are "blind". No frame leaves the robot.
 
 ## Display
@@ -273,10 +277,12 @@ and skips the frame otherwise, so it never blocks on the display.
   and `CONFIG_LV_BUILD_EXAMPLES` / `DEMOS` are disabled; previously ~35 KB free, dipping to ~8.4 KB over 17.5 days).
   Brain v4's int8 weight tables (236 KB) are copied from flash to PSRAM at boot (flash here is DIO, about half the speed
   of PSRAM). Post-power-on servo initialization (`MotionEngine::stepRailInit`) runs non-blocking at the 50 Hz loop
-  cadence (worst `servos` pass 35.3 ms -> 1.95 ms), and LCD panel recovery runs immediately on a `VSYS < 4.1 V` dip with
-  a 10-minute safety-net refresh (was every 60 s).
+  cadence (worst `servos` pass 35.3 ms -> 1.95 ms) with a 10 ms quiet gap (`init_step_ = 11`) after `EnableTorque` before
+  the first `SyncWritePos` so commands never collide on the half-duplex bus, and LCD panel recovery runs immediately on
+  a `VSYS < 4.1 V` dip with a 10-minute safety-net refresh (was every 60 s).
 - Wi-Fi buffers are trimmed (static RX 4, dynamic RX/TX 12, no A-MPDU):
-  traffic: the diary (~5 datagrams/s + log lines), a ping every 20 min, NTP (hourly; it sets the RTC). Modem power save is off
+  traffic: the diary (~6.7 datagrams/s at 3 ticks/datagram, 178 float16 columns = 1122 B/datagram with headroom up to 235
+  columns inside the 1472 B UDP MTU, plus log lines), a ping every 20 min, NTP (hourly; it sets the RTC). Modem power save is off
   (`WIFI_PS_NONE`), the robot runs on USB.
 - Tasks: main loop (core 0, 8 KB stack, registered with the task watchdog, 20 ms loop, the brain ticks every 50 ms),
   **voice** (core 1, priority 5, 6 KB: renders 20 ms chunks and blocks on the codec), microphone (core 1, priority
@@ -390,7 +396,9 @@ wrapper), `py32_io_expander`, `si12t`. A review fixed:
 ## Known limitations
 
 - No servo feedback (hardware); only the gyro sees real motion.
-- No recognition of people or faces in brain v4: the camera gives only motion (share and place).
+- On-device vision (`VisionNetV2` 23.8 KB int8 CNN on Core 1) detects presence of a person or face and coarse `(x, y)`
+  target at 7 fps, but does not perform person identity recognition (who it is) and does not run while the head is
+  turning or in dark frames.
 - The proximity sensor reads 0-16 of 2047 even with a hand at the face (2026-10-24, LED at 40 kHz x 8 pulses); the
   near channel stays almost empty.
 - No sound direction (two microphones 5 cm apart).

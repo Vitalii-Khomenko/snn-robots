@@ -1,0 +1,58 @@
+ep 01/36   loss 2.0542 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.000
+ep 02/36   loss 1.8271 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.143
+ep 03/36   loss 1.7753 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.632
+ep 04/36   loss 1.7304 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.844
+ep 05/36   loss 1.7040 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.791
+ep 06/36   loss 1.6656 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.860
+ep 07/36   loss 1.6395 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.829
+ep 08/36   loss 1.6058 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.857
+ep 09/36   loss 1.6007 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.844
+ep 10/36   loss 1.5778 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.875
+ep 11/36   loss 1.5609 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.917
+ep 12/36   loss 1.5491 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.929
+ep 13/36   loss 1.5283 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.963
+ep 14/36   loss 1.5305 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.913
+ep 15/36   loss 1.5145 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.917
+ep 16/36   loss 1.5018 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.940
+ep 17/36   loss 1.4906 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.940
+ep 18/36   loss 1.4955 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.937
+ep 19/36   loss 1.4782 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.961
+ep 20/36   loss 1.4724 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.944
+ep 21/36   loss 1.4595 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.937
+ep 22/36   loss 1.4584 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.877
+ep 23/36   loss 1.4515 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.920
+ep 24/36   loss 1.4530 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.920
+ep 25/36   loss 1.4394 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.937
+ep 26/36   loss 1.4425 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.954
+ep 27/36   loss 1.4273 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.963
+ep 28/36   loss 1.4228 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.962
+ep 29/36 Q loss 1.4253 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.945
+ep 30/36 Q loss 1.4276 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.953
+ep 31/36 Q loss 1.4261 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.929
+ep 32/36 Q loss 1.4264 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.953
+ep 33/36 Q loss 1.4183 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.945
+ep 34/36 Q loss 1.4198 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.945
+ep 35/36 Q loss 1.4126 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.954
+ep 36/36 Q loss 1.4114 | room person F1=0.000 face F1=0.000 tx_mae=0.000 | real_rec person F1=0.945
+
+=== FINAL HELD-OUT METRICS (INT8 QAT) ===
+[room_day]
+  person       prec=0.000 rec=0.000 f1=0.000 (pos=0)
+  face         prec=0.000 rec=0.000 f1=0.000 (pos=0)
+  target_conf  prec=0.000 rec=0.000 f1=0.000 (pos=0)
+[real_rec]
+  person       prec=0.912 rec=1.000 f1=0.954 (pos=52)
+  face         prec=0.000 rec=0.000 f1=0.000 (pos=0)
+  target_conf  prec=0.897 rec=1.000 f1=0.945 (pos=52)
+[coco]
+  person       prec=0.531 rec=0.596 f1=0.562 (pos=1028)
+  face         prec=0.273 rec=0.189 f1=0.223 (pos=387)
+  target_conf  prec=0.551 rec=0.648 f1=0.596 (pos=1163)
+  tx_mae       0.291
+  ty_mae       0.244
+[all]
+  person       prec=0.520 rec=0.616 f1=0.564 (pos=1080)
+  face         prec=0.269 rec=0.189 f1=0.222 (pos=387)
+  target_conf  prec=0.528 rec=0.663 f1=0.588 (pos=1215)
+  tx_mae       0.291
+  ty_mae       0.244

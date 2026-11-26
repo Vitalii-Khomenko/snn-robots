@@ -100,6 +100,8 @@ public:
     bool awake() const { return awake_; }
     void restoreAwake() { awake_ = true; morning_ = 0.0f; wake_ms_ = 0; }
     float staticPresence() const { return presence_frac_; }
+    float visPerson() const { return vis_person_; }
+    float visFace() const { return vis_face_; }
     bool driving() const { return brain_.trained(); }  // brain v4 drives the body (false: untrained networks)
     bool saidThisTick() const { return said_tick_; }
     bool decidedThisTick() const { return decided_tick_; }
@@ -159,10 +161,11 @@ private:
     bool morning_logged_ = false;
     float morning_ = 0.0f;       // ChannelEncoder::Raw::morning for the next tick
 
-    // the camera's last frame (~7 fps): motion share and centre + static background-difference presence
+    // the camera's last frame (~7 fps): motion share and centre + static background-difference presence + VisionNetV2
     float motion_[3] = {0, 0, 0};
     float light_spot_[3] = {0, 0, 0};  // the camera's brightest spot: x, y, strength
     float presence_frac_ = 0.0f, presence_x_ = 0.0f, presence_y_ = 0.0f;
+    float vis_person_ = 0.0f, vis_face_ = 0.0f, vis_target_x_ = 0.0f, vis_target_y_ = 0.0f, vis_target_conf_ = 0.0f;
     bool frame_ok_ = false, light_ok_ = false, frame_this_tick_ = false;
     static constexpr float kLightTurnDegS = 12.0f;  // the bright spot is read in turns slower than this
     // touches

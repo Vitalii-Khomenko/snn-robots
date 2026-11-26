@@ -100,7 +100,8 @@ def label(S, rng, policy=None, dev="cpu"):
     exp = _make_expect(N, T, rng)
     seeds = rng.integers(1 << 31, size=N)
     if policy is None:
-        workers = min(12, os.cpu_count() or 1, max(1, N // 32))
+        max_w = int(os.environ.get("STACKCHAN_WORKERS", "12"))
+        workers = min(max_w, os.cpu_count() or 1, max(1, N // 32))
         if workers > 1:
             chunks = np.array_split(np.arange(N), workers)
             jobs = [(S[c], pace[c], exp[c], seeds[c]) for c in chunks]
@@ -159,6 +160,7 @@ def tick_weights(xb):
     touch = torch.maximum(sh, ss)
     touch_hed = torch.where(sh >= ss, hh, hs)
     gentle = (touch > 0.12) & (touch_hed >= 0.4)
+    poked = (xb[..., S_IDX["over"]] > 0.38) | ((touch > 0.12) & (touch_hed < 0.4))
     low_prev = (xb[..., P_IDX["prev_valence"]] < 0.35) | (xb[..., P_IDX["ignored"]] > 0.3)
     answered = (xb[..., P_IDX["answered"]] > 0.35) | ((xb[..., P_IDX["agency"]] > 0.10) & (xb[..., P_IDX["answered"]] > 0.10))
     ignored = xb[..., P_IDX["ignored"]] > 0.35
@@ -169,6 +171,7 @@ def tick_weights(xb):
     w = torch.where(answered, w * 2.5, w)
     w = torch.where(gentle, w * 2.5, w)
     w = torch.where(gentle & low_prev, w * 2.0, w)  # total 5x on gentle touch while sad/ignored
+    w = torch.where(poked, w * 3.0, w)              # ensure sustained pokes/over-stimulation trigger Annoyed/Angry/shake
     return w / (w.mean() + 1e-6)
 
 

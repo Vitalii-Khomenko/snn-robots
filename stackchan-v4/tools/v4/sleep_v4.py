@@ -169,12 +169,16 @@ def load_life(days):
         for b, (nn, fw) in boot_ids(lines).items():
             known = ids.get(b, (None, None))
             ids[b] = (nn if nn is not None else known[0], fw if fw is not None else known[1])
+        vlines_by_boot = {}
+        for _, lb, lms, ltxt in lines:
+            if "v4: voice:" in ltxt:
+                vlines_by_boot.setdefault(int(lb), []).append((int(lms), ltxt))
         r, _ = reward(t)
         for b in np.unique(t["boot"]):
             m = t["boot"] == b
-            v, f, seq = t["v"][m], t["flags"][m], t["seq"][m]
+            v, f, seq, ms_b = t["v"][m], t["flags"][m], t["seq"][m], t["ms"][m]
             o = np.argsort(seq)
-            v, f, seq, rb = v[o], f[o], seq[o], r[m][o]
+            v, f, seq, ms_b, rb = v[o], f[o], seq[o], ms_b[o], r[m][o]
             dec = (f & D.FLAG_DECIDED) > 0
             # every own-state input logged (the Muse's ideas since 2026-10-26 evening: older boots ran another network)
             if dec.sum() < 100 or not np.isfinite(v[dec][:, P0:P0 + len(PREV)]).all():
@@ -183,7 +187,8 @@ def load_life(days):
             idx = np.flatnonzero(dec)
             rd = np.add.reduceat(rb, idx) if len(idx) else np.zeros(0)
             boots.append(dict(day=day, boot=int(b), seq=(int(seq[idx[0]]), int(seq[idx[-1]])), dec_idx=idx,
-                              all_seq=seq.astype(np.int64), dec_seq=seq[idx].astype(np.int64),
+                              all_seq=seq.astype(np.int64), all_ms=ms_b.astype(np.int64), dec_seq=seq[idx].astype(np.int64),
+                              voice_lines=vlines_by_boot.get(int(b), []),
                               nn_id=ids.get(b, (None, None))[0], fw=ids.get(b, (None, None))[1],
                               said=v[:, D.col("said")] > 0.5, gest=v[:, D.col("gesture")] > 0.5,
                               held=v[:, D.col("held")], att=v[:, D.col("snn_att_strength")],
@@ -225,6 +230,7 @@ def base_model():
     m.load_state_dict(torch.load(os.path.join(HERE, "data", "nn_v4.pt"), weights_only=False, map_location="cpu")["state"])
     version, shift, mbias = 0, np.zeros(len(CHANNELS), np.float32), np.zeros(len(MU.OUTS), np.float32)
     mwout = np.zeros((len(MU.IDEAS), MU.N), np.float32)
+    bpref = np.zeros(len(LR.BABBLE_KINDS), np.float32)
     if os.path.exists(LIVE):
         version, arrays = LR.unpack(open(LIVE, "rb").read())
         # the live heads only if they were made for this network (a retrained one starts from its own innate heads)
@@ -240,8 +246,10 @@ def base_model():
             mbias = arrays["muse.bias"].astype(np.float32)
         if "muse.wout" in arrays and arrays["muse.wout"].size == mwout.size:
             mwout = arrays["muse.wout"].astype(np.float32).reshape(mwout.shape)
+        if "babble.pref" in arrays and arrays["babble.pref"].size == bpref.size:
+            bpref = arrays["babble.pref"].astype(np.float32)
     m.eval()
-    return m, version, shift, mbias, mwout
+    return m, version, shift, mbias, mwout, bpref
 
 
 def replay(m, boots):
@@ -343,13 +351,14 @@ def carried_out(b):
     return ok
 
 
-def train_heads(m, F_all, act, adv, ok=None, epochs=40, prio=None):
+def train_heads(m, F_all, act, adv, ok=None, epochs=40, prio=None, anchor_w=None):
     """The action heads towards the choices that turned out better than expected and away from those that turned out
     worse. adv: the centred advantage of each decision (mean ~0, in units of its spread). The target of a decision is
     the heads' own distribution with the odds of the choice made tilted by exp(adv / ETA): a decision of average
     outcome asks for no change at all, and no decision for more than exp(A_CLIP / ETA) in the odds. ok: per group,
     the decisions whose wish the body carried out (carried_out); the others are not tilted. prio: optional prioritized
-    replay weights (EPISODES step 3: vivid moments weigh more). Anchored (KL) to the heads the robot has."""
+    replay weights (EPISODES step 3: vivid moments weigh more). anchor_w: optional per-decision safety anchor multiplier
+    (3x on touch states so innate touch-answering reflexes never drift). Anchored (KL) to the heads the robot has."""
     new = NnV4()
     new.load_state_dict(m.state_dict())
     for p in new.parameters():
@@ -364,6 +373,7 @@ def train_heads(m, F_all, act, adv, ok=None, epochs=40, prio=None):
         done = {g: torch.ones(len(adv)) if ok is None else torch.tensor(ok[g], dtype=torch.float32)
                 for g in list(GROUPS_ACT) + ["say"]}
         w_prio = torch.ones(len(adv), dtype=torch.float32) if prio is None else torch.tensor(prio, dtype=torch.float32)
+        w_anc = torch.ones(len(adv), dtype=torch.float32) if anchor_w is None else torch.tensor(anchor_w, dtype=torch.float32)
         targets = {}
         for g, idx in GROUPS_ACT.items():
             q = F.softmax(old[:, idx], -1) * torch.exp((tilt * done[g])[:, None] * F.one_hot(torch.tensor(act[g]), len(idx)))
@@ -381,21 +391,35 @@ def train_heads(m, F_all, act, adv, ok=None, epochs=40, prio=None):
         for b in np.array_split(rng.permutation(n), max(1, n // 4096)):
             out = heads_out(new, F_all[b])
             wb = w_prio[b]
+            wa = w_anc[b]
             loss = 0.0
             for g, idx in GROUPS_ACT.items():
                 logp = F.log_softmax(out[:, idx], -1)
                 kl_t = F.kl_div(logp, targets[g][b], reduction="none").sum(-1)
-                loss = loss + (kl_t * wb).mean()
-                loss = loss + ANCHOR * F.kl_div(logp, F.softmax(old[b][:, idx], -1), reduction="batchmean")
+                kl_a = F.kl_div(logp, F.softmax(old[b][:, idx], -1), reduction="none").sum(-1)
+                loss = loss + (kl_t * wb).mean() + ANCHOR * (kl_a * wa).mean()
             bce_t = F.binary_cross_entropy_with_logits(out[:, SAY_ACT], say_q[b], reduction="none")
-            loss = loss + (bce_t * wb).mean()
-            loss = loss + ANCHOR * F.binary_cross_entropy_with_logits(out[:, SAY_ACT], p1[b])
+            bce_a = F.binary_cross_entropy_with_logits(out[:, SAY_ACT], p1[b], reduction="none")
+            loss = loss + (bce_t * wb).mean() + ANCHOR * (bce_a * wa).mean()
             loss = loss + ANCHOR * F.mse_loss(out[:, other], old[b][:, other])
             opt.zero_grad()
             loss.backward()
             opt.step()
     new.eval()
     return new
+
+
+def safety_anchor_weights(boots, idx):
+    """Extra KL anchor (3x) on high-salience touch states so nightly learning never degrades innate touch responses."""
+    i_th = SNN_OUT.index("sal_touch_head")
+    i_ts = SNN_OUT.index("sal_touch_screen")
+    i_ta = len(SNN_OUT) + PREV.index("touch_answered")
+    parts = []
+    for i in idx:
+        x = boots[i]["x"][boots[i]["day_mask"]]
+        touch = (x[:, i_th] > 0.10) | (x[:, i_ts] > 0.10) | (x[:, i_ta] < 0.5)
+        parts.append(np.where(touch, 3.0, 1.0).astype(np.float32))
+    return np.concatenate(parts) if parts else np.ones(0, np.float32)
 
 
 def priority_weights(boots, idx):
@@ -678,6 +702,58 @@ def learn_muse(boots, bias, wout, lines):
     return new.astype(np.float32), new_w.astype(np.float32)
 
 
+def learn_babble(boots, bpref, lines):
+    """Adaptive idiolect: nudges BabbleNet's 10 syllable-kind logits (W/C/P/B/T/V/G/S/R/O) toward kinds that are
+    followed by higher human response reward in the 15 s after each phrase (parsed directly from v4: voice: log lines)."""
+    new = bpref.copy()
+    if sum(int(b["day_mask"].sum()) for b in boots) < 6000:
+        return new.astype(np.float32)
+    kind_idx = {ch: i for i, ch in enumerate(LR.BABBLE_KINDS)}
+    per_kind = [[] for _ in LR.BABBLE_KINDS]
+    for b in boots:
+        vlines = b.get("voice_lines")
+        ms = b.get("all_ms")
+        raw_r = b.get("raw_r")
+        flags = b.get("flags")
+        if not vlines or ms is None or len(ms) < 400:
+            continue
+        day_tick = ((flags & D.FLAG_DRIVES) > 0) & ((flags & D.FLAG_NIGHT) == 0)
+        # 15 s forward reward sum at 20 Hz (300 ticks)
+        win15 = np.convolve(raw_r.astype(np.float32), np.ones(300, np.float32), "full")[299:][:len(raw_r)]
+        call_rewards, call_kinds = [], []
+        for lms, ltxt in vlines:
+            i = int(np.searchsorted(ms, lms))
+            if i >= len(ms) - 300 or abs(int(ms[i]) - lms) > 2000 or not day_tick[i]:
+                continue
+            part = ltxt.split("v4: voice:", 1)[1].split("(", 1)[0].strip()
+            ks = [kind_idx[tok[0]] for tok in part.split() if tok and tok[0] in kind_idx]
+            if not ks:
+                continue
+            call_rewards.append(float(win15[i]))
+            call_kinds.append(ks)
+        if len(call_rewards) < 10:
+            continue
+        cr = np.array(call_rewards, np.float32)
+        mu, sd = float(cr.mean()), float(cr.std()) + 1e-5
+        if sd < 1e-4:
+            continue
+        for r_i, ks in zip(cr, call_kinds):
+            z = float(np.clip((r_i - mu) / sd, -2.5, 2.5))
+            for k in set(ks):
+                per_kind[k].append(z)
+    moved = []
+    for k, name in enumerate(LR.BABBLE_KINDS):
+        if len(per_kind[k]) < 8:
+            continue
+        adv = float(np.mean(per_kind[k]))
+        step = float(np.clip(0.03 * adv * min(1.0, len(per_kind[k]) / 20.0), -0.04, 0.04))
+        new[k] = float(np.clip(0.97 * new[k] + step, -LR.BABBLE_PREF_MAX, LR.BABBLE_PREF_MAX))
+        moved.append(f"{name}:{new[k]:+.2f}")
+    if moved:
+        say(lines, "  babble idiolect: " + " ".join(moved))
+    return new.astype(np.float32)
+
+
 def behaviour_gate(blob_path, lines):
     r = subprocess.run([sys.executable, os.path.join(HERE, "behavior_test_v4.py"), "--learned", blob_path],
                        capture_output=True, text=True, cwd=HERE)
@@ -700,7 +776,7 @@ def main():
     tonight = dt.date.today().isoformat()
     days = days_with_v4(a.days)
     say(lines, f"night of {tonight}: days {', '.join(days) or '-'}")
-    m, live_version, shift, mbias, mwout = base_model()
+    m, live_version, shift, mbias, mwout, bpref = base_model()
     boots = load_life(days)
     # boots of another network are not this network's life (the boot line's id, 2026-10-28 evening on)
     nn_id = LR.nn_id(m.state_dict())
@@ -738,7 +814,8 @@ def main():
             if len(held):
                 say(lines, "  held back (ticks, diary `held`): " + ", ".join(
                     f"{why} {int(((held & bit) > 0).sum())}" for bit, why in HELD))
-            new = train_heads(m, F_all, act, A, ok, prio=priority_weights(boots, use))
+            new = train_heads(m, F_all, act, A, ok, prio=priority_weights(boots, use),
+                              anchor_w=safety_anchor_weights(boots, use))
             kl, flip = change(m, new, F_all)
             say(lines, f"  the action heads: KL {kl:.4f} (max {KL_MAX}), choices changed {100 * flip:.1f} % "
                        f"(max {100 * FLIP_MAX:.0f} %)")
@@ -777,6 +854,10 @@ def main():
     if not np.allclose(new_mbias, mbias) or not np.allclose(new_mwout, mwout):
         changed = True
         parts.append(f"Muse ({int((~np.isclose(new_mbias, mbias)).sum())} bias, readout)")
+    new_bpref = learn_babble(good, bpref, lines)
+    if not np.allclose(new_bpref, bpref):
+        changed = True
+        parts.append("babble idiolect")
     mem = EP.table(days)
     if len(mem):
         changed = True
@@ -796,7 +877,8 @@ def main():
     blob_path = os.path.join(store, f"v{version}{'_dry' if a.dry_run else ''}.bin")
     open(blob_path, "wb").write(LR.pack(version, heads_new, new_shift, new_mbias, nn=LR.nn_id(m.state_dict()),
                                         episodes=mem if len(mem) else None,
-                                        muse_wout=new_mwout if np.any(new_mwout != 0) else None))
+                                        muse_wout=new_mwout if np.any(new_mwout != 0) else None,
+                                        babble_pref=new_bpref if np.any(new_bpref != 0) else None))
     say(lines, f"  candidate {os.path.relpath(blob_path, ROOT)} (version {version})")
     if not behaviour_gate(blob_path, lines):
         return finish(lines, started, "gate failed: the robot keeps what it has")

@@ -162,11 +162,19 @@ class SnnV4(nn.Module):
         bump = amp[:, None] * g(mx, my) + lamp[:, None] * g(lx, ly)
         return i_enc, bump
 
+    def _qmm(self, x, name):
+        """Exact int8-sum then scale multiplication when quant=True in eval (mirrors snn_v4.cpp's int32 acc * scale)."""
+        if self.quant and not self.training:
+            w = self.w_rec.abs() * self.rec_mask * self.rec_sign[None, :] if name == "rec" else getattr(self, "w_" + name)
+            s = w.abs().amax(dim=1, keepdim=True).clamp_min(1e-8) / 127.0
+            q = torch.round(w / s).clamp(-127, 127)
+            return (x @ q.t()) * s.t()
+        return x @ self.W(name).t()
+
     def step(self, x, st):
         """One 50 ms tick. x [B, 18]. Returns out [B, 32] and spike counts per layer (for the rate penalty)."""
         i_enc, bump = self.encode(x, st["prev"])
         st["prev"] = x[:, :NC].detach() if not torch.is_grad_enabled() else x[:, :NC]
-        w_in, w_rec, w_att, w_ro = self.W("in"), self.W("rec"), self.W("att"), self.W("ro")
         acc = 0.0
         for _ in range(SUBSTEPS):
             v = BETA_ENC * st["v_enc"] + i_enc
@@ -178,16 +186,16 @@ class SnnV4(nn.Module):
             st["v_zone"] = v - s_zone * (1.0 + st["a_zone"])
             st["a_zone"] = st["a_zone"] * self.adapt_keep + s_zone * self.adapt_step
             pre = torch.cat([s_enc, s_zone], 1)
-            v = BETA_MIX * st["v_mix"] + pre @ w_in.t() + st["s_mix"] @ w_rec.t() + self.b_mix
+            v = BETA_MIX * st["v_mix"] + self._qmm(pre, "in") + self._qmm(st["s_mix"], "rec") + self.b_mix
             s_mix = spike(v - 1.0)
             st["v_mix"] = v - s_mix
             st["s_mix"] = s_mix
-            v = BETA_ATT * st["v_att"] + bump + s_mix @ w_att.t() + self.b_att
+            v = BETA_ATT * st["v_att"] + bump + self._qmm(s_mix, "att") + self.b_att
             s_att = spike(v - 1.0)
             st["v_att"] = v - s_att
             acc = acc + torch.cat([s_enc, s_zone, s_mix, s_att], 1)
         rate = acc / SUBSTEPS
-        st["ro"] = st["ro"] * self.ro_keep + (1 - self.ro_keep) * (rate @ w_ro.t() + self.b_ro)
+        st["ro"] = st["ro"] * self.ro_keep + (1 - self.ro_keep) * (self._qmm(rate, "ro") + self.b_ro)
         z = st["ro"]
         out = torch.where(self.signed, torch.tanh(z), torch.sigmoid(z))
         return out, rate

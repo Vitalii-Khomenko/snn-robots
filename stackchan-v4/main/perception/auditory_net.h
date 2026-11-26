@@ -46,14 +46,17 @@ public:
     const std::array<float, kOutputs>& lastOutputs() const { return out_; }
     bool trained() const;
     uint32_t nanCount() const { return nan_count_; }
-    // Weights: compiled in (auditory_model_data.h, as trained by platform B's nights up to 2026-10-24).
-    static constexpr int kLayers = 3;
+    // Weights: compiled in (auditory_model_data.h: 2D spectro-temporal ConvNet v2: conv1(1->12, 3x3, pool2) -> 292 -> 64 -> 32 -> 8).
+    static constexpr int kLayers = 4;
+    static constexpr int kConvChannels = 12;
+    static constexpr int kConvOut = kConvChannels * 3 * 8;  // 288
     using Params = std::array<LayerParams, kLayers>;
     static Params compiledParams();
 
 private:
     std::array<float, AudioFrontEnd::kInputs> in_{};
     std::array<float, kOutputs> out_{};
+    std::array<float, kConvOut + 4> c1_{};
     std::array<float, 64> h1_{};
     std::array<float, 32> h2_{};
     // novelty background: per-band slow average of the log spectrum

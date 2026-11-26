@@ -12,16 +12,19 @@ bool AuditoryNet::trained() const { return auditory_model::kTrained; }
 AuditoryNet::Params AuditoryNet::compiledParams()
 {
     using namespace auditory_model;
-    return {{{fc1_w, fc1_s, fc1_b}, {fc2_w, fc2_s, fc2_b}, {fc3_w, fc3_s, fc3_b}}};
+    return {{{conv1_w, conv1_s, conv1_b}, {fc1_w, fc1_s, fc1_b}, {fc2_w, fc2_s, fc2_b}, {fc3_w, fc3_s, fc3_b}}};
 }
 
 bool AuditoryNet::infer(const float* input)
 {
     if (!auditory_model::kTrained) return false;
     const Params& p = p_;
-    nn::dense(p[0].w, p[0].s, p[0].b, input, 64, AudioFrontEnd::kInputs, h1_.data(), true);
-    nn::dense(p[1].w, p[1].s, p[1].b, h1_.data(), 32, 64, h2_.data(), true);
-    nn::dense(p[2].w, p[2].s, p[2].b, h2_.data(), kOutputs, 32, out_.data(), false);
+    // 2D spectro-temporal ConvNet over 6x16 band grid + 4 side context features (balance, level, selfSpeaking, ownMotion)
+    nn::conv3x3Pool(input, 1, AudioFrontEnd::kHistory, AudioFrontEnd::kBands, p[0].w, p[0].s, p[0].b, kConvChannels, c1_.data());
+    for (int i = 0; i < 4; ++i) c1_[kConvOut + i] = input[AudioFrontEnd::kHistory * AudioFrontEnd::kBands + i];
+    nn::dense(p[1].w, p[1].s, p[1].b, c1_.data(), 64, kConvOut + 4, h1_.data(), true);
+    nn::dense(p[2].w, p[2].s, p[2].b, h1_.data(), 32, 64, h2_.data(), true);
+    nn::dense(p[3].w, p[3].s, p[3].b, h2_.data(), kOutputs, 32, out_.data(), false);
     if (!nn::finite(out_.data(), kOutputs)) {
         ++nan_count_;
         return false;

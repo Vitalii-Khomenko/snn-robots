@@ -58,7 +58,7 @@ cp secrets/life_log_host.example.h    secrets/life_log_host.h         # edit: th
 ```
 
 The trained networks are generated headers in the repository (`main/v4/*_data.h`, `main/perception/auditory_model_data.h`,
-`main/voice/babble_model_data.h`): the firmware builds and runs without training. After the first flash:
+`main/perception/vision_model_data.h`, `main/voice/babble_model_data.h`): the firmware builds and runs without training. After the first flash:
 
 ```bash
 tools/robot/install_services.sh                       # the diary receiver, the night sleep, compression (this clone's path)
@@ -97,6 +97,13 @@ data -> ../stackchan-life/data   the diary (data/life/<day>/<hour>.scl[.gz]) sha
 
 ## Status (2026-11-26)
 
+- Brain v4.3 perception, cloud GPU training & GPU world-model simulation (2026-11-26 evening, NN `id 050f74d1`, 178 diary columns = 1122 B / 3-tick UDP datagram, confirmed live on `ota_1`, boot `27dcf41b`):
+  - **SnnV4 v2** retrained on Colab Tesla T4 across 13 real v4 days (800 event-biased real + 1400 synthetic lives, warm-start 6 fp32 + 4 int8 QAT, 44.4 min): held-out real-diary correlations jumped (`att_x +0.179 -> +0.586`, `att_y +0.108 -> +0.433`, `sal_light +0.316 -> +0.884`, `sal_motion +0.761 -> +0.862`, `hunger_n 0.000 -> +0.865`, `valence +0.989`).
+  - **AuditoryNetV2** (21 KB int8 2D spectro-temporal ConvNet `6×16 -> conv3x3+pool -> 64 -> 32 -> 8`, 0.8 min on T4): `room_media` silence F1 `0.976` (0.1 % clap FP), `real_mic` clap F1 `0.620` / sharp F1 `0.656`, C++/PyTorch parity `2.21e-06 PASS`, ~2.9–3.0 ms live on ESP32-S3.
+  - **VisionNetV2** (23.8 KB int8 CNN `3->8->16->24->64->5` on Core 1, 0.6 min on T4): `[person, face, target_x, target_y, target_conf]` (`real_rec` person F1 `0.954`, empty room 0 FP, parity `3.02e-07 PASS`), running live at full `7.0 fps` (`cam_us` ~29–35 ms), logged as `vis_person` / `vis_face`.
+  - **Retrained NnV4 (`id 050f74d1`)** on local RTX A3000 against new `SnnV4` (`val 1.209`, emotion acc `0.942`, parity `1.19e-06 PASS`, 24/24 simulator scenarios PASS) + **adaptive `BabbleNet` idiolect** (`babble.pref`, 10 syllable biases learned in `sleep_v4.py`, atomic Core 0 -> Core 1 handoff) + 3× touch-reflex safety KL anchor in `sleep_v4.py` + 10 ms post-`EnableTorque` gap in `MotionEngine::stepRailInit`.
+  - **World Model + Offline IQL + 512-Parallel GPU Simulator (`colab_jobs/job_gpu_sim_rl.py`):** 147 h real daytime trajectories (`obs_RMSE = 0.0264`, 15 s human-response `AUROC = 0.918`); 3-model stochastic ensemble (`8 s AR RMSE 0.0369–0.0469`) simulating **512 parallel virtual lives at `11,117×` real-time** (`4.27 virt-h` in `1.38 s` on T4); Dream RL candidate (`KL = 0.0007`, `flip = 1.0 %`, return `+11.79 -> +11.94`) passed **24/24** real C++ simulator tests (`joy_after_answer +0.972 vs +0.921 yoked`, `acts_ratio 1.34`).
+  - **Compute Routing & Timing Guide** documented in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#4a-compute-routing--timing-guide-local-rtx-a3000-vs-google-colab-tesla-t4) (Local RTX A3000 + 62 GB RAM vs Colab Free Tesla T4).
 - Brain v4.2 technical & cognitive upgrade (2026-11-26, NN `id a3f82bb9`, 56 inputs, 176 diary columns = 1472 B/UDP):
   - **Technical:** staggered 4-line `logStats()` across 4 passes (eliminates 50 ms UART bursts & ~12 `missed_ticks`/min),
     persisted morning `awake_` in NVS `v4/awday`, added optional `WIFI_FALLBACK_SSID` alternation, added 13-bin camera

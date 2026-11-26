@@ -1,0 +1,39 @@
+ep 01/30 train 0.8131 | val obs_RMSE=0.0641 resp_AUROC=0.839 Q_MAE=0.1149
+ep 02/30 train 0.6374 | val obs_RMSE=0.0504 resp_AUROC=0.898 Q_MAE=0.1018
+ep 03/30 train 0.6052 | val obs_RMSE=0.0468 resp_AUROC=0.907 Q_MAE=0.1040
+ep 04/30 train 0.5865 | val obs_RMSE=0.0424 resp_AUROC=0.909 Q_MAE=0.0982
+ep 05/30 train 0.5744 | val obs_RMSE=0.0397 resp_AUROC=0.914 Q_MAE=0.1011
+ep 06/30 train 0.5689 | val obs_RMSE=0.0422 resp_AUROC=0.900 Q_MAE=0.1276
+ep 07/30 train 0.5630 | val obs_RMSE=0.0384 resp_AUROC=0.914 Q_MAE=0.1003
+ep 08/30 train 0.5588 | val obs_RMSE=0.0358 resp_AUROC=0.916 Q_MAE=0.1082
+ep 09/30 train 0.5512 | val obs_RMSE=0.0372 resp_AUROC=0.910 Q_MAE=0.1068
+ep 10/30 train 0.5475 | val obs_RMSE=0.0351 resp_AUROC=0.919 Q_MAE=0.1058
+ep 11/30 train 0.5432 | val obs_RMSE=0.0344 resp_AUROC=0.913 Q_MAE=0.1031
+ep 12/30 train 0.5399 | val obs_RMSE=0.0344 resp_AUROC=0.917 Q_MAE=0.1047
+ep 13/30 train 0.5385 | val obs_RMSE=0.0324 resp_AUROC=0.917 Q_MAE=0.1083
+ep 14/30 train 0.5301 | val obs_RMSE=0.0317 resp_AUROC=0.919 Q_MAE=0.1014
+ep 15/30 train 0.5295 | val obs_RMSE=0.0307 resp_AUROC=0.916 Q_MAE=0.1031
+ep 16/30 train 0.5259 | val obs_RMSE=0.0301 resp_AUROC=0.918 Q_MAE=0.1042
+ep 17/30 train 0.5211 | val obs_RMSE=0.0290 resp_AUROC=0.920 Q_MAE=0.1008
+ep 18/30 train 0.5199 | val obs_RMSE=0.0294 resp_AUROC=0.920 Q_MAE=0.1023
+ep 19/30 train 0.5135 | val obs_RMSE=0.0277 resp_AUROC=0.919 Q_MAE=0.1028
+ep 20/30 train 0.5109 | val obs_RMSE=0.0275 resp_AUROC=0.918 Q_MAE=0.1037
+ep 21/30 train 0.5085 | val obs_RMSE=0.0273 resp_AUROC=0.919 Q_MAE=0.1045
+ep 22/30 train 0.5067 | val obs_RMSE=0.0268 resp_AUROC=0.917 Q_MAE=0.1052
+ep 23/30 train 0.5051 | val obs_RMSE=0.0264 resp_AUROC=0.918 Q_MAE=0.1043
+ep 24/30 train 0.5016 | val obs_RMSE=0.0263 resp_AUROC=0.919 Q_MAE=0.1039
+ep 25/30 train 0.4997 | val obs_RMSE=0.0270 resp_AUROC=0.917 Q_MAE=0.1067
+ep 26/30 train 0.4987 | val obs_RMSE=0.0266 resp_AUROC=0.919 Q_MAE=0.1048
+ep 27/30 train 0.4971 | val obs_RMSE=0.0265 resp_AUROC=0.918 Q_MAE=0.1050
+ep 28/30 train 0.4963 | val obs_RMSE=0.0263 resp_AUROC=0.918 Q_MAE=0.1056
+ep 29/30 train 0.4957 | val obs_RMSE=0.0263 resp_AUROC=0.918 Q_MAE=0.1056
+ep 30/30 train 0.4955 | val obs_RMSE=0.0264 resp_AUROC=0.918 Q_MAE=0.1056
+
+=== HELD-OUT REAL-LIFE WORLD MODEL & OFFLINE IQL SUMMARY ===
+Days trained: 15 (2026-10-25 .. 2026-11-25), held-out: 2026-11-26
+Best obs RMSE: 0.0264, 15s human-response AUROC: 0.918, 30s Q_MAE: 0.1056
+Mean IQL advantage when calling: -0.0556
+Mean IQL advantage when gesturing: -0.3776
+  style_calm     mean advantage: -0.0543 (n=3505)
+  style_ask      mean advantage: -0.0624 (n=1402)
+  style_play     mean advantage: -0.0536 (n=2289)

@@ -34,9 +34,12 @@ public:
     uint32_t nanCount() const { return nan_count_; }
     // Mode life (2026-10-18): the owner heard a narrow voice - the notes' pitch spread x range (1 = as trained).
     void setPitchRange(float range) { range_ = range; }
+    // Learned idiolect (stage 5): per-kind logit bias (10 droid kinds: W/C/P/B/T/V/G/S/R/O), clamped to [-0.5, +0.5].
+    void setKindBias(const float* bias);
 
 private:
     float range_ = 1.0f;
+    std::array<float, kKinds> kind_bias_{};
     float uniform();
     std::array<float, kIntent> intent_{};
     int emotion_ = 0;

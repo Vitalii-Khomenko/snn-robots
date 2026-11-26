@@ -1,0 +1,59 @@
+ep 01/32   loss 0.2932 | real_sp F1=0.000 all_sp=0.494 | real_clap F1=0.000 (room_fp=0) | real_sharp F1=0.017
+ep 02/32   loss 0.2440 | real_sp F1=0.003 all_sp=0.538 | real_clap F1=0.189 (room_fp=0) | real_sharp F1=0.251
+ep 03/32   loss 0.2299 | real_sp F1=0.070 all_sp=0.559 | real_clap F1=0.188 (room_fp=3) | real_sharp F1=0.145
+ep 04/32   loss 0.2214 | real_sp F1=0.025 all_sp=0.589 | real_clap F1=0.337 (room_fp=4) | real_sharp F1=0.344
+ep 05/32   loss 0.2150 | real_sp F1=0.077 all_sp=0.600 | real_clap F1=0.324 (room_fp=4) | real_sharp F1=0.368
+ep 06/32   loss 0.2107 | real_sp F1=0.147 all_sp=0.580 | real_clap F1=0.409 (room_fp=6) | real_sharp F1=0.435
+ep 07/32   loss 0.2072 | real_sp F1=0.048 all_sp=0.597 | real_clap F1=0.483 (room_fp=6) | real_sharp F1=0.550
+ep 08/32   loss 0.2038 | real_sp F1=0.109 all_sp=0.567 | real_clap F1=0.381 (room_fp=4) | real_sharp F1=0.377
+ep 09/32   loss 0.2019 | real_sp F1=0.064 all_sp=0.609 | real_clap F1=0.582 (room_fp=7) | real_sharp F1=0.663
+ep 10/32   loss 0.1993 | real_sp F1=0.051 all_sp=0.609 | real_clap F1=0.542 (room_fp=6) | real_sharp F1=0.615
+ep 11/32   loss 0.1980 | real_sp F1=0.075 all_sp=0.607 | real_clap F1=0.400 (room_fp=6) | real_sharp F1=0.462
+ep 12/32   loss 0.1961 | real_sp F1=0.028 all_sp=0.615 | real_clap F1=0.673 (room_fp=8) | real_sharp F1=0.680
+ep 13/32   loss 0.1942 | real_sp F1=0.081 all_sp=0.587 | real_clap F1=0.605 (room_fp=7) | real_sharp F1=0.658
+ep 14/32   loss 0.1929 | real_sp F1=0.077 all_sp=0.597 | real_clap F1=0.478 (room_fp=6) | real_sharp F1=0.556
+ep 15/32   loss 0.1917 | real_sp F1=0.109 all_sp=0.605 | real_clap F1=0.620 (room_fp=6) | real_sharp F1=0.654
+ep 16/32   loss 0.1907 | real_sp F1=0.133 all_sp=0.574 | real_clap F1=0.501 (room_fp=6) | real_sharp F1=0.639
+ep 17/32   loss 0.1898 | real_sp F1=0.098 all_sp=0.592 | real_clap F1=0.626 (room_fp=6) | real_sharp F1=0.668
+ep 18/32   loss 0.1888 | real_sp F1=0.043 all_sp=0.621 | real_clap F1=0.592 (room_fp=4) | real_sharp F1=0.635
+ep 19/32   loss 0.1871 | real_sp F1=0.072 all_sp=0.615 | real_clap F1=0.533 (room_fp=6) | real_sharp F1=0.580
+ep 20/32   loss 0.1861 | real_sp F1=0.063 all_sp=0.618 | real_clap F1=0.588 (room_fp=6) | real_sharp F1=0.647
+ep 21/32   loss 0.1854 | real_sp F1=0.081 all_sp=0.609 | real_clap F1=0.576 (room_fp=6) | real_sharp F1=0.624
+ep 22/32   loss 0.1857 | real_sp F1=0.053 all_sp=0.620 | real_clap F1=0.609 (room_fp=8) | real_sharp F1=0.658
+ep 23/32   loss 0.1844 | real_sp F1=0.062 all_sp=0.616 | real_clap F1=0.596 (room_fp=6) | real_sharp F1=0.638
+ep 24/32   loss 0.1836 | real_sp F1=0.059 all_sp=0.609 | real_clap F1=0.611 (room_fp=6) | real_sharp F1=0.641
+ep 25/32 Q loss 0.1833 | real_sp F1=0.073 all_sp=0.619 | real_clap F1=0.609 (room_fp=6) | real_sharp F1=0.649
+ep 26/32 Q loss 0.1831 | real_sp F1=0.059 all_sp=0.616 | real_clap F1=0.593 (room_fp=6) | real_sharp F1=0.642
+ep 27/32 Q loss 0.1832 | real_sp F1=0.069 all_sp=0.615 | real_clap F1=0.620 (room_fp=6) | real_sharp F1=0.656
+ep 28/32 Q loss 0.1824 | real_sp F1=0.063 all_sp=0.618 | real_clap F1=0.600 (room_fp=6) | real_sharp F1=0.656
+ep 29/32 Q loss 0.1824 | real_sp F1=0.069 all_sp=0.618 | real_clap F1=0.589 (room_fp=6) | real_sharp F1=0.624
+ep 30/32 Q loss 0.1824 | real_sp F1=0.072 all_sp=0.609 | real_clap F1=0.595 (room_fp=6) | real_sharp F1=0.627
+ep 31/32 Q loss 0.1819 | real_sp F1=0.071 all_sp=0.613 | real_clap F1=0.582 (room_fp=6) | real_sharp F1=0.640
+ep 32/32 Q loss 0.1820 | real_sp F1=0.068 all_sp=0.617 | real_clap F1=0.594 (room_fp=6) | real_sharp F1=0.634
+
+=== FINAL HELD-OUT METRICS (INT8 QAT) ===
+[all]
+  silence      prec=0.880 rec=0.879 f1=0.880 (pos=6154, fp=735)
+  speech       prec=0.541 rec=0.713 f1=0.615 (pos=4162, fp=2520)
+  clap         prec=0.331 rec=0.239 f1=0.277 (pos=620, fp=299)
+  sharp        prec=0.465 rec=0.207 f1=0.287 (pos=1515, fp=361)
+  continuous   prec=0.721 rec=0.867 f1=0.787 (pos=7121, fp=2389)
+  low          prec=0.363 rec=0.050 f1=0.089 (pos=813, fp=72)
+  high         prec=0.594 rec=0.249 f1=0.351 (pos=1401, fp=239)
+  tonal        prec=0.549 rec=0.528 f1=0.538 (pos=2483, fp=1075)
+[room_media]
+  silence      prec=0.957 rec=0.996 f1=0.976 (pos=790, fp=35)
+  speech       prec=0.000 rec=0.000 f1=0.000 (pos=0, fp=14)
+  clap         prec=0.000 rec=0.000 f1=0.000 (pos=0, fp=6)
+  sharp        prec=0.000 rec=0.000 f1=0.000 (pos=0, fp=6)
+  continuous   prec=0.000 rec=0.000 f1=0.000 (pos=0, fp=30)
+  tonal        prec=0.000 rec=0.000 f1=0.000 (pos=39, fp=0)
+[real_mic]
+  silence      prec=0.907 rec=0.940 f1=0.923 (pos=1562, fp=151)
+  speech       prec=0.191 rec=0.042 f1=0.069 (pos=594, fp=106)
+  clap         prec=0.642 rec=0.600 f1=0.620 (pos=230, fp=77)
+  sharp        prec=0.700 rec=0.617 f1=0.656 (pos=230, fp=61)
+  continuous   prec=0.000 rec=0.000 f1=0.000 (pos=0, fp=1)
+  low          prec=0.000 rec=0.000 f1=0.000 (pos=0, fp=0)
+  high         prec=0.000 rec=0.000 f1=0.000 (pos=0, fp=2)
+  tonal        prec=0.000 rec=0.000 f1=0.000 (pos=0, fp=11)

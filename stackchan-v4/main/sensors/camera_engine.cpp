@@ -89,6 +89,14 @@ void CameraEngine::taskLoop()
                 result.presenceFrac = frame_.presenceFrac;
                 result.presenceX = frame_.presenceX;
                 result.presenceY = frame_.presenceY;
+                VisionNet::Out vn;
+                if (net_.run(frame_, vn)) {
+                    result.person = vn.person;
+                    result.face = vn.face;
+                    result.targetX = vn.targetX;
+                    result.targetY = vn.targetY;
+                    result.targetConf = vn.targetConf;
+                }
                 front_us_.store(static_cast<uint32_t>(esp_timer_get_time() - t0));
                 portENTER_CRITICAL(&lock_);
                 published_ = result;

@@ -224,6 +224,12 @@ enum Ear : uint8_t {
     EAR_COUNT
 };
 inline constexpr const char* kEarNames[] = {"speech", "voice"};
+enum Vis : uint8_t {
+    VIS_PERSON,
+    VIS_FACE,
+    VIS_COUNT
+};
+inline constexpr const char* kVisNames[] = {"person", "face"};
 
 struct ZoneBorder { float lo, hi; };
 inline constexpr float kZoneEdge = 0.03f;
@@ -265,5 +271,5 @@ inline constexpr int kHeadDoze = 8;
 inline constexpr uint8_t kLedRgb[][3] = {{255, 240, 220}, {255, 200, 40}, {255, 110, 20}, {255, 20, 10}, {255, 70, 150}, {150, 40, 255}, {30, 60, 255}, {20, 200, 230}};
 inline constexpr int kSnnInputs = 18;
 inline constexpr int kNnInputs = 56;
-inline constexpr int kDiaryValues = 176;  // RAW, channels, SO, NO, BODY, PV, CT, EAR (tools/v4/diary.py)
+inline constexpr int kDiaryValues = 178;  // RAW, channels, SO, NO, BODY, PV, CT, EAR (tools/v4/diary.py)
 }  // namespace v4

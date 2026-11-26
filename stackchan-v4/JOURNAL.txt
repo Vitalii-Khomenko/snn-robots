@@ -4,6 +4,66 @@
 План: BRAIN_V4_PLAN.txt, шкалы: BRAIN_V4_INPUT_SCALES.txt. Откат — ../stackchan-life (платформа Б, её журнал там).
 
 
+2026-11-26, 21:00 — апгрейд v4.3: облачное обучение на Colab Tesla T4 (SnnV4 v2, AuditoryNetV2, VisionNetV2, WorldModel + 512-параллельный GPU-симулятор), переобучение NnV4, идиолект BabbleNet и прошивка OTA
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Хозяин: «отлично будем внедрять все что ты написал поэтапно — создай план и вперед, я настроил доступ к колаб (Tesla T4)» →
+«да после прошивки робота делай и запускай симуляцию на GPU и обнови все доки и гитхаб, хорошо документируй на будущее и напиши примерное время».
+
+- Этап 1 (фундамент и облачный CLI):
+  1. MotionEngine::stepRailInit() (motion_engine.cpp): добавлена 10-мс пауза тишины (init_step_ = 11) после EnableTorque
+     перед первым SyncWritePos, чтобы команды не сталкивались на полудуплексной шине.
+  2. LifeLog (life_log.h, spec_v4.py, diary.py): kTicksPerDatagram снижен 4 -> 3 (178 float16-колонок = 1122 Б/пакет
+     вместо 1472 Б, запас роста до 235 колонок без смены протокола; старые 135..176 читаются без потерь).
+  3. sleep_v4.py: добавлен 3x KL-якорь безопасности (safety_anchor_weights) на состояния с высокой значимостью касания,
+     чтобы ночное обучение не ломало рефлекс ответа на поглаживание/тычки.
+  4. tools/v4/colab_train.py: универсальная headless-обёртка для Colab CLI (3 ретрая при обрывах, зеркалирование
+     артефактов в Google Drive ~/Work/MLPojekt/stackchan-v4/, гарантированный colab stop в finally).
+- Этап 2 (SnnV4 v2 на Colab Tesla T4, 44.4 мин):
+  - train_snn_v4.py (`real` -> 800 реальных event-biased жизней по 13 дням v4 2026-10-25..11-25 + 1400 синтетических) +
+    colab_jobs/job_snn_v4.py (warm-start, B=256, 6 fp32 + 4 int8 QAT -> main/v4/snn_v4_data.h, 236 КБ int8).
+  - Рост корреляции на отложенных 100 реальных жизнях: att_x +0.179 -> +0.586 (x3.3), att_y +0.108 -> +0.433 (x4.0),
+    sal_light +0.316 -> +0.884 (x2.8), sal_motion +0.761 -> +0.862, hed_light +0.835 -> +0.998, hunger_n 0.000 -> +0.865,
+    loneliness +0.971 -> +0.995, valence +0.981 -> +0.989.
+- Этап 3 (AuditoryNetV2 — 2D спектро-темпоральная ConvNet на Colab T4, 0.8 мин):
+  - prep_audio_v2.py (301 127 train / 23 346 val тиков из 5555 реальных .aud + 28 .bin + ESC-50 + серво-миксы) +
+    job_audio_v2.py -> auditory_net.{h,cpp}, auditory_model_data.h (21 КБ int8, conv3x3+pool по сетке 6x16 + 4 side -> 64 -> 32 -> 8).
+  - Held-out: room_media silence F1 = 0.976 (лишь 6 ложных clap из 5960 тиков = 0.1 % FP), real_mic clap F1 = 0.620,
+    sharp F1 = 0.656, silence F1 = 0.923; all speech recall = 0.713. Паритет C++/PyTorch (parity_audio.py): 2.21e-06 PASS.
+- Этап 4 (VisionNetV2 — 3-слойная int8 CNN на Core 1, 0.6 мин на Colab T4):
+  - prep_vision_v2.py (60 805 train / 6329 val кадров из 14 797 .snp + YOLOv8n/YuNet .lab.npz + real_rec + COCO) +
+    job_vision_v2.py -> vision_net.{h,cpp}, vision_model_data.h (23.8 КБ int8: 3->8->16->24->64->5 -> [person, face, tx, ty, conf]).
+  - Held-out: real_rec person F1 = 0.954 (rec 1.000, prec 0.912), target_conf F1 = 0.945; пустая комната 0 FP.
+    Паритет C++/PyTorch (parity_vision.py): 3.02e-07 PASS. Подключено к camera_engine, brain_loop (обновляет last_somebody_ms_
+    и мягко притягивает idle-взгляды к неподвижному лицу/человеку), robot_runtime (`vis=bg/p/f` + колонки vis_person, vis_face).
+- Этап 5 (World Model + Offline IQL, идиолект BabbleNet, переобучение NnV4):
+  - prep_world_rl.py (1 058 553 реальных дневных шага 2 Гц = 147.0 ч по 16 дням, 34.1 МБ) + job_world_rl.py (~2.5 мин на T4):
+    held-out 2026-11-26 obs_RMSE = 0.0264, 15s human-response AUROC = 0.918, 30s Q_MAE = 0.1056.
+  - Идиолект голоса (babble.pref, 10 смещений типов слогов ±0.5): babble_net.{h,cpp}, babble_voice.{h,cpp} (lock-free atomic
+    Core 0 -> Core 1), brain_loop.cpp, learned.py, sleep_v4.py::learn_babble() (разбирает `v4: voice:` из log.txt).
+  - Переобучение NnV4 на локальном RTX A3000 + 62 ГБ RAM (12 ядер, ~12 мин; добавлен 3x вес poked в tick_weights и
+    STACKCHAN_WORKERS): nn_v4_data.h (id 050f74d1, val 1.209, emotion acc 0.942, real diary agreement 0.899).
+- Этап 6 (верификация и OTA-прошивка на робота):
+  - Все паритеты PASS: nn_v4 (1.19e-06), muse (9.83e-07), audio (2.21e-06), vision (3.02e-07), contingency (6.56e-06),
+    voice_check (0.00e+00). Все 24/24 сценариев behavior_test_v4.py PASS.
+  - Сборка и OTA на живого робота (ota_1, подтверждена, boot 27dcf41b, 2 094 848 Б, 50 % Flash свободно).
+  - Живая телеметрия ESP32-S3 после 16.5 мин работы (20:39): cam_fps=7.0, cam_us=28.7..35.0 мс (VisionNetV2 вживую на Core 1!),
+    audio_us=2.89..3.0 мс (AuditoryNetV2 2D ConvNet, audio_nan=0), snn=3.1..7.3 мс, nn=5.8..7.2 мс/faults0, missed_ticks=4
+    за 16.5 мин, servo_repowers=1, servo_jerks=0, cmd_travel=42° / real_rotation=38°, voice_gaps=0, diary=9328/0,
+    internal_free=39.4 КБ (min 23.6 КБ), psram_free=7.72 МБ, busy=48.1 %, exp=0.41, живые ответы речи (`contingency: call answered by speech`).
+- Этап 7 (512-параллельный GPU-симулятор мира + Dream RL, colab_jobs/job_gpu_sim_rl.py):
+  - На Colab Tesla T4 обучен стохастический ансамбль из 3 мультишаговых моделей мира (~14 мин, data/world_ensemble.pt):
+    8-секундный авторегрессионный RMSE на held-out 2026-11-26 = 0.0436 / 0.0469 / 0.0369.
+  - Бенчмарк 512 параллельных виртуальных жизней (WorldEnsemble -> SnnV4(int8) -> Muse -> NnV4 -> WorldEnsemble):
+    4.27 виртуальных часа за 1.38 с = **11 117x быстрее реального времени** на Tesla T4!
+  - 3 раунда Dream RL (KL-якорь + штраф неопределённости ансамбля, 1.1 мин с готовым ансамблем): eval return вырос
+    +11.7910 -> +11.9394 (+0.1484) при KL = 0.0007 и flip = 1.0 %. Кандидат упакован в out/gpu_dream_candidate.bin
+    (32 440 Б, nn_id=050f74d1) и прошёл **все 24/24** сценариев реального C++ симулятора (Watson joy_after_answer +0.972
+    против +0.921 yoked, Piaget again_after_answer -0.101 против -0.174 yoked, acts_ratio 1.34).
+- Документация: добавлен подробный Compute Routing & Timing Guide (RTX A3000 vs Colab T4, замеры и команды) в
+  docs/DEVELOPMENT.md (раздел 4a), обновлены docs/HARDWARE.md, docs/ARCHITECTURE.md, docs/SPEC_V4.md и README.md.
+
+
 2026-11-26, 06:02 — проверка ночного сна, технический спринт (раздел 2) и все 5 идейных этапов развития мозга (раздел 3)
 -------------------------------------------------------------------------------------------------------------------------
 

@@ -9,6 +9,15 @@
 
 bool BabbleNet::trained() const { return babble_model::kTrained; }
 
+void BabbleNet::setKindBias(const float* bias)
+{
+    if (!bias) {
+        kind_bias_.fill(0.0f);
+        return;
+    }
+    for (int i = 0; i < kKinds; ++i) kind_bias_[i] = std::clamp(bias[i], -0.5f, 0.5f);
+}
+
 float BabbleNet::uniform()
 {
     rng_ ^= rng_ << 13;
@@ -75,7 +84,7 @@ bool BabbleNet::next(droid::Note& out)
     // mode life (range_ > 1): the kind is drawn at temperature 1.8 - the net kept to its favourite pips and whistles
     // (2026-10-17: 6.9 effective kinds of 10, growls 0.5 %); flattened: ~8.6 effective, the rarest ~2 % (2026-10-18)
     float kl[kKinds];
-    for (int i = 0; i < kKinds; ++i) kl[i] = o[1 + i] / (range_ > 1.0f ? 1.8f : 1.0f);
+    for (int i = 0; i < kKinds; ++i) kl[i] = (o[1 + i] + kind_bias_[i]) / (range_ > 1.0f ? 1.8f : 1.0f);
     const int kind = draw(kl, kKinds);
     const int shape = draw(o + kShapeAt + kind * kShapes, kShapes);
     const int ending = draw(o + kEndingAt + kind * kEndings, kEndings);

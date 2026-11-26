@@ -22,20 +22,26 @@ DATA = os.path.join(HERE, "data")
 SEQ = 6000          # 5 minutes per life
 CHUNK = 100         # 5 s per backprop window
 WARM = 100          # the first 5 s of a life only settle the state
-N_SYN, N_REAL = 1400, 400
-N_VAL_SYN, N_VAL_REAL = 100, 60  # held out: synthetic lives at random, real ones all from the newest day (split())
+N_SYN, N_REAL = 1600, 800
+N_VAL_SYN, N_VAL_REAL = 100, 100  # held out: synthetic lives at random, real ones all from the newest day (split())
 
 
 def real_sequences(n, rng, n_held=N_VAL_REAL):
-    """Stretches of the robot's real life, channels computed after the fact from the diary (calibrate.raw_hour). On
-    platform B's days light, proximity and motion were not logged: a dark room (the robot's usual), nobody at the
-    face, the Vision NN's activity for motion. -> (sequences, the day of each: 0.. in date order). n_held of them come
-    from the newest day and the rest from the others (2026-10-28, an audit: windows were drawn from every day and split
-    at random, so the held-out set had overlapping stretches of the training days)."""
+    """Stretches of the robot's real brain-v4 life (2026-10-25 onward: real als, ps, motion, voice, touch).
+    Half of the training stretches are centred on active motion/touch/light/voice events so attention (att_x/att_y)
+    and rare salience channels (sal_touch_head, sal_light) get rich real-world signal. n_held stretches come from
+    the newest full day and are never trained on."""
     import diary as D
     from calibrate import raw_hour
     from channels import encode, new_state
-    days = sorted(d for d in os.listdir(D.LIFE) if d[:2] == "20")[-9:-1]
+    all_v4 = sorted(d for d in os.listdir(D.LIFE) if d[:2] == "20" and d >= "2026-10-25")
+    # Pick up to 14 evenly-spaced v4 days (excluding today's partial day) so we cover diverse rooms/lighting/habits
+    cand_days = all_v4[:-1] if len(all_v4) > 2 else all_v4
+    if len(cand_days) > 14:
+        pick = np.linspace(0, len(cand_days) - 1, 14).round().astype(int)
+        days = [cand_days[i] for i in sorted(set(pick))]
+    else:
+        days = cand_days
     pool = []
     for day in days:
         st = new_state()
@@ -45,36 +51,72 @@ def real_sequences(n, rng, n_held=N_VAL_REAL):
             if raw is None:
                 continue
             T = len(raw["energy"])
-            if "als" not in raw:  # platform B's days
+            if "als" not in raw:
                 raw["als"] = np.full(T, rng.uniform(1, 40))
                 raw["als_ok"] = np.ones(T)
             X.append(encode(raw, st))
         if X:
-            pool.append(np.concatenate(X))
-        print("real", day, flush=True)
+            arr = np.concatenate(X)
+            if len(arr) > SEQ + 1500:
+                pool.append(arr)
+                print(f"real {day} ({len(arr) / 72000:.1f} h)", flush=True)
+    # Precompute active-event indices per day (motion, touch_head, light_spot, voice)
+    ch_motion = CHANNELS.index("motion")
+    ch_touch_h = CHANNELS.index("touch_head")
+    ch_voice = CHANNELS.index("voice")
+    wh_light_spot = len(CHANNELS) + 4
+    active_idx = []
+    for d in pool:
+        lo, hi = 1300, len(d) - SEQ
+        sub = d[lo:hi]
+        act = np.flatnonzero((sub[:, ch_motion] > 0.06) | (sub[:, ch_touch_h] > 0.04) |
+                             (sub[:, wh_light_spot] > 0.15) | (sub[:, ch_voice] > 0.25)) + lo
+        active_idx.append(act)
     out, day = [], []
     for i in range(n):
-        k = len(pool) - 1 if i < n_held else rng.integers(len(pool) - 1)
+        k = len(pool) - 1 if i < n_held else int(rng.integers(len(pool) - 1))
         d = pool[k]
-        s = rng.integers(0, len(d) - SEQ - 1300)
-        out.append(d[s + 1300:s + 1300 + SEQ])  # skip a warm-up (tilt baseline) inside the day stream
+        act = active_idx[k]
+        if i >= n_held and len(act) > 0 and rng.random() < 0.55:
+            center = int(act[rng.integers(len(act))])
+            s = int(np.clip(center - int(rng.integers(SEQ // 4, 3 * SEQ // 4)), 1300, len(d) - SEQ))
+        else:
+            s = int(rng.integers(1300, len(d) - SEQ))
+        out.append(d[s:s + SEQ])
         day.append(k)
     return out, day
 
 
-def build():
+def build_real():
+    """Extract only real v4 diary sequences into compact float16 out/snn_real.npz (for fast upload to Colab T4)."""
     rng = np.random.default_rng(7)
-    X = [make_channels(rng, SEQ) for _ in range(N_SYN)]
     seqs, days = real_sequences(N_REAL, rng)
-    X = np.stack(X + seqs).astype(np.float32)
+    os.makedirs(OUT, exist_ok=True)
+    path = os.path.join(OUT, "snn_real.npz")
+    np.savez_compressed(path, X_real=np.stack(seqs).astype(np.float16), day_real=np.array(days, np.int16))
+    print(f"wrote {path}: {len(seqs)} real sequences ({os.path.getsize(path) / 1e6:.1f} MB)", flush=True)
+
+
+def build(real_npz=None):
+    rng = np.random.default_rng(7)
+    X_syn = [make_channels(rng, SEQ) for _ in range(N_SYN)]
+    if real_npz is not None and os.path.exists(real_npz):
+        z = np.load(real_npz)
+        X_real = z["X_real"].astype(np.float32)
+        days = z["day_real"].astype(np.int16)
+        X = np.concatenate([np.stack(X_syn).astype(np.float32), X_real], axis=0)
+    else:
+        seqs, days = real_sequences(N_REAL, rng)
+        X = np.stack(X_syn + seqs).astype(np.float32)
+        days = np.array(days, np.int16)
     Y = np.stack([teach(x) for x in X]).astype(np.float32)
     real = np.zeros(len(X), bool)
     real[N_SYN:] = True
-    day = np.full(len(X), -1, np.int16)  # the real stretches' day (date order), -1: synthetic
+    day = np.full(len(X), -1, np.int16)
     day[N_SYN:] = days
     os.makedirs(OUT, exist_ok=True)
     np.savez_compressed(os.path.join(OUT, "snn_data.npz"), X=X, Y=Y, real=real, day=day)
-    print("dataset", X.shape, Y.shape)
+    print("dataset", X.shape, Y.shape, flush=True)
 
 
 def corr(a, b):
@@ -111,25 +153,30 @@ def split(real, day, rng, n_syn=N_VAL_SYN):
     return val, rng.permutation(tr)
 
 
-def train(epochs):
+def train(epochs, init_ckpt=None, batch_size=256, lr=None):
     d = np.load(os.path.join(OUT, "snn_data.npz"))
     X, Y, real = d["X"], d["Y"], d["real"]
     rng = np.random.default_rng(0)
     val, tr = split(real, d["day"] if "day" in d else None, rng)
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     sd = torch.tensor(np.maximum(Y[tr, WARM:].reshape(-1, Y.shape[2]).std(0), 0.03), device=dev)
-    # rare, important numbers count more where they happen
-    event_w = torch.tensor([3.0 if n in ("threat", "surprise", "over") or n.startswith("sal_") else 1.0
+    # rare, important numbers count more where they happen (including attention coordinates)
+    event_w = torch.tensor([3.0 if n in ("threat", "surprise", "over", "att_x", "att_y", "att_strength") or n.startswith("sal_") else 1.0
                             for n in SNN_OUT], device=dev)
     model = SnnV4().to(dev)
-    opt = torch.optim.Adam(model.parameters(), lr=2e-3)
+    if init_ckpt and os.path.exists(init_ckpt):
+        model.load_state_dict(torch.load(init_ckpt, weights_only=False, map_location=dev)["state"])
+        print(f"Warm-started SnnV4 from {init_ckpt}", flush=True)
+    base_lr = lr if lr is not None else (8e-4 if init_ckpt else 2e-3)
+    opt = torch.optim.Adam(model.parameters(), lr=base_lr)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
-    B = 96
+    B = batch_size
+    qat_at = max(1, int(epochs * 0.6))
     best = 1e9
     os.makedirs(DATA, exist_ok=True)
     log = []
     for ep in range(epochs):
-        model.quant = ep >= int(epochs * 0.7)
+        model.quant = ep >= qat_at
         t0 = time.time()
         perm = rng.permutation(tr)
         tot, nb = 0.0, 0
@@ -151,7 +198,7 @@ def train(epochs):
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 opt.step()
-                tot += float(loss)
+                tot += float(loss.detach())
                 nb += 1
         sched.step()
         P, T = evaluate(model, X[val], Y[val], dev)
@@ -162,7 +209,7 @@ def train(epochs):
                f"rates {[round(float(r), 3) for r in layer]} {time.time() - t0:.0f}s")
         print(msg, flush=True)
         log.append(msg)
-        if model.quant and vloss < best or (ep == int(epochs * 0.7) - 1 and not model.quant):
+        if model.quant and vloss < best or (ep == qat_at - 1 and not model.quant):
             if model.quant:
                 best = vloss
             torch.save({"state": model.state_dict(), "epoch": ep + 1, "val": vloss, "corr": cs},
@@ -185,7 +232,9 @@ def train(epochs):
 
 if __name__ == "__main__":
     assert len(SNN_IN) == len(CHANNELS) + 5
-    if sys.argv[1] == "data":
-        build()
+    if sys.argv[1] == "real":
+        build_real()
+    elif sys.argv[1] == "data":
+        build(sys.argv[2] if len(sys.argv) > 2 else None)
     else:
-        train(int(sys.argv[2]) if len(sys.argv) > 2 else 20)
+        train(int(sys.argv[2]) if len(sys.argv) > 2 else 35)

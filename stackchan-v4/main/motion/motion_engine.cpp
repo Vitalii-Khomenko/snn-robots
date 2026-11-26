@@ -263,11 +263,15 @@ bool MotionEngine::stepRailInit(uint32_t now)
             return false;
         }
         case 10:
-        default:
             bus_.EnableTorque(kBroadcast, 1);
             logPacket('t', -1, -1, 0);
-            limits_written_[0] = limits_written_[1] = true;
             yaw_torque_enabled_ = pitch_torque_enabled_ = true;
+            init_step_ = 11;
+            init_next_ms_ = now + 10;  // give the servos a quiet gap after EnableTorque before the first SyncWritePos
+            return false;
+        case 11:
+        default:
+            limits_written_[0] = limits_written_[1] = true;
             init_step_ = 0;
             return true;
     }

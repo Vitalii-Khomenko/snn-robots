@@ -355,12 +355,13 @@ void RobotRuntime::logStats(uint32_t now)
         auto& b = loop_.brain();
         const auto& so = b.snn();
         const auto& ex = loop_.executor();
-        ESP_LOGI(kTag, "v4: als=%u ir=%u ps=%u/%02x near=%.0f vis=%.2f ch=%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f "
+        ESP_LOGI(kTag, "v4: als=%u ir=%u ps=%u/%02x near=%.0f vis=%.2f/p%.2f/f%.2f ch=%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f/%.2f "
                  "snn=%s/%uus/rate%.3f val=%.2f aro=%.2f under=%.2f over=%.2f threat=%.2f nn=%s/%uus/faults%u drives=%d "
                  "night=%d face=%s calls=%u nods=%u shakes=%u gestures=%u pred=%.3f/%+.2f exp=%.2f learned=%u%s",
                  static_cast<unsigned>(presence_.alsRaw()), static_cast<unsigned>(presence_.alsIrRaw()),
                  static_cast<unsigned>(presence_.lastRaw()), static_cast<unsigned>(presence_.psHigh()),
                  static_cast<double>(presence_.nearOverBaseline()), static_cast<double>(loop_.staticPresence()),
+                 static_cast<double>(loop_.visPerson()), static_cast<double>(loop_.visFace()),
                  c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8],
                  c[9], c[10], c[11], c[12], b.analyzer().trained() ? "on" : "untrained",
                  static_cast<unsigned>(b.analyzer().lastUs()), static_cast<double>(b.analyzer().mixRate()),
@@ -432,8 +433,10 @@ void RobotRuntime::logTick()
     p = std::copy(loop_.contingency().begin(), loop_.contingency().end(), p);
     *p++ = loop_.earSpeech();
     *p++ = loop_.voice();
+    *p++ = loop_.visPerson();
+    *p++ = loop_.visFace();
     static_assert(v4::RAW_COUNT + v4::kSnnInputs + v4::SO_COUNT + v4::NO_COUNT + v4::BODY_COUNT + v4::PV_COUNT +
-                      v4::CT_COUNT + v4::EAR_COUNT == LifeLog::kValues,
+                      v4::CT_COUNT + v4::EAR_COUNT + v4::VIS_COUNT == LifeLog::kValues,
                   "diary order: tools/v4/spec_v4.py DIARY");
     // flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided this tick
     life_.tick(tick, nowMs(),

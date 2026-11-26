@@ -24,6 +24,8 @@ HEADS = ("act1_w", "act1_b", "act2_w", "act2_b")
 MUSE_BIAS_MAX = 0.6  # muse.py BIAS_MAX
 MUSE_WOUT_MAX = 0.25  # muse.py WOUT_DELTA_MAX
 MUSE_WOUT_SHAPE = (5, 64)
+BABBLE_PREF_MAX = 0.5  # BabbleNet::setKindBias (10 droid note kinds: W/C/P/B/T/V/G/S/R/O)
+BABBLE_KINDS = ("W", "C", "P", "B", "T", "V", "G", "S", "R", "O")
 
 
 def alarm(c):
@@ -79,7 +81,7 @@ def id_of(arrays):
 MEM_ROWS, MEM_FIELDS = 24, 8  # main/v4/memory_v4.h kMax, kFields: minute, valence, strength, yaw, around, lit, kind, date
 
 
-def pack(version, heads=None, shift=None, muse_bias=None, nn=None, episodes=None, muse_wout=None):
+def pack(version, heads=None, shift=None, muse_bias=None, nn=None, episodes=None, muse_wout=None, babble_pref=None):
     """episodes: the remembered moments (episodes.table: up to MEM_ROWS rows of MEM_FIELDS; docs/EPISODES.md)."""
     arrays = []
     if heads is not None:
@@ -97,6 +99,10 @@ def pack(version, heads=None, shift=None, muse_bias=None, nn=None, episodes=None
     if muse_wout is not None:  # learned readout delta for the 5 ideas (5 x 64)
         w = np.clip(np.asarray(muse_wout, np.float32).reshape(MUSE_WOUT_SHAPE), -MUSE_WOUT_MAX, MUSE_WOUT_MAX)
         arrays.append(("muse.wout", w.ravel()))
+    if babble_pref is not None:  # learned idiolect (10 droid note-kind logit biases)
+        bp = np.clip(np.asarray(babble_pref, np.float32), -BABBLE_PREF_MAX, BABBLE_PREF_MAX)
+        assert bp.shape == (len(BABBLE_KINDS),)
+        arrays.append(("babble.pref", bp))
     if episodes is not None:
         e = np.zeros((MEM_ROWS, MEM_FIELDS), np.float32)
         rows = np.asarray(episodes, np.float32).reshape(-1, MEM_FIELDS)[:MEM_ROWS]

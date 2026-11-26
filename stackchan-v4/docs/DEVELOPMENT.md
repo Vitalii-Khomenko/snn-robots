@@ -138,17 +138,27 @@ Besides the test scenarios (`behavior_test_v4.py` CASES; since 2026-10-27 also `
 ## 4. Training chain
 
 ```
-spec_v4.py ──> main/v4/v4_spec.h
+spec_v4.py ──> main/v4/v4_spec.h, docs/SPEC_V4.md
 calibrate.py                 real days -> channel statistics per zone (out/calibration.txt)
-train_snn_v4.py data         1400 synthetic + 400 real 5-minute lives -> out/snn_data.npz (~0.9 GB, rebuildable)
-train_snn_v4.py train        SNN, 20 epochs (surrogate gradients, int8 QAT in the last 30 %) -> data/snn_v4.pt
+train_snn_v4.py data         1400 synthetic + 800 event-biased real v4 5-min lives -> out/snn_data.npz (~1.1 GB, rebuildable)
+train_snn_v4.py train        SNN warm-start (6 fp32 + 4 int8 QAT, B=256) or scratch -> data/snn_v4.pt
 export_snn_v4.py ──> main/v4/snn_v4_data.h        parity_snn_v4.py   (C++ == PyTorch)
-train_nn_v4.py data          the trained SNN over the same lives -> out/nn_snn.npz (~0.6 GB, rebuildable)
+train_nn_v4.py data          the trained SNN over the same lives -> out/nn_snn.npz (~0.8 GB, rebuildable)
 muse.py make                 the Muse's fixed reservoir (seeded), calibrated on those lives -> main/v4/muse_v4_data.h
                              parity_muse.py (C++ == numpy); a new Muse means a retrained main network
-train_nn_v4.py train [2]     imitation of teacher_nn.py + DAgger rounds -> data/nn_v4.pt, out/nn_report.txt
+train_nn_v4.py train [2]     imitation of teacher_nn.py + 2 DAgger rounds -> data/nn_v4.pt, out/nn_report.txt
 export_nn_v4.py ──> main/v4/nn_v4_data.h          parity_nn_v4.py
-behavior_test_v4.py          then build, flash, watch
+prep_audio_v2.py             301k train / 23k val ticks (room .aud + real_mic + ESC-50/synth + servo-mixed claps) -> out/audio_v2_data.npz
+colab_jobs/job_audio_v2.py   AuditoryNetV2 (2D 3x3 ConvNet, int8 QAT) -> data/auditory_v2.pt, main/perception/auditory_model_data.h
+                             parity_audio.py (C++ == PyTorch)
+prep_vision_v2.py            61k train / 6.3k val frames (room .snp + YOLOv8n/YuNet + real_rec + COCO + synth) -> out/vision_v2_data.npz
+colab_jobs/job_vision_v2.py  VisionNetV2 (3-layer int8 CNN, QAT) -> data/vision_v2.pt, main/perception/vision_model_data.h
+                             parity_vision.py (C++ == PyTorch)
+prep_world_rl.py             all real v4 daytime 2 Hz trajectories -> out/world_rl_data.npz (~34 MB)
+colab_jobs/job_world_rl.py   WorldModel + Offline IQL -> data/world_model.pt, out/world_model_report.txt
+colab_jobs/job_gpu_sim_rl.py 3-model Stochastic World-Model Ensemble + 512-parallel GPU virtual lives + Dream RL
+                             -> data/world_ensemble.pt, out/gpu_dream_heads.npz, out/gpu_sim_report.txt
+behavior_test_v4.py          24 scenarios in C++ digital twin, then build, flash, watch
 ```
 
 - `synth_v4.py` paints synthetic lives into the **raw** sensor signals (the owner coming and going, talk, TV, the
@@ -171,10 +181,86 @@ behavior_test_v4.py          then build, flash, watch
   random split. The trained networks of 2026-10-27 are from the old split.
 - **SNN parity** (`parity_snn_v4.py`) judges the mean (< 0.01), the share of ticks off by > 0.05 (< 1 %) and how
   often the executor's thresholds on its numbers (attention 0.12, surprise 0.35, threat 0.45) decide otherwise
-  (< 0.5 %). 2026-10-28: mean 0.0000, 0.27-0.37 % of the ticks off (att_x / att_y, at most 4 ticks in a row, max
-  0.109), no threshold decided otherwise.
-- A full retrain takes ~1 h on an RTX-class GPU (the SNN data pass is the slowest). Checkpoints: `tools/v4/data/*.pt`
-  (in git); reports and logs: `tools/v4/out/*.txt|*.log` (in git); the large `.npz` are not.
+  (< 0.5 %).
+- Checkpoints: `tools/v4/data/*.pt` (in git); reports and logs: `tools/v4/out/*.txt|*.log` (in git); the large `.npz`
+  and `.tar.gz` bundles are not.
+
+### 4a. Compute Routing & Timing Guide (Local RTX A3000 vs Google Colab Tesla T4)
+
+This project has two GPU environments with very different strengths. Always route each job to the machine whose
+hardware bottleneck fits it best — never burn Colab quota on CPU/RAM-bound tasks, and never choke a local laptop on
+long VRAM-heavy sweeps.
+
+| Machine | GPU / VRAM | CPU / System RAM | Cost | Best for | Avoid |
+|---|---|---|---|---|---|
+| **Local PC** (`./tools/v4/py`) | NVIDIA RTX A3000 Laptop (CUDA) | **16 cores / 62 GB RAM** | $0 (local) | `train_nn_v4.py` (DAgger + 12-core `label()`), `nn_snn.npz` build, dataset `prep_*.py`, C++ simulator (`behavior_test_v4.py`), nightly `sleep_v4.py`, firmware `./build.sh` | Leaving laptop GPU pegged for 1+ hour sweeps when Colab T4 is free |
+| **Colab Free CLI** (`tools/v4/colab_train.py`) | **NVIDIA Tesla T4 (15 GB VRAM, CUDA 13.0)** | **2 vCPU / 12 GB RAM** | **$0** (free tier; always release VM!) | `SnnV4` warm-start (`B=256`), `AuditoryNetV2` ConvNet, `VisionNetV2` CNN, `WorldModel + Offline IQL`, **512-parallel GPU World-Model Sim + Dream RL** | `ProcessPoolExecutor` with large arrays (OOMs 12 GB RAM!), C++ simulator (4–5× slower on 2 vCPU) |
+
+**Measured wall-clock timings (2026-11-26):**
+
+| Task | Recommended target | Measured time | Notes & limits |
+|---|---|---|---|
+| `prep_audio_v2.py` (301k train / 23k val) | **Local PC** | **~1.5 min** | Reads room `.aud` + real mic `.bin` + ESC-50/synth |
+| `job_audio_v2.py` (32 ep + QAT, 2D ConvNet) | **Colab T4** | **0.8 min** | Exports `auditory_model_data.h` (21 KB int8) |
+| `prep_vision_v2.py` (61k train / 6.3k val) | **Local PC** | **~2 min** | Reads `.snp` + YOLOv8n/YuNet `.lab.npz` + COCO |
+| `job_vision_v2.py` (36 ep + QAT, 3-layer CNN) | **Colab T4** | **0.6 min** | Exports `vision_model_data.h` (23.8 KB int8) |
+| `prep_world_rl.py` (147 h real life -> 34 MB) | **Local PC** | **~1.0 min** | Streams 16 days of `.scl.gz` into `world_rl_data.npz` |
+| `job_world_rl.py` (WorldModel + IQL, 30 ep) | **Colab T4** | **~2.5 min** | Needs < 2 GB VRAM, 0.0264 obs RMSE / 0.918 AUROC |
+| `train_snn_v4.py data` (1400 synth + 800 real) | **Local PC** | **~4 min** | CPU-bound channel + teacher generation (~1.1 GB `.npz`) |
+| `job_snn_v4.py` (warm-start 10 ep, `B=256`) | **Colab T4** | **44.4 min** | 6 fp32 (~235 s/ep) + 4 QAT (~270 s/ep). **Never** run 35 ep from scratch on Free T4 (~663 s/ep hits session timeout); always warm-start from `data/snn_v4.pt`! |
+| `train_nn_v4.py data` (`out/nn_snn.npz`) | **Local PC** | **5.7 min** (340 s) | 2.3× faster than Colab T4 (770 s) — avoid uploading/building on Colab |
+| `train_nn_v4.py train 2` (25 ep + 2×15 DAgger) | **Local PC** | **~12 min** | `2–3 s/ep` on RTX A3000 + ~10 GB RAM for 12-core `label()`. **Do NOT run on Colab Free** (2 vCPU / 12 GB RAM OOMs on `fork()`). Use `STACKCHAN_WORKERS=1` only if RAM-constrained. |
+| `job_gpu_sim_rl.py` (3-model World Ensemble + 512-parallel GPU sim + 3-round Dream RL) | **Colab T4** | **~14 min** ensemble + **1.1 min** sim/RL | `512` parallel lives × 30 s = `4.27 virt-h` in `1.38 s` (**`11,117× real-time`**); reuses uploaded `data/world_ensemble.pt` for ~1 min sweeps; gate candidate locally in C++ simulator (`24/24` PASS) |
+| `behavior_test_v4.py` (24 C++ twin scenarios) | **Local PC** | **~0.5–1.5 min** | Parallel across 16 CPU cores (4–5× slower on Colab's 2 vCPU) |
+| `sleep_v4.py` (nightly stage 6) | **Local PC** | **2–4 min** | Systemd timer `03:30` daily; replays last days + simulator gate + OTA |
+
+**Running headless Colab T4 jobs (`tools/v4/colab_train.py`):**
+
+`colab_train.py` creates a T4 session (with 3× retry on transient disconnects), uploads inputs, runs the job script via
+`colab exec -s <name> --timeout 0 -f <script>`, downloads artifacts, mirrors them to Google Drive
+(`~/Work/MLPojekt/stackchan-v4/<name>/` via `rclone`), and **always terminates the VM in `finally:`** so zero free GPU
+quota leaks.
+
+```bash
+cd stackchan-v4/tools/v4
+
+# Example 1: AuditoryNetV2 on Colab T4 (~0.8 min)
+./py prep_audio_v2.py
+./py colab_train.py --name stackchan-audio-v2 --gpu T4 \
+  --upload out/audio_v2_data.npz:/content/audio_v2_data.npz \
+  --script colab_jobs/job_audio_v2.py \
+  --download /content/out/auditory_v2.pt:data/auditory_v2.pt \
+  --download /content/out/auditory_model_data.h:../../main/perception/auditory_model_data.h \
+  --download /content/out/audio_v2_report.txt:out/audio_v2_report.txt
+
+# Example 2: VisionNetV2 on Colab T4 (~0.6 min)
+./py prep_vision_v2.py
+./py colab_train.py --name stackchan-vision-v2 --gpu T4 \
+  --upload out/vision_v2_data.npz:/content/vision_v2_data.npz \
+  --script colab_jobs/job_vision_v2.py \
+  --download /content/out/vision_v2.pt:data/vision_v2.pt \
+  --download /content/out/vision_model_data.h:../../main/perception/vision_model_data.h \
+  --download /content/out/vision_v2_report.txt:out/vision_v2_report.txt
+
+# Example 3: 512-parallel GPU World-Model Simulator + Dream RL (~15 min)
+./py prep_world_rl.py
+tar -czf out/sim_bundle.tar.gz *.py data/snn_v4.pt data/nn_v4.pt data/muse_v4.npz
+./py colab_train.py --name stackchan-gpu-sim --gpu T4 \
+  --upload out/sim_bundle.tar.gz:/content/sim_bundle.tar.gz \
+  --upload out/world_rl_data.npz:/content/world_rl_data.npz \
+  --script colab_jobs/job_gpu_sim_rl.py \
+  --download /content/out/world_ensemble.pt:data/world_ensemble.pt \
+  --download /content/out/gpu_dream_heads.npz:out/gpu_dream_heads.npz \
+  --download /content/out/gpu_sim_report.txt:out/gpu_sim_report.txt
+
+# Always verify locally before flashing or pushing a learned blob:
+./py parity_audio.py && ./py parity_vision.py && ./py parity_nn_v4.py && ./py behavior_test_v4.py
+```
+
+**Rule of thumb for future full retrains:**
+- **Perception only (ear or vision):** ~3 min total (prep local + train on T4 + parity local).
+- **Full brain retrain (`SnnV4` warm-start on T4 + `NnV4` on local RTX A3000 + parity + 24/24 sim):** **~65 min wall-clock** ($0 cloud cost).
+- **GPU World-Model Simulation & Dream RL sweep:** **~15 min on Colab T4** + **~1 min** local C++ twin gate.
 
 ## 5. Learning from life (stage 6)
 

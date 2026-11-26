@@ -7,6 +7,7 @@
 #include <freertos/FreeRTOS.h>
 
 #include "../perception/vision_frontend.h"
+#include "../perception/vision_net.h"
 
 // GC0308 camera (esp32-camera driver via the CoreS3 BSP): RGB565 QQVGA, one frame buffer, ~7 FPS. Every frame goes
 // through the vision front end (perception/vision_frontend.h): a 32x24 luminance image whose ego-motion compensated
@@ -22,6 +23,7 @@ public:
         float motionFrac = 0.0f, motionX = 0.0f, motionY = 0.0f;  // share of the picture that moves, its centre
         float lightX = 0.0f, lightY = 0.0f, lightStrength = 0.0f;  // the brightest spot (-1..1) and its excess (0..1)
         float presenceFrac = 0.0f, presenceX = 0.0f, presenceY = 0.0f;  // static foreground diff vs slow background
+        float person = 0.0f, face = 0.0f, targetX = 0.0f, targetY = 0.0f, targetConf = 0.0f;  // VisionNetV2 (Core 1 int8 CNN)
     };
 
     bool begin();
@@ -41,6 +43,7 @@ private:
 
     std::function<void(const VisionFrame&)> on_vision_;
     VisionFrontEnd front_;
+    VisionNet net_;
     std::atomic<bool> pending_{false};
     std::atomic<uint32_t> last_ms_{0};
     std::atomic<uint32_t> frames_{0};

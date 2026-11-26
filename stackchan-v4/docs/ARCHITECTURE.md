@@ -331,17 +331,16 @@ section 3). After the executor, every tick:
 
 ## 6. The diary
 
-Every tick goes to the home PC over UDP (`main/net/life_log.*`, kind 3 datagrams, four ticks each, float16), with
-every log line. Columns (`spec_v4.DIARY`, 176): the 27 raw readings the channels are made from, the 18 channel values
+Every tick goes to the home PC over UDP (`main/net/life_log.*`, kind 3 datagrams, three ticks each, float16), with
+every log line. Columns (`spec_v4.DIARY`, 178): the 27 raw readings the channels are made from, the 18 channel values
 (after the zone shift: what the analyzer saw), the 32 SNN numbers, the 61 network outputs, what the body did (head
-yaw / pitch, shown face, said, gestured, and what the executor held back: `held`, section 4) the main network's 24 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), and the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got). `raw_stamina` is 1 - the sleep pressure since 2026-10-27 (1.0 before). With the raw
+yaw / pitch, shown face, said, gestured, and what the executor held back: `held`, section 4) the main network's 24 own-state inputs of its last decision, the 6 numbers of the contingency detector (`ct_*`, section 5), the ear before the voice check (`ear_speech`, `ear_voice`; `raw_speech` is what the channels got), and neural vision (`vis_person`, `vis_face`, `VisionNetV2` on Core 1 since 2026-11-26). `raw_stamina` is 1 - the sleep pressure since 2026-10-27 (1.0 before). With the raw
 readings any day can be re-encoded after a change of the channels; with the own state every decision can be replayed
 exactly on the PC (stage 6). Flags: bit 0 brain v4 drives the body, bit 1 night rules, bit 2 the main network decided
 this tick. `tools/robot/lifelogd.py` stores it, `tools/v4/diary.py` reads it (also the older layouts by column name: 135
 values until 2026-10-24 14:30, 147 until the camera's bright spot and the head yaw as a raw reading came in on 2026-10-25, 154 until
-the Muse's ideas on 2026-10-26, 159 until the contingency detector on 2026-10-27, 165 until the ear's columns the same morning, 173 until the body budget (`raw_budget`) that evening, 174 until `held` on 2026-10-28 evening, 175 until `pv_expectation` on 2026-11-26; missing columns
-are NaN). Four ticks of 176 values make a datagram of 1472 bytes: right at one unfragmented UDP packet (MTU 1500), so the
-next column needs three ticks a datagram. Each boot names its firmware (`firmware in ota_0 ..., sha c8b5d903`, the
+the Muse's ideas on 2026-10-26, 159 until the contingency detector on 2026-10-27, 165 until the ear's columns the same morning, 173 until the body budget (`raw_budget`) that evening, 174 until `held` on 2026-10-28 evening, 175 until `pv_expectation` on 2026-11-26 morning, 176 until `vis_*` on 2026-11-26 evening; missing columns
+are NaN). Three ticks of 178 values make a datagram of 1122 bytes: well inside one unfragmented UDP packet (MTU 1500), with headroom up to 235 columns. Each boot names its firmware (`firmware in ota_0 ..., sha c8b5d903`, the
 ELF's SHA-256) and its network (`main network trained (id 1d448676)`): the night learns only from boots of the
 network it trains.
 
@@ -354,8 +353,9 @@ Every 5 s the robot logs three lines: `stats:` (CPU, memory, timing, servos, sen
 Learning happens on the PC at night; the robot only receives the result, without a reboot:
 
 - **The learned blob** (`main/v4/learned_blob.h`, made by `tools/v4/learned.py`): new weights of the main network's
-  action heads (voice, LEDs, head: `act1`, `act2`, 8039 floats), one zone shift per channel and the Muse's idea
-  biases (`muse.bias`, 8). The GRU, the emotion head, the spiking analyzer and the Muse's reservoir stay innate.
+  action heads (voice, LEDs, head: `act1`, `act2`, 8039 floats), one zone shift per channel, the Muse's idea
+  biases (`muse.bias`, 8) and readout delta (`muse.wout`, 5×64), episodic memories (`mem.episodes`, 24×8), and
+  learned droid voice syllable preferences (`babble.pref`, 10). The GRU, the emotion head, the spiking analyzer and the Muse's reservoir stay innate.
   The heads carry the fingerprint of the network they belong to (`nn.id`: CRC-32 of the GRU and the emotion head,
   `learned.nn_id`; the firmware has it compiled in as `nnv4::kNnId`). The robot and the night use them only with
   that network: after a retrained network is flashed, it starts from its own innate heads, keeps the zone shift and
@@ -399,15 +399,19 @@ Learning happens on the PC at night; the robot only receives the result, without
      per decision). Since 2026-11-25 all temporal windows in `reward_v4.py` and `sleep_v4.py` (`returns`,
      `surprise_of`, `learn_muse`, `zones`) reset across reboots and diary gaps (> 2-5 s), `episodes.py` uses gated
      `raw_speech` for `around`, and `improvement()` floors `pa >= 1e-4`;
-  3. *heads* - the action heads move towards the choices that got more reward than expected and away from those
+  3. *heads & voice idiolect* - the action heads move towards the choices that got more reward than expected and away from those
      that got less: the advantage over a ridge value baseline, centred, in units of its spread, clipped at ±3; the
      target of a decision is the heads' own distribution with the odds of the choice made times exp(A / 2), so a
-     decision of average outcome asks for no change; anchored by a KL to the heads the robot has. Only wishes the
+     decision of average outcome asks for no change; anchored by a KL to the heads the robot has (with 3× extra KL
+     anchoring on high-salience touch states via `safety_anchor_weights()` so touch reflexes stay intact). Only wishes the
      body carried out are tilted (`carried_out`, 2026-10-28): a stretch of decisions wanting a call counts when a call
      started in it, a nod / shake / flinch mode when its gesture started, look / scan / hold not while the head
      followed its own reflex or a glance (the diary's `held`; before it, attention above 0.12 in the last 10 s), a
      sound's style only where a call starts; the rest ask for no change. On 10-27/28: 68 % of the decisions wanting
-     a call, 71 % of those wanting a gesture and 96 % of the network's gaze were carried out. (Until 2026-10-28
+     a call, 71 % of those wanting a gesture and 96 % of the network's gaze were carried out. In parallel,
+     `learn_babble()` parses `v4: voice:` syllable sequences from `log.txt` against 15 s post-call social rewards to
+     nudge the 10 droid syllable-kind logit biases (`babble.pref`, clamped ±0.5, applied atomically from Core 0 to
+     `BabbleVoice` on Core 1) so the robot develops a personal voice idiolect. (Until 2026-10-28
      AWR, weights exp(A) > 0 on the robot's own greedy choices: with ~400 rewarded moments in 14 h it was the network
      imitating itself and cut the entropy of every choice by ~35 % a night; the KL gate happened to drop every night's
      step. Now a night changes the odds of a choice made before a bad outcome by ~3 %, entropy within 0.5 %.)
@@ -438,17 +442,17 @@ Learning happens on the PC at night; the robot only receives the result, without
 
 | Task | Core | Priority | Work |
 |---|---|---|---|
-| main loop | 0 | 1 | engines, brain tick (ear 1.3 ms, SNN 3-5 ms, NN ~5 ms every 2nd tick), executor, diary copy |
-| voice | 1 | 5 | renders 20 ms chunks of the droid voice |
-| microphone | 1 | 3 | 16-band filter bank, loud / onset detectors |
-| camera | 1 | 2 | ~7 fps, motion front end (~3 ms a frame) |
-| diary sender | 0 | 1 | UDP to the PC from a PSRAM ring |
+| main loop | 0 | 1 | engines, brain tick (`AuditoryNetV2` 2D ConvNet ~3.0 ms, SNN 3–7 ms, NN ~5.8–7.2 ms every 2nd tick), executor, diary copy |
+| voice | 1 | 5 | renders 20 ms chunks of the droid voice (`BabbleNet` + `babble.pref` idiolect) |
+| microphone | 1 | 3 | 16-band filter bank (~0.25 ms/block), loud / onset detectors, `VoiceCheck` pitch/energy |
+| camera | 1 | 2 | ~7.0 fps, vision front end + `VisionNetV2` int8 CNN (~29–35 ms total per frame) |
+| diary sender | 0 | 1 | UDP to the PC from a PSRAM ring (3 ticks / 1122 B datagram) |
 | update server | 0 | 2 | HTTP: status, touch sensitivity, learned blob, firmware |
 
-Measured 2026-11-25 (after SNN/NN optimizations, non-blocking servo rail init, VSYS-triggered + 10 min LCD recovery,
-and `CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096`, live ESP32-S3): SNN ~2.8-3.4 ms (was ~3.9 ms), NN ~5.4 ms (was
-~5.65 ms), brain stage per 20 ms pass in `loop_us` ~4.6 ms (was ~5.9 ms), `servos` worst pass at rail switch-on 1.95 ms
-(was 35.3 ms), `internal_free` ~39.6 KB (was ~35 KB), PSRAM free ~7.78 MB, main loop paced with `vTaskDelayUntil`, busy
-~39 %; LEDs + head pad ~1.1 ms, IMU + microphone ~1.4 ms (50 ms I2C timeouts), the face ~0.3 ms. The networks read their
-weights from PSRAM (copied at boot: this board's flash is DIO, about half as fast); the pixel face redraws only the
-pixels that changed (a blink: ~1/10 of the screen, ~15 ms).
+Measured 2026-11-26 (live ESP32-S3 on `ota_1`, boot `27dcf41b`, with `SnnV4 v2`, `NnV4 id 050f74d1`, `AuditoryNetV2`
+2D ConvNet, `VisionNetV2` int8 CNN, `PredictorV4`, and staggered `logStats()`): `cam_fps=7.0` (`cam_us` ~29–35 ms),
+`audio_us` ~2.9–3.0 ms (`audio_nan=0`), SNN ~3.1–7.3 ms, NN ~5.8–7.2 ms, `servos` worst pass at rail switch-on ~2.0 ms
+(with 10 ms post-`EnableTorque` gap), `missed_ticks` ~4 over 16.5 min, `internal_free` ~39.4 KB (`internal_min` 23.6 KB),
+PSRAM free ~7.72 MB, main loop paced with `vTaskDelayUntil`, `busy` ~48 %, `diary_dropped=0`, `voice_gaps=0`. The
+networks read their weights from PSRAM (copied at boot: this board's flash is DIO, about half as fast); the pixel face
+redraws only the pixels that changed (a blink: ~1/10 of the screen, ~13–15 ms).

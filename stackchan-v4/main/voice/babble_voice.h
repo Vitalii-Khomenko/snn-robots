@@ -56,6 +56,16 @@ public:
     // Chunks that came later than 1.5 chunk durations while sounding (audible gaps), since boot.
     uint32_t gaps() const { return gaps_.load(); }
     void seed(uint32_t s) { net_.seed(s); }
+    // Learned idiolect (10 note-kind logit biases from learned_blob.h "babble.pref"); thread-safe handoff to audio task.
+    void setKindBias(const float* bias)
+    {
+        if (bias) {
+            for (int i = 0; i < BabbleNet::kKinds; ++i) pending_kind_bias_[i] = bias[i];
+        } else {
+            pending_kind_bias_.fill(0.0f);
+        }
+        kind_bias_dirty_.store(true, std::memory_order_release);
+    }
     // A wider voice - phrase register 300-1580 Hz (default: 520-1190) and 1.5x the jumps between notes (platform B used
     // it; brain v4 keeps the default). Measured 2026-10-18: 60 % of the voice's energy sat between 400 and 1500 Hz.
     void setWide(bool wide)
@@ -79,7 +89,8 @@ private:
     droid::Synth synth_;
     std::array<int16_t, 480> chunk_{};
     // main thread -> audio task
-    std::atomic<bool> pending_{false}, interrupt_{false}, beep_{false};
+    std::atomic<bool> pending_{false}, interrupt_{false}, beep_{false}, kind_bias_dirty_{false};
+    std::array<float, BabbleNet::kKinds> pending_kind_bias_{};
     std::array<float, BabbleNet::kIntent> pending_intent_{};
     int pending_emotion_ = 0;
     float pending_base_hz_ = 250.0f;
